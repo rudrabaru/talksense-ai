@@ -7,25 +7,58 @@ export default function UploadPage() {
     const [mode, setMode] = useState("meeting")
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <div className="bg-white shadow-md rounded-xl p-8 w-full max-w-md">
-                <h1 className="text-2xl font-bold text-center mb-6">
-                    TalkSense AI
-                </h1>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6">
+            <div className="bg-white/80 backdrop-blur-xl shadow-xl rounded-2xl p-8 w-full max-w-lg border border-white/50">
+                <div className="text-center mb-10">
+                    <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight mb-2">
+                        TalkSense AI
+                    </h1>
+                    <p className="text-gray-500 font-medium">
+                        Transform conversations into actionable intelligence
+                    </p>
+                </div>
 
-                <input
-                    type="file"
-                    className="w-full mb-4 border rounded-lg p-2"
-                />
+                <div className="space-y-6">
+                    {/* Upload Area */}
+                    <div>
+                        <label className="block w-full cursor-pointer group">
+                            <div className="border-2 border-dashed border-gray-300 rounded-xl p-10 flex flex-col items-center justify-center transition-all bg-gray-50 group-hover:bg-indigo-50/50 group-hover:border-indigo-400">
+                                <div className="p-4 bg-white rounded-full shadow-sm mb-4 group-hover:shadow-md transition-shadow">
+                                    <svg className="w-8 h-8 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                </div>
+                                <span className="text-gray-900 font-semibold mb-1">
+                                    Click to upload audio
+                                </span>
+                                <span className="text-sm text-gray-400">
+                                    MP3, WAV or M4A (max 50MB)
+                                </span>
+                            </div>
+                            <input type="file" className="hidden" />
+                        </label>
+                    </div>
 
-                <ModeSelector mode={mode} setMode={setMode} />
+                    {/* Context Selection */}
+                    <div className="space-y-3">
+                        <label className="text-sm font-semibold text-gray-700 ml-1">
+                            Conversation Context
+                        </label>
+                        <ModeSelector mode={mode} setMode={setMode} />
+                    </div>
 
-                <button
-                    onClick={() => navigate("/results")}
-                    className="w-full mt-6 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition"
-                >
-                    Analyze Conversation
-                </button>
+                    {/* Action Button */}
+                    <button
+                        onClick={() => navigate("/results", { state: { mode } })}
+                        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-200 hover:shadow-indigo-300 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200"
+                    >
+                        Analyze Conversation
+                    </button>
+
+                    <p className="text-center text-xs text-gray-400 mt-4">
+                        Securely processed • Enterprise grade privacy
+                    </p>
+                </div>
             </div>
         </div>
     )

@@ -1,22 +1,56 @@
 {
     "mode": "sales",
-    "summary": "Client expressed pricing concerns but showed interest.",
-    "sentimentScore": 0.42,
+    "duration": "24m 12s",
+    "summary": "The client confirmed budget approval for Q3 and expressed strong interest in moving forward as their current competitor contract expires in two weeks. Primary concerns revolve around the technical integration timeline, specifically regarding their legacy CRM. Sarah, the CTO, has been identified as the key decision-maker. The call concluded with a request for a relevant case study and a follow-up meeting scheduled for next Tuesday to discuss implementation details.",
+    "sentimentScore": 0.65,
     "insights": [
-        "Pricing objection detected",
-        "Positive intent toward end of call",
-        "Follow-up recommended within 48 hours"
+        "Budget confirmed for Q3 implementation",
+        "Competitor contract expires in 14 days",
+        "Technical integration with legacy CRM is a blocker",
+        "Key Decision Maker: Sarah (CTO)",
+        "Action Item: Send financial services case study",
+        "Follow-up scheduled: Tuesday at 10 AM EST"
     ],
     "transcript": [
         {
-            "time": "00:05",
-            "text": "We are interested but the price feels high.",
-            "sentiment": -0.3
+            "time": "02:15",
+            "text": "Thanks for joining. To jump right in, I wanted to let you know that our budget for Q3 has finally been approved, so we are ready to evaluate new vendors.",
+            "sentiment": 0.8
         },
         {
-            "time": "00:18",
-            "text": "If you can offer flexibility, we can proceed.",
-            "sentiment": 0.6
+            "time": "02:45",
+            "text": "That's fantastic news! We are definitely excited to show you what we can do. What is your timeline for making a switch?",
+            "sentiment": 0.9
+        },
+        {
+            "time": "03:10",
+            "text": "Well, our contract with the current provider actually expires in just two weeks, so we need to move relatively quickly if we're going to do this.",
+            "sentiment": 0.1
+        },
+        {
+            "time": "08:22",
+            "text": "I do have one major concern though. We are still running a legacy CRM for our sales team. How difficult is the integration process with older systems?",
+            "sentiment": -0.5
+        },
+        {
+            "time": "09:05",
+            "text": "It can be tricky, but we have a dedicated API for that. However, it might add about three days to the onboarding timeline.",
+            "sentiment": 0.0
+        },
+        {
+            "time": "14:30",
+            "text": "Okay, that sounds manageable. Sarah, our CTO, will need to sign off on the technical specs before we proceed. Can you send over a technical case study?",
+            "sentiment": 0.4
+        },
+        {
+            "time": "23:50",
+            "text": "Absolutely, I will email that to you by end of day. Does next Tuesday at 10 AM work for a follow-up with Sarah?",
+            "sentiment": 0.9
+        },
+        {
+            "time": "24:05",
+            "text": "Yes, Tuesday works perfect. Talk soon.",
+            "sentiment": 0.7
         }
     ]
 }
