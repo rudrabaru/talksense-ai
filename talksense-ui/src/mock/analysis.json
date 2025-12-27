@@ -1,0 +1,22 @@
+{
+    "mode": "sales",
+    "summary": "Client expressed pricing concerns but showed interest.",
+    "sentimentScore": 0.42,
+    "insights": [
+        "Pricing objection detected",
+        "Positive intent toward end of call",
+        "Follow-up recommended within 48 hours"
+    ],
+    "transcript": [
+        {
+            "time": "00:05",
+            "text": "We are interested but the price feels high.",
+            "sentiment": -0.3
+        },
+        {
+            "time": "00:18",
+            "text": "If you can offer flexibility, we can proceed.",
+            "sentiment": 0.6
+        }
+    ]
+}
