@@ -176,7 +176,10 @@ def overall_call_sentiment(segments):
 
     for seg in segments:
         if seg["sentiment_confidence"] >= 0.6:
-            counts[seg["sentiment"]] += 1
+            # Use sentiment_label for string keys (Positive/Negative/Neutral)
+            label = seg.get("sentiment_label", "Neutral")
+            if label in counts:
+                counts[label] += 1
 
     if counts["Negative"] > counts["Positive"]:
         return "negative"
@@ -196,8 +199,8 @@ def sentiment_trend(segments):
 
     def score(segs):
         return sum(
-            1 if s["sentiment"] == "Positive"
-            else -1 if s["sentiment"] == "Negative"
+            1 if s.get("sentiment_label") == "Positive"
+            else -1 if s.get("sentiment_label") == "Negative"
             else 0
             for s in segs
             if s["sentiment_confidence"] >= 0.6
@@ -216,7 +219,8 @@ def detect_objections(segments):
     objections = []
 
     for seg in segments:
-        if seg["sentiment"] != "Negative" or seg["sentiment_confidence"] < 0.75:
+        label = seg.get("sentiment_label", "Neutral")
+        if label != "Negative" or seg["sentiment_confidence"] < 0.75:
             continue
 
         text = seg["text"].lower()
@@ -235,7 +239,8 @@ def detect_buying_signals(segments):
     signals = []
 
     for seg in segments:
-        if seg["sentiment"] != "Positive" or seg["sentiment_confidence"] < 0.7:
+        label = seg.get("sentiment_label", "Neutral")
+        if label != "Positive" or seg["sentiment_confidence"] < 0.7:
             continue
 
         text = seg["text"].lower()
@@ -249,7 +254,7 @@ def detect_buying_signals(segments):
 
 def engagement_level(segments):
     sentiments = [
-        s["sentiment"]
+        s.get("sentiment_label", "Neutral")
         for s in segments
         if s["sentiment_confidence"] >= 0.6
     ]
@@ -334,7 +339,8 @@ def analyze_sales(enriched_segments: list) -> dict:
                 "start": s["start"],
                 "end": s["end"],
                 "text": s["text"],
-                "sentiment": s["sentiment"],
+                "sentiment": s["sentiment"], # Keep numeric score if needed for frontend, or map to label
+                "sentiment_label": s.get("sentiment_label", "Neutral"), # Ensure label is passed back
                 "confidence": s["sentiment_confidence"]
             }
             for s in segments
