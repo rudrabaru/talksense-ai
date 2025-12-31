@@ -4,6 +4,8 @@ import os
 import shutil
 
 from services.speech_to_text import transcribe_audio
+from services.nlp_engine import enrich_transcript
+from services.context_analyzer import analyze_meeting, analyze_sales
 
 app = FastAPI(
     title="TalkSense AI",
@@ -17,21 +19,37 @@ UPLOAD_DIR = "uploads"
 def health_check():
     return {"status": "TalkSense AI backend running"}
 
-@app.post("/transcribe")
-async def transcribe(file: UploadFile = File(...)):
+@app.post("/analyze")
+async def analyze_audio(
+    file: UploadFile = File(...),
+    mode: str = "meeting"  # "meeting" or "sales"
+):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
-
     file_path = os.path.join(UPLOAD_DIR, file.filename)
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # Speech-to-text
-    transcript = transcribe_audio(file_path)
+    # 1. Speech-to-Text
+    raw_transcript = transcribe_audio(file_path)
 
+    # 2. NLP Enrichment (Sentiment + Keywords)
+    enriched_data = enrich_transcript(raw_transcript)
+
+    # 3. Context Analysis
+    insights = {}
+    if mode == "sales":
+        insights = analyze_sales(enriched_data)
+    else:
+        # Default to meeting mode
+        insights = analyze_meeting(enriched_data)
+
+    # 4. Construct Final Response
     return JSONResponse(
         content={
             "filename": file.filename,
-            "transcript": transcript
+            "mode": mode,
+            "transcript": enriched_data, # Use the enriched version with sentiment
+            "insights": insights
         }
     )
