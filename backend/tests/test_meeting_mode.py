@@ -16,6 +16,7 @@ def test_analyze_meeting():
             "end": 15.0,
             "text": "We need to finish the report by Friday.",
             "sentiment": "Neutral",
+            "sentiment_label": "Neutral",
             "sentiment_confidence": 0.8
         },
         {
@@ -23,6 +24,7 @@ def test_analyze_meeting():
             "end": 5.0,
             "text": "Hello everyone, let's start properly.",
             "sentiment": "Positive",
+            "sentiment_label": "Positive",
             "sentiment_confidence": 0.9
         },
         {
@@ -30,6 +32,7 @@ def test_analyze_meeting():
             "end": 25.0,
             "text": "I am very worried about the timeline. This is bad.",
             "sentiment": "Negative",
+            "sentiment_label": "Negative",
             "sentiment_confidence": 0.85
         },
         {
@@ -37,11 +40,12 @@ def test_analyze_meeting():
             "end": 35.0,
             "text": "Okay, we decided to extend the deadline.",
             "sentiment": "Positive",
+            "sentiment_label": "Positive",
             "sentiment_confidence": 0.7
         }
     ]
 
-    result = analyze_meeting(enriched_segments)
+    result = analyze_meeting({"segments": enriched_segments})
 
     # Check 1: Sorting
     print("\n[Check 1] Sorting...")

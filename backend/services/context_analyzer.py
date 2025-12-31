@@ -150,66 +150,194 @@ def analyze_meeting(nlp_input: dict) -> dict:
         ]
     }
 
+
+# --- SALES MODE HELPERS ---
+
+OBJECTION_KEYWORDS = {
+    "Pricing": ["price", "cost", "expensive", "budget"],
+    "Timeline": ["delay", "later", "timeline", "next quarter"],
+    "Authority": ["approval", "discuss internally", "check with"],
+    "Fit": ["not suitable", "concern", "issue"],
+    "Competition": ["already using", "other vendor"]
+}
+
+BUYING_KEYWORDS = [
+    "sounds good",
+    "makes sense",
+    "next steps",
+    "how do we proceed",
+    "what's next",
+    "within budget",
+    "interested"
+]
+
+def overall_call_sentiment(segments):
+    counts = {"Positive": 0, "Neutral": 0, "Negative": 0}
+
+    for seg in segments:
+        if seg["sentiment_confidence"] >= 0.6:
+            counts[seg["sentiment"]] += 1
+
+    if counts["Negative"] > counts["Positive"]:
+        return "negative"
+    if counts["Positive"] > counts["Negative"]:
+        return "positive"
+    if counts["Positive"] > 0 and counts["Negative"] > 0:
+        return "mixed"
+    return "neutral"
+
+def sentiment_trend(segments):
+    n = len(segments)
+    if n < 3:
+        return "insufficient data"
+
+    first = segments[: n // 3]
+    last = segments[-(n // 3):]
+
+    def score(segs):
+        return sum(
+            1 if s["sentiment"] == "Positive"
+            else -1 if s["sentiment"] == "Negative"
+            else 0
+            for s in segs
+            if s["sentiment_confidence"] >= 0.6
+        )
+
+    start_score = score(first)
+    end_score = score(last)
+
+    if end_score > start_score:
+        return "improving"
+    if end_score < start_score:
+        return "declining"
+    return "flat"
+
+def detect_objections(segments):
+    objections = []
+
+    for seg in segments:
+        if seg["sentiment"] != "Negative" or seg["sentiment_confidence"] < 0.75:
+            continue
+
+        text = seg["text"].lower()
+
+        for obj_type, keywords in OBJECTION_KEYWORDS.items():
+            if any(k in text for k in keywords):
+                objections.append({
+                    "type": obj_type,
+                    "text": seg["text"],
+                    "time": seg["start"]
+                })
+
+    return objections
+
+def detect_buying_signals(segments):
+    signals = []
+
+    for seg in segments:
+        if seg["sentiment"] != "Positive" or seg["sentiment_confidence"] < 0.7:
+            continue
+
+        text = seg["text"].lower()
+        if any(k in text for k in BUYING_KEYWORDS):
+            signals.append({
+                "text": seg["text"],
+                "time": seg["start"]
+            })
+
+    return signals
+
+def engagement_level(segments):
+    sentiments = [
+        s["sentiment"]
+        for s in segments
+        if s["sentiment_confidence"] >= 0.6
+    ]
+
+    if sentiments.count("Positive") + sentiments.count("Negative") == 0:
+        return "low"
+    if sentiments.count("Positive") > 0 and sentiments.count("Negative") > 0:
+        return "high"
+    return "medium"
+
+def recommend_actions(objections, buying_signals, trend):
+    actions = []
+
+    if any(o["type"] == "Pricing" for o in objections):
+        actions.append("Send pricing clarification")
+
+    if any(o["type"] == "Authority" for o in objections):
+        actions.append("Follow up after internal discussion")
+
+    if buying_signals:
+        actions.append("Send proposal")
+
+    if trend == "flat":
+        actions.append("Schedule follow-up call")
+
+    return list(set(actions))
+
+def key_moments(objections, buying_signals):
+    events = []
+
+    for o in objections:
+        events.append({
+            "time": o["time"],
+            "event": f"{o['type']} objection detected"
+        })
+
+    for b in buying_signals:
+        events.append({
+            "time": b["time"],
+            "event": "Buying signal detected"
+        })
+
+    return sorted(events, key=lambda x: x["time"])
+
 def analyze_sales(enriched_segments: list) -> dict:
     """
     Main entry point for Sales Mode analysis.
     """
-    objections = []
-    sentiment_dip = False
-    follow_up_action = None
-    
-    # 1. Sort segments chronologically
+    if not enriched_segments:
+        return {
+            "mode": "sales",
+            "summary": {},
+            "objections": [],
+            "buying_signals": [],
+            "recommended_actions": [],
+            "key_moments": [],
+            "transcript": []
+        }
+
     segments = sorted(enriched_segments, key=lambda x: x["start"])
 
-    # Sales Keywords
-    PRICE_WORDS = ["price", "cost", "expensive", "budget", "pricing", "discount"]
-    FOLLOW_UP_WORDS = ["follow up", "next steps", "call again", "send details", "email me"]
-
-    for seg in segments:
-        text = seg["text"].lower()
-        sentiment = seg["sentiment"] # "Positive", "Neutral", "Negative"
-        confidence = seg["sentiment_confidence"]
-
-        # 1️⃣ Objection detection (Simple keyword match for now)
-        if any(w in text for w in PRICE_WORDS):
-            if sentiment == "Negative":
-                objections.append(f"Pricing objection: \"{seg['text']}\"")
-
-        # 2️⃣ Sentiment dip detection (Strong negative sentiment)
-        if sentiment == "Negative" and confidence >= 0.7:
-            sentiment_dip = True
-
-        # 3️⃣ Follow-up / next steps detection
-        if any(w in text for w in FOLLOW_UP_WORDS):
-            follow_up_action = seg["text"]
-
-    # Remove duplicates
-    objections = list(set(objections))
-
-    # 4️⃣ Call score calculation
-    score = 1.0
-    if objections: score -= 0.3
-    if sentiment_dip: score -= 0.2
-    if not follow_up_action: score -= 0.1
-    
-    # Ensure score is healthy
-    if any(seg["sentiment"] == "Positive" for seg in segments[-3:]):
-        score += 0.1 # Bonus for positive closing
-
-    score = max(0.0, min(score, 1.0))
+    call_sentiment = overall_call_sentiment(segments)
+    trend = sentiment_trend(segments)
+    objections = detect_objections(segments)
+    buying_signals = detect_buying_signals(segments)
+    engagement = engagement_level(segments)
+    recommendations = recommend_actions(objections, buying_signals, trend)
 
     return {
         "mode": "sales",
+        "summary": {
+            "overall_call_sentiment": call_sentiment,
+            "sentiment_trend": trend,
+            "engagement_level": engagement
+        },
         "objections": objections,
-        "sentiment_dip": sentiment_dip,
-        "call_score": round(score, 2),
-        "follow_up": follow_up_action,
+        "buying_signals": buying_signals,
+        "recommended_actions": recommendations,
+        "key_moments": key_moments(objections, buying_signals),
         "transcript": [
             {
-                "start": seg["start"],
-                "text": seg["text"],
-                "sentiment": seg["sentiment"]
+                "start": s["start"],
+                "end": s["end"],
+                "text": s["text"],
+                "sentiment": s["sentiment"],
+                "confidence": s["sentiment_confidence"]
             }
-            for seg in segments
+            for s in segments
         ]
     }
+

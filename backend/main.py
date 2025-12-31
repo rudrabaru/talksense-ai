@@ -55,10 +55,8 @@ async def analyze_audio(
 
     insights = {}
     if mode == "sales":
-        # Note: analyze_sales might need adaptation if it expects a dict with "segments" key
-        # For now, we reconstruct the input it expects if needed, or update analyze_sales.
-        # Current analyze_sales expects a dict with "segments" key.
-        insights = analyze_sales({"segments": enriched_segments})
+        # analyze_sales expects a list of segments
+        insights = analyze_sales(enriched_segments)
     else:
         # Default to meeting mode
         insights = analyze_meeting(final_transcript)
@@ -68,7 +66,7 @@ async def analyze_audio(
         content={
             "filename": file.filename,
             "mode": mode,
-            "transcript": enriched_data, # Use the enriched version with sentiment
+            "transcript": final_transcript, # Use the enriched version with sentiment
             "insights": insights
         }
     )
