@@ -4,7 +4,7 @@ import os
 import shutil
 
 from services.speech_to_text import transcribe_audio
-from services.nlp_engine import enrich_transcript
+from services.nlp_engine import NLPEngine
 from services.context_analyzer import analyze_meeting, analyze_sales
 
 app = FastAPI(
@@ -12,6 +12,8 @@ app = FastAPI(
     description="AI Conversation Intelligence Platform",
     version="1.0"
 )
+
+nlp_engine = NLPEngine()
 
 UPLOAD_DIR = "uploads"
 
@@ -31,18 +33,24 @@ async def analyze_audio(
         shutil.copyfileobj(file.file, buffer)
 
     # 1. Speech-to-Text
-    raw_transcript = transcribe_audio(file_path)
+    raw_transcript_data = transcribe_audio(file_path)
+    # Extract just the segments list (assuming transcribe_audio returns a dict with "segments")
+    raw_segments = raw_transcript_data.get("segments", [])
 
     # 2. NLP Enrichment (Sentiment + Keywords)
-    enriched_data = enrich_transcript(raw_transcript)
+    # Use the instance nlp_engine to enrich
+    enriched_segments = nlp_engine.enrich_transcript(raw_segments)
 
     # 3. Context Analysis
     insights = {}
     if mode == "sales":
-        insights = analyze_sales(enriched_data)
+        # Note: analyze_sales might need adaptation if it expects a dict with "segments" key
+        # For now, we reconstruct the input it expects if needed, or update analyze_sales.
+        # Current analyze_sales expects a dict with "segments" key.
+        insights = analyze_sales({"segments": enriched_segments})
     else:
         # Default to meeting mode
-        insights = analyze_meeting(enriched_data)
+        insights = analyze_meeting(enriched_segments)
 
     # 4. Construct Final Response
     return JSONResponse(

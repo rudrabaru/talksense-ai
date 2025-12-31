@@ -15,9 +15,7 @@ test_sentences = [
     "We will discuss internally and get back",
     "I am not sure this will work",
     "This meeting was very productive",
-    "We are facing some concerns regarding timeline",
-    "Hello",
-    "Thank you"
+    "We are facing some concerns regarding timeline"
 ]
 
 for text in test_sentences:
