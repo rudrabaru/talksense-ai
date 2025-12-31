@@ -142,50 +142,66 @@ def analyze_meeting(enriched_segments: list) -> dict:
         ]
     }
 
-def analyze_sales(nlp_input):
+def analyze_sales(enriched_segments: list) -> dict:
+    """
+    Main entry point for Sales Mode analysis.
+    """
     objections = []
     sentiment_dip = False
     follow_up_action = None
+    
+    # 1. Sort segments chronologically
+    segments = sorted(enriched_segments, key=lambda x: x["start"])
 
-    # Iterate over conversation segments
-    for segment in nlp_input.get("segments", []):
-        keywords = segment.get("keywords", [])
-        sentiment = segment.get("sentiment", 0.0)
-        text = segment.get("text", "")
+    # Sales Keywords
+    PRICE_WORDS = ["price", "cost", "expensive", "budget", "pricing", "discount"]
+    FOLLOW_UP_WORDS = ["follow up", "next steps", "call again", "send details", "email me"]
 
-        # 1️⃣ Objection detection
-        if "price_objection" in keywords:
-            objections.append("pricing")
+    for seg in segments:
+        text = seg["text"].lower()
+        sentiment = seg["sentiment"] # "Positive", "Neutral", "Negative"
+        confidence = seg["sentiment_confidence"]
 
-        # 2️⃣ Sentiment dip detection
-        if sentiment <= -0.3:
+        # 1️⃣ Objection detection (Simple keyword match for now)
+        if any(w in text for w in PRICE_WORDS):
+            if sentiment == "Negative":
+                objections.append(f"Pricing objection: \"{seg['text']}\"")
+
+        # 2️⃣ Sentiment dip detection (Strong negative sentiment)
+        if sentiment == "Negative" and confidence >= 0.7:
             sentiment_dip = True
 
         # 3️⃣ Follow-up / next steps detection
-        if "follow_up" in keywords or "next_steps" in keywords:
-            follow_up_action = text
+        if any(w in text for w in FOLLOW_UP_WORDS):
+            follow_up_action = seg["text"]
 
-    # Remove duplicate objections
+    # Remove duplicates
     objections = list(set(objections))
 
-    # 4️⃣ Call score calculation (simple & explainable)
+    # 4️⃣ Call score calculation
     score = 1.0
+    if objections: score -= 0.3
+    if sentiment_dip: score -= 0.2
+    if not follow_up_action: score -= 0.1
+    
+    # Ensure score is healthy
+    if any(seg["sentiment"] == "Positive" for seg in segments[-3:]):
+        score += 0.1 # Bonus for positive closing
 
-    if objections:
-        score -= 0.2
-
-    if sentiment_dip:
-        score -= 0.2
-
-    if follow_up_action:
-        score += 0.2
-
-    # Clamp score between 0 and 1
     score = max(0.0, min(score, 1.0))
 
     return {
+        "mode": "sales",
         "objections": objections,
         "sentiment_dip": sentiment_dip,
         "call_score": round(score, 2),
-        "follow_up": follow_up_action
+        "follow_up": follow_up_action,
+        "transcript": [
+            {
+                "start": seg["start"],
+                "text": seg["text"],
+                "sentiment": seg["sentiment"]
+            }
+            for seg in segments
+        ]
     }

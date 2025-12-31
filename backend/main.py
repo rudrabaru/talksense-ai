@@ -2,6 +2,10 @@ from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
 import os
 import shutil
+import sys
+
+# Add the current directory to sys.path to allow imports of 'services'
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from services.speech_to_text import transcribe_audio
 from services.nlp_engine import NLPEngine
@@ -44,10 +48,7 @@ async def analyze_audio(
     # 3. Context Analysis
     insights = {}
     if mode == "sales":
-        # Note: analyze_sales might need adaptation if it expects a dict with "segments" key
-        # For now, we reconstruct the input it expects if needed, or update analyze_sales.
-        # Current analyze_sales expects a dict with "segments" key.
-        insights = analyze_sales({"segments": enriched_segments})
+        insights = analyze_sales(enriched_segments)
     else:
         # Default to meeting mode
         insights = analyze_meeting(enriched_segments)
@@ -57,7 +58,7 @@ async def analyze_audio(
         content={
             "filename": file.filename,
             "mode": mode,
-            "transcript": enriched_data, # Use the enriched version with sentiment
+            "transcript": enriched_segments, # Use the enriched version with sentiment
             "insights": insights
         }
     )
