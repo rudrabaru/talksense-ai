@@ -42,22 +42,26 @@ async def analyze_audio(
     enriched_segments = nlp_engine.enrich_transcript(raw_segments)
 
     # 3. Context Analysis
+    # 3. Context Analysis
+    # Prepare data structure expected by analyzers and frontend
+    final_transcript = {
+        "text": raw_transcript_data.get("text", ""),
+        "segments": enriched_segments
+    }
+
     insights = {}
     if mode == "sales":
-        # Note: analyze_sales might need adaptation if it expects a dict with "segments" key
-        # For now, we reconstruct the input it expects if needed, or update analyze_sales.
-        # Current analyze_sales expects a dict with "segments" key.
-        insights = analyze_sales({"segments": enriched_segments})
+        insights = analyze_sales(final_transcript)
     else:
         # Default to meeting mode
-        insights = analyze_meeting(enriched_segments)
+        insights = analyze_meeting(final_transcript)
 
     # 4. Construct Final Response
     return JSONResponse(
         content={
             "filename": file.filename,
             "mode": mode,
-            "transcript": enriched_data, # Use the enriched version with sentiment
+            "transcript": final_transcript, # Use the enriched version with sentiment
             "insights": insights
         }
     )

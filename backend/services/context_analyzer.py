@@ -24,8 +24,10 @@ def aggregate_sentiment(segments):
     }
 
     for seg in segments:
-        if seg["sentiment_confidence"] >= 0.6:
-            counts[seg["sentiment"]] += 1
+        # Use sentiment_label (String)
+        label = seg.get("sentiment_label", "Neutral")
+        if label in counts:
+            counts[label] += 1
 
     return counts
 
@@ -36,7 +38,8 @@ def generate_meeting_summary(segments, sentiment_counts):
 
     neg_ratio = sentiment_counts["Negative"] / total
 
-    end_sentiment = segments[-1]["sentiment"]
+    # Use sentiment_label (String)
+    end_sentiment = segments[-1].get("sentiment_label", "Neutral")
 
     if neg_ratio > 0.3:
         return "The meeting involved several concerns and may require follow-up discussion."
@@ -52,7 +55,8 @@ def detect_decisions(segments):
     for seg in segments:
         text = seg["text"].lower()
         if any(k in text for k in DECISION_KEYWORDS):
-            if seg["sentiment_confidence"] >= 0.6:
+            # Lower confidence threshold slightly as model scores might vary
+            if seg.get("sentiment_confidence", 0) >= 0.5:
                 decisions.append({
                     "text": seg["text"],
                     "time": seg["start"]
@@ -87,9 +91,10 @@ def detect_tension_points(segments):
     tension = []
 
     for seg in segments:
+        # Use sentiment_label (String)
         if (
-            seg["sentiment"] == "Negative"
-            and seg["sentiment_confidence"] >= 0.75
+            seg.get("sentiment_label") == "Negative"
+            and seg.get("sentiment_confidence", 0) >= 0.75
         ):
             tension.append({
                 "text": seg["text"],
@@ -98,12 +103,15 @@ def detect_tension_points(segments):
 
     return tension
 
-def analyze_meeting(enriched_segments: list) -> dict:
+def analyze_meeting(nlp_input: dict) -> dict:
     """
     Main entry point for Meeting Mode analysis.
-    Input: sentiment-enriched transcript segments
+    Input: sentiment-enriched transcript dictionary
     Output: structured meeting intelligence
     """
+    # Extract segments list from input dict
+    enriched_segments = nlp_input.get("segments", [])
+
     # 5.2 Normalize & Sort Transcript (Chronology First)
     segments = sorted(enriched_segments, key=lambda x: x["start"])
 
@@ -135,8 +143,8 @@ def analyze_meeting(enriched_segments: list) -> dict:
                 "start": seg["start"],
                 "end": seg["end"],
                 "text": seg["text"],
-                "sentiment": seg["sentiment"],
-                "confidence": seg["sentiment_confidence"]
+                "sentiment": seg["sentiment"], # Keep float for frontend
+                "confidence": seg.get("sentiment_confidence", 0)
             }
             for seg in segments
         ]
