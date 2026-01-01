@@ -2,19 +2,27 @@
     "meeting": {
         "decisions": [
             "we will",
-            "let's",
+            "let's proceed",
             "agreed",
             "decided",
             "finalize",
-            "moving forward"
+            "moving forward",
+            "conclusion is",
+            "we are going to",
+            "consensus",
+            "settled on"
         ],
         "actions": [
             "please",
             "can you",
             "need to",
             "will handle",
-            "by",
-            "before"
+            "by tomorrow",
+            "deadline",
+            "take ownership",
+            "responsible for",
+            "ensure that",
+            "make sure to"
         ]
     },
     "sales": {
@@ -23,27 +31,54 @@
                 "price",
                 "cost",
                 "expensive",
-                "budget"
+                "budget",
+                "too much",
+                "discount",
+                "premium",
+                "cannot afford",
+                "financial"
             ],
             "Timeline": [
                 "delay",
                 "later",
                 "timeline",
-                "next quarter"
+                "next quarter",
+                "next year",
+                "not now",
+                "hold off",
+                "wait until",
+                "timing is not right"
             ],
             "Authority": [
                 "approval",
                 "discuss internally",
-                "check with"
+                "check with",
+                "boss",
+                "manager",
+                "decision maker",
+                "sign off",
+                "committee",
+                "stakeholders"
             ],
             "Fit": [
                 "not suitable",
                 "concern",
-                "issue"
+                "issue",
+                "overkill",
+                "complicated",
+                "too complex",
+                "hard to use",
+                "missing feature",
+                "integration"
             ],
             "Competition": [
                 "already using",
-                "other vendor"
+                "other vendor",
+                "competitor",
+                "current provider",
+                "incumbent",
+                "switch",
+                "contract"
             ]
         }
     },
@@ -53,62 +88,79 @@
             "to do",
             "take ownership",
             "i will do",
-            "responsible for"
+            "responsible for",
+            "task",
+            "assignment"
         ],
         "decision_made": [
             "decision",
             "decided",
             "agreed",
             "consensus",
-            "conclusion"
+            "conclusion",
+            "resolution",
+            "approved"
         ],
         "blocker": [
             "blocked",
             "stuck",
             "dependency",
             "waiting for",
-            "issue"
+            "issue",
+            "problem",
+            "barrier"
         ],
         "timeline_risk": [
             "deadline",
             "late",
             "delay",
             "push back",
-            "risk"
+            "risk",
+            "behind schedule",
+            "overdue"
         ],
         "price_objection": [
             "too expensive",
             "price",
             "budget",
             "cost",
-            "discount"
+            "discount",
+            "high price"
         ],
         "negotiation": [
             "negotiate",
             "offer",
             "deal",
             "contract",
-            "terms"
+            "terms",
+            "proposal",
+            "pricing"
         ],
         "competitor": [
             "competitor",
             "other vendor",
             "using",
-            "switched to"
+            "switched to",
+            "better offer"
         ],
         "follow_up": [
             "follow up",
             "next steps",
             "circle back",
             "schedule",
-            "calendar"
+            "calendar",
+            "meet again",
+            "call back"
         ],
         "positive_signal": [
             "great",
             "perfect",
             "good fit",
             "interested",
-            "exactly what we need"
+            "exactly what we need",
+            "excited",
+            "amazing",
+            "love it"
         ]
     }
 }

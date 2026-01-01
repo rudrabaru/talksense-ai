@@ -89,10 +89,15 @@ export default function ResultsPage() {
         const totalSent = segments.reduce((acc, s) => acc + (s.sentiment || 0), 0)
         const avgSent = segments.length ? (totalSent / segments.length) : 0
 
-        // Extract Summary
+        // Extract Summary & Explicit Sentiment Label
+        // Sales: overall_call_sentiment (or empty)
+        // Meeting: summary (String)
         let summaryText = ""
+        let explicitSentiment = null
+
         if (mode === "sales") {
             summaryText = `Overall Call Sentiment: ${insights.overall_call_sentiment || "Neutral"}. Detected ${insights.objections?.length || 0} objections.`
+            explicitSentiment = insights.overall_call_sentiment
         } else {
             summaryText = insights.summary || "No summary available."
         }
@@ -102,6 +107,7 @@ export default function ResultsPage() {
             duration: formattedDuration,
             summary: summaryText,
             sentimentScore: avgSent,
+            sentimentLabel: explicitSentiment,
             insights: insightList.length > 0 ? insightList : ["No significant insights detected."],
             transcript: mappedTranscript
         }
@@ -155,7 +161,7 @@ export default function ResultsPage() {
                             <span className={`w-2 h-2 rounded-full ${isSales ? "bg-purple-500" : "bg-blue-500"}`}></span>
                             {isSales ? "Sales Call" : "Meeting"}
                         </span>
-                        <SentimentBadge score={data.sentimentScore} />
+                        <SentimentBadge score={data.sentimentScore} label={data.sentimentLabel} />
                     </div>
                 </div>
 
