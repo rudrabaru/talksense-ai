@@ -67,22 +67,22 @@ export default function ResultsPage() {
         const lastSegmentEnd = segments.length > 0 ? segments[segments.length - 1].end : 0
         const formattedDuration = formatTime(lastSegmentEnd)
 
-        // Flatten insights to array of strings based on Mode
-        let insightList = []
+        // 1. Key Insights (Strict Separation)
+        const keyInsights = (insights.key_insights || []).map(i => ({
+            text: i.text,
+            type: i.type
+        }))
+
+        // 2. Action Plan (Decisions + Actions)
+        let actionPlan = []
         if (mode === "sales") {
-            // Sales Mode: Objections (Objects) -> Strings
-            const objections = (insights.objections || []).map(o => `Objection (${o.type}) at ${formatTime(o.time)}: ${o.text}`)
-            // Sales Mode: Recommended Actions (Strings)
-            const actions = insights.recommended_actions || []
-
-            insightList = [...objections, ...actions]
+            const objections = (insights.objections || []).map(o => `Objection: ${o.text} (${o.type})`)
+            const actions = (insights.recommended_actions || []).map(a => `Recommendation: ${a}`)
+            actionPlan = [...objections, ...actions]
         } else {
-            // Meeting Mode: Decisions (Objects) -> Strings
-            const decisions = (insights.decisions || []).map(d => `Decision at ${formatTime(d.time)}: ${d.text}`)
-            // Meeting Mode: Action Items (Objects) -> Strings
-            const actions = (insights.action_items || []).map(a => `Action: ${a.task} (Deadline: ${a.deadline})`)
-
-            insightList = [...decisions, ...actions]
+            const decisions = (insights.decisions || []).map(d => `Decision: ${d.text}`)
+            const actions = (insights.action_items || []).map(a => `Action: ${a.task} ${a.owner !== "Unassigned" ? `(@${a.owner})` : ""}`)
+            actionPlan = [...decisions, ...actions]
         }
 
         // Calculate average sentiment
@@ -100,7 +100,7 @@ export default function ResultsPage() {
             explicitSentiment = insights.overall_call_sentiment
         } else {
             summaryText = insights.summary || "No summary available."
-            explicitSentiment = insights.overall_sentiment_label
+            explicitSentiment = insights.overall_sentiment_label || "Neutral / Focused"
         }
 
         return {
@@ -109,7 +109,9 @@ export default function ResultsPage() {
             summary: summaryText,
             sentimentScore: avgSent,
             sentimentLabel: explicitSentiment,
-            insights: insightList.length > 0 ? insightList : ["No significant insights detected."],
+            // meetingHealth removed from UI data structure
+            keyInsights: keyInsights, // Object array
+            actionPlan: actionPlan,   // String array
             transcript: mappedTranscript
         }
 
@@ -120,6 +122,16 @@ export default function ResultsPage() {
 
     const isSales = displayData.mode === "sales"
     const data = displayData // Alias
+
+    // 1. MODE BADGE (Locked)
+    const modeLabel = isSales ? "Sales Call" : "Meeting";
+    const modeColor = isSales ? "bg-purple-50 text-purple-700 border-purple-100" : "bg-blue-50 text-blue-700 border-blue-100";
+    const modeDot = isSales ? "bg-purple-500" : "bg-blue-500";
+
+    // 2. HEALTH BADGE (New, Separate)
+    // Mapping: good -> On Track, at_risk -> At Risk, uncertain -> Needs Attention
+    // 2. HEALTH BADGE (Removed from Header as per UX request)
+    // Meeting Health is now only used in logic/insights, not as a badge.
 
     return (
         <div className="min-h-screen bg-gray-50 pb-12">
@@ -157,11 +169,16 @@ export default function ResultsPage() {
                             Processed on {new Date().toLocaleDateString()} • {data.duration || "00:00"}
                         </p>
                     </div>
+
+                    {/* Status Badges Section */}
                     <div className="flex items-center gap-3">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border ${isSales ? "bg-purple-50 text-purple-700 border-purple-100" : "bg-blue-50 text-blue-700 border-blue-100"}`}>
-                            <span className={`w-2 h-2 rounded-full ${isSales ? "bg-purple-500" : "bg-blue-500"}`}></span>
-                            {isSales ? "Sales Call" : "Meeting"}
+                        {/* BADGE 1: MODE (Infrastructure) */}
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border ${modeColor}`}>
+                            <span className={`w-2 h-2 rounded-full ${modeDot}`}></span>
+                            {modeLabel}
                         </span>
+
+                        {/* BADGE 3: SENTIMENT (Context only) */}
                         <SentimentBadge score={data.sentimentScore} label={data.sentimentLabel} />
                     </div>
                 </div>
@@ -179,24 +196,46 @@ export default function ResultsPage() {
                     </p>
                 </div>
 
-                {/* Insights Grid */}
-                <div>
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                        Key Insights
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {data.insights.map((item, i) => (
-                            <div key={i} className="h-full">
-                                <InsightCard text={item} />
-                            </div>
-                        ))}
+                {/* Key Insights Grid (Conditionally Rendered) */}
+                {data.keyInsights.length > 0 && (
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                            <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            Key Insights
+                        </h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+                            {data.keyInsights.map((item, i) => (
+                                <div key={i} className="h-full">
+                                    <InsightCard text={item.text} type={item.type} />
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )}
 
-                {/* Transcript */}
+                {/* Action Plan (Separate Section) */}
+                {data.actionPlan.length > 0 && (
+                    <div>
+                        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                            <svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                            </svg>
+                            Action Plan
+                        </h2>
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                            <ul className="space-y-3">
+                                {data.actionPlan.map((item, i) => (
+                                    <li key={i} className="flex items-start gap-3">
+                                        <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></div>
+                                        <span className="text-gray-700">{item}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
+                )}
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
                     <div className="bg-gray-50/80 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                         <h2 className="font-semibold text-gray-900">Transcript</h2>
