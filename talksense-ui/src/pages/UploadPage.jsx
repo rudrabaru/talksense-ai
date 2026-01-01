@@ -43,7 +43,7 @@ export default function UploadPage() {
             navigate("/results", { state: { data, mode } })
         } catch (err) {
             console.error(err)
-            setError("Failed to process audio. Ensure backend is running.")
+            setError("Failed to connect. Is the backend running on port 8000?")
         } finally {
             setLoading(false)
         }

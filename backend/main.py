@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 import os
 import shutil
@@ -16,6 +17,15 @@ app = FastAPI(
     title="TalkSense AI",
     description="AI Conversation Intelligence Platform",
     version="1.0"
+)
+
+# Enable CORS for Frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins (for hackathon/demo)
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 nlp_engine = NLPEngine()

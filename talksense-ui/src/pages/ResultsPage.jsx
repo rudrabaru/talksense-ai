@@ -23,42 +23,55 @@ export default function ResultsPage() {
         const mode = location.state?.mode || "meeting"
         const segments = transcript.segments || []
 
-        // Flatten insights to array of strings
-        let insightList = []
-        if (mode === "sales") {
-            insightList = [
-                ...((insights.objections || []).map(o => `Objection: ${o}`)),
-                insights.follow_up ? `Follow Up: ${insights.follow_up}` : null,
-                insights.sentiment_dip ? "Detected significant sentiment drop" : null
-            ].filter(Boolean)
-        } else {
-            insightList = [
-                ...((insights.action_items || []).map(i => `Action Item: ${i}`)),
-                ...((insights.decisions || []).map(d => `Decision: ${d}`)),
-                ...((insights.risk_flags || []).map(r => `Risk: ${r}`))
-            ]
-        }
-
-        // Calculate average sentiment
-        const totalSent = segments.reduce((acc, s) => acc + (s.sentiment || 0), 0)
-        const avgSent = segments.length ? (totalSent / segments.length) : 0
-
-        // Map transcript
+        // Helper to format backend segments
         const mappedTranscript = segments.map(s => ({
             time: formatTime(s.start),
             text: s.text,
             sentiment: s.sentiment
         }))
 
-        // Generate summary text
-        const summary = `Analyzed ${segments.length} segments in ${mode} mode. Found ${insightList.length} key insights. Overall sentiment is ${avgSent > 0.2 ? "positive" : avgSent < -0.2 ? "negative" : "neutral"}.`
+        // Helper to calculate duration
+        const lastSegmentEnd = segments.length > 0 ? segments[segments.length - 1].end : 0
+        const formattedDuration = formatTime(lastSegmentEnd)
+
+        // Flatten insights to array of strings based on Mode
+        let insightList = []
+        if (mode === "sales") {
+            // Sales Mode: Objections (Objects) -> Strings
+            const objections = (insights.objections || []).map(o => `Objection (${o.type}): ${o.text}`)
+            // Sales Mode: Recommended Actions (Strings)
+            const actions = insights.recommended_actions || []
+
+            insightList = [...objections, ...actions]
+        } else {
+            // Meeting Mode: Decisions (Objects) -> Strings
+            const decisions = (insights.decisions || []).map(d => `Decision: ${d.text}`)
+            // Meeting Mode: Action Items (Objects) -> Strings
+            const actions = (insights.action_items || []).map(a => `Action: ${a.task} (Deadline: ${a.deadline})`)
+
+            insightList = [...decisions, ...actions]
+        }
+
+        // Calculate average sentiment
+        const totalSent = segments.reduce((acc, s) => acc + (s.sentiment || 0), 0)
+        const avgSent = segments.length ? (totalSent / segments.length) : 0
+
+        // Extract Summary
+        // Sales: overall_call_sentiment (or empty)
+        // Meeting: summary (String)
+        let summaryText = ""
+        if (mode === "sales") {
+            summaryText = `Overall Call Sentiment: ${insights.overall_call_sentiment || "Neutral"}. Detected ${insights.objections?.length || 0} objections.`
+        } else {
+            summaryText = insights.summary || "No summary available."
+        }
 
         return {
             mode: mode,
-            duration: formatTime(segments[segments.length - 1]?.end || 0),
-            summary: summary,
+            duration: formattedDuration,
+            summary: summaryText,
             sentimentScore: avgSent,
-            insights: insightList.length > 0 ? insightList : ["No significant patterns detected."],
+            insights: insightList.length > 0 ? insightList : ["No significant insights detected."],
             transcript: mappedTranscript
         }
 
