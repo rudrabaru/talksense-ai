@@ -37,46 +37,60 @@ class NLPEngine:
                     break 
         return found_keywords
 
-    def enrich_segment(self, segment: dict) -> dict:
-        text = segment.get("text", "")
-        
-        # 1. Keywords
-        keywords = self.extract_keywords(text)
-
-        # 2. Sentiment
-        sentiment_score = 0.0
-        sentiment_label = "Neutral"
-        sentiment_confidence = 0.0
-        
-        if self.sentiment_pipeline:
-            try:
-                # Handle short text
-                if len(text.split()) >= 3:
-                     result = self.sentiment_pipeline(text[:512])[0]
-                     label = result["label"].lower() # e.g. "5 stars", "positive", "label_1"
-                     score = result["score"]
-                     sentiment_confidence = score
-                     
-                     # Simple heuristic mapping for multilingual model
-                     if "positive" in label or "4 stars" in label or "5 stars" in label:
-                         sentiment_score = score
-                         sentiment_label = "Positive"
-                     elif "negative" in label or "1 star" in label or "2 stars" in label:
-                         sentiment_score = -score
-                         sentiment_label = "Negative"
-                     else:
-                         sentiment_score = 0.0
-                         sentiment_label = "Neutral"
-            except Exception as e:
-                logger.warning(f"Sentiment inference failed: {e}")
-
-        return {
-            **segment,
-            "keywords": keywords,
-            "sentiment": round(sentiment_score, 3), # Float for Sales Mode
-            "sentiment_label": sentiment_label,      # String for Meeting Mode
-            "sentiment_confidence": round(sentiment_confidence, 2) # Actual confidence
-        }
-
     def enrich_transcript(self, segments: list) -> list:
-        return [self.enrich_segment(s) for s in segments]
+        # 1. First pass: Keywords and prep for batch sentiment
+        enriched_segments = []
+        texts_to_analyze = []
+        indices_to_update = []
+
+        for i, segment in enumerate(segments):
+            text = segment.get("text", "")
+            
+            # Keywords (keep per-segment logic as it's regex/substring based and fast)
+            keywords = self.extract_keywords(text)
+            
+            # Init default sentiment
+            segment_data = {
+                **segment,
+                "keywords": keywords,
+                "sentiment": 0.0,
+                "sentiment_label": "Neutral",
+                "sentiment_confidence": 0.0
+            }
+            
+            # specific logic for short texts
+            if len(text.split()) >= 3:
+                texts_to_analyze.append(text[:512]) # Truncate for model safety
+                indices_to_update.append(i)
+                
+            enriched_segments.append(segment_data)
+
+        # 2. Batch Sentiment Inference
+        if self.sentiment_pipeline and texts_to_analyze:
+            try:
+                # Run batch inference
+                results = self.sentiment_pipeline(texts_to_analyze, batch_size=len(texts_to_analyze))
+                
+                # Map results back to segments
+                for idx, result in zip(indices_to_update, results):
+                    label = result["label"].lower()
+                    score = result["score"]
+                    
+                    sentiment_score = 0.0
+                    sentiment_label = "Neutral"
+                    
+                    if "positive" in label or "4 stars" in label or "5 stars" in label:
+                        sentiment_score = score
+                        sentiment_label = "Positive"
+                    elif "negative" in label or "1 star" in label or "2 stars" in label:
+                        sentiment_score = -score
+                        sentiment_label = "Negative"
+                    
+                    enriched_segments[idx]["sentiment"] = round(sentiment_score, 3)
+                    enriched_segments[idx]["sentiment_label"] = sentiment_label
+                    enriched_segments[idx]["sentiment_confidence"] = round(score, 2)
+                    
+            except Exception as e:
+                logger.error(f"Batch sentiment inference failed: {e}")
+
+        return enriched_segments
