@@ -45,16 +45,7 @@
                 "already using",
                 "other vendor"
             ]
-        },
-        "buying_signals": [
-            "sounds good",
-            "makes sense",
-            "next steps",
-            "how do we proceed",
-            "what's next",
-            "within budget",
-            "interested"
-        ]
+        }
     },
     "nlp_enrichment": {
         "action_item": [
