@@ -1,11 +1,12 @@
-import { useMemo } from "react"
-import { Link, useLocation } from "react-router-dom"
+import { useMemo, useEffect, useState } from "react"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import mockData from "../mock/analysis.json"
 import SentimentBadge from "../components/SentimentBadge"
 import InsightCard from "../components/InsightCard"
 import TranscriptBlock from "../components/TranscriptBlock"
 
 function formatTime(seconds) {
+    if (seconds === undefined || seconds === null) return ""
     const mins = Math.floor(seconds / 60)
     const secs = Math.round(seconds % 60)
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
@@ -13,14 +14,46 @@ function formatTime(seconds) {
 
 export default function ResultsPage() {
     const location = useLocation()
+    const navigate = useNavigate()
+    const [persistedData, setPersistedData] = useState(null)
+
+    // Effect: Handle State Persistence & Redirect
+    useEffect(() => {
+        if (location.state?.data) {
+            // New data incoming -> Save to Storage
+            localStorage.setItem("ts_analysis_data", JSON.stringify(location.state.data))
+            localStorage.setItem("ts_analysis_mode", location.state.mode || "meeting")
+        } else {
+            // No state -> Try to load from Storage
+            const savedData = localStorage.getItem("ts_analysis_data")
+            const savedMode = localStorage.getItem("ts_analysis_mode")
+
+            if (savedData) {
+                try {
+                    setPersistedData({
+                        data: JSON.parse(savedData),
+                        mode: savedMode || "meeting"
+                    })
+                } catch (e) {
+                    console.error("Failed to parse saved data", e)
+                    navigate("/")
+                }
+            } else {
+                // No data at all -> Redirect
+                navigate("/")
+            }
+        }
+    }, [location.state, navigate])
 
     const displayData = useMemo(() => {
-        const backendResponse = location.state?.data
+        // Source priority: Location State -> Persisted State -> Mock (Fallback)
+        const sourceData = location.state?.data || persistedData?.data
+        const sourceMode = location.state?.mode || persistedData?.mode
 
-        if (!backendResponse) return mockData
+        if (!sourceData) return null
 
-        const { insights, transcript } = backendResponse
-        const mode = location.state?.mode || "meeting"
+        const { insights, transcript } = sourceData
+        const mode = sourceMode || "meeting"
         const segments = transcript.segments || []
 
         // Helper to format backend segments
@@ -38,14 +71,14 @@ export default function ResultsPage() {
         let insightList = []
         if (mode === "sales") {
             // Sales Mode: Objections (Objects) -> Strings
-            const objections = (insights.objections || []).map(o => `Objection (${o.type}): ${o.text}`)
+            const objections = (insights.objections || []).map(o => `Objection (${o.type}) at ${formatTime(o.time)}: ${o.text}`)
             // Sales Mode: Recommended Actions (Strings)
             const actions = insights.recommended_actions || []
 
             insightList = [...objections, ...actions]
         } else {
             // Meeting Mode: Decisions (Objects) -> Strings
-            const decisions = (insights.decisions || []).map(d => `Decision: ${d.text}`)
+            const decisions = (insights.decisions || []).map(d => `Decision at ${formatTime(d.time)}: ${d.text}`)
             // Meeting Mode: Action Items (Objects) -> Strings
             const actions = (insights.action_items || []).map(a => `Action: ${a.task} (Deadline: ${a.deadline})`)
 
@@ -57,8 +90,6 @@ export default function ResultsPage() {
         const avgSent = segments.length ? (totalSent / segments.length) : 0
 
         // Extract Summary
-        // Sales: overall_call_sentiment (or empty)
-        // Meeting: summary (String)
         let summaryText = ""
         if (mode === "sales") {
             summaryText = `Overall Call Sentiment: ${insights.overall_call_sentiment || "Neutral"}. Detected ${insights.objections?.length || 0} objections.`
@@ -75,10 +106,13 @@ export default function ResultsPage() {
             transcript: mappedTranscript
         }
 
-    }, [location.state])
+    }, [location.state, persistedData])
+
+    // Wait for data resolution
+    if (!displayData) return null
 
     const isSales = displayData.mode === "sales"
-    const data = displayData // Alias for easier usage below
+    const data = displayData // Alias
 
     return (
         <div className="min-h-screen bg-gray-50 pb-12">
@@ -113,7 +147,7 @@ export default function ResultsPage() {
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                             </span>
-                            Processed on {new Date().toLocaleDateString()} • {data.duration || "14m 20s"}
+                            Processed on {new Date().toLocaleDateString()} • {data.duration || "00:00"}
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
