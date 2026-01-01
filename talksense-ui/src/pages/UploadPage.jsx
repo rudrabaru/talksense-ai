@@ -50,7 +50,17 @@ export default function UploadPage() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-6 relative">
+            <button
+                onClick={() => navigate("/")}
+                className="absolute top-6 left-6 flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors bg-white/50 px-3 py-2 rounded-lg backdrop-blur-sm border border-transparent hover:border-indigo-100 hover:shadow-sm"
+            >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Home
+            </button>
+
             <div className={`bg-white/80 backdrop-blur-xl shadow-xl rounded-2xl p-8 w-full max-w-lg border border-white/50 transition-opacity ${loading ? "opacity-50 pointer-events-none" : ""}`}>
                 <div className="text-center mb-10">
                     <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight mb-2">
