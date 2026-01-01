@@ -3,21 +3,17 @@ from transformers import pipeline
 
 logger = logging.getLogger(__name__)
 
-# Keyword Dictionaries (Restored)
-KEYWORDS_DB = {
-    # Meeting Mode Keywords
-    "action_item": ["action item", "to do", "take ownership", "i will do", "responsible for"],
-    "decision_made": ["decision", "decided", "agreed", "consensus", "conclusion"],
-    "blocker": ["blocked", "stuck", "dependency", "waiting for", "issue"],
-    "timeline_risk": ["deadline", "late", "delay", "push back", "risk"],
-    
-    # Sales Mode Keywords
-    "price_objection": ["too expensive", "price", "budget", "cost", "discount"],
-    "negotiation": ["negotiate", "offer", "deal", "contract", "terms"],
-    "competitor": ["competitor", "other vendor", "using", "switched to"],
-    "follow_up": ["follow up", "next steps", "circle back", "schedule", "calendar"],
-    "positive_signal": ["great", "perfect", "good fit", "interested", "exactly what we need"]
-}
+import sys
+import os
+
+# Ensure we can import from utils
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.config_loader import KEYWORDS_CONFIG
+
+logger = logging.getLogger(__name__)
+
+# Keyword Dictionaries (Loaded from Config)
+KEYWORDS_DB = KEYWORDS_CONFIG["nlp_enrichment"]
 
 class NLPEngine:
     def __init__(self):

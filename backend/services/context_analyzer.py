@@ -1,20 +1,17 @@
-DECISION_KEYWORDS = [
-    "we will",
-    "let's",
-    "agreed",
-    "decided",
-    "finalize",
-    "moving forward"
-]
+import sys
+import os
 
-ACTION_KEYWORDS = [
-    "please",
-    "can you",
-    "need to",
-    "will handle",
-    "by",
-    "before"
-]
+# Ensure we can import from utils
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from utils.config_loader import KEYWORDS_CONFIG
+
+# Load Configured Keywords (or defaults)
+DECISION_KEYWORDS = KEYWORDS_CONFIG["meeting"]["decisions"]
+ACTION_KEYWORDS = KEYWORDS_CONFIG["meeting"]["actions"]
+
+# --- SALES MODE HELPERS ---
+OBJECTION_KEYWORDS = KEYWORDS_CONFIG["sales"]["objections"]
+BUYING_KEYWORDS = KEYWORDS_CONFIG["sales"]["buying_signals"]
 
 def aggregate_sentiment(segments):
     counts = {

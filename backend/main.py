@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 import os
 import shutil
 import sys
@@ -33,19 +34,22 @@ async def analyze_audio(
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     file_path = os.path.join(UPLOAD_DIR, file.filename)
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    def save_upload(input_file, output_path):
+        with open(output_path, "wb") as buffer:
+            shutil.copyfileobj(input_file, buffer)
 
-    # 1. Speech-to-Text
-    raw_transcript_data = transcribe_audio(file_path)
+    await run_in_threadpool(save_upload, file.file, file_path)
+
+    # 1. Speech-to-Text (Blocking -> ThreadPool)
+    # Whisper releases GIL, so threads are effective
+    raw_transcript_data = await run_in_threadpool(transcribe_audio, file_path)
     # Extract just the segments list (assuming transcribe_audio returns a dict with "segments")
     raw_segments = raw_transcript_data.get("segments", [])
 
-    # 2. NLP Enrichment (Sentiment + Keywords)
-    # Use the instance nlp_engine to enrich
-    enriched_segments = nlp_engine.enrich_transcript(raw_segments)
+    # 2. NLP Enrichment (Sentiment + Keywords) (Blocking -> ThreadPool)
+    # Transformers pipeline also releases GIL
+    enriched_segments = await run_in_threadpool(nlp_engine.enrich_transcript, raw_segments)
 
-    # 3. Context Analysis
     # 3. Context Analysis
     # Prepare data structure expected by analyzers and frontend
     final_transcript = {
@@ -56,10 +60,10 @@ async def analyze_audio(
     insights = {}
     if mode == "sales":
         # analyze_sales expects a list of segments
-        insights = analyze_sales(enriched_segments)
+        insights = await run_in_threadpool(analyze_sales, enriched_segments)
     else:
         # Default to meeting mode
-        insights = analyze_meeting(final_transcript)
+        insights = await run_in_threadpool(analyze_meeting, final_transcript)
 
     # 4. Construct Final Response
     return JSONResponse(

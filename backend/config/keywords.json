@@ -1,0 +1,123 @@
+{
+    "meeting": {
+        "decisions": [
+            "we will",
+            "let's",
+            "agreed",
+            "decided",
+            "finalize",
+            "moving forward"
+        ],
+        "actions": [
+            "please",
+            "can you",
+            "need to",
+            "will handle",
+            "by",
+            "before"
+        ]
+    },
+    "sales": {
+        "objections": {
+            "Pricing": [
+                "price",
+                "cost",
+                "expensive",
+                "budget"
+            ],
+            "Timeline": [
+                "delay",
+                "later",
+                "timeline",
+                "next quarter"
+            ],
+            "Authority": [
+                "approval",
+                "discuss internally",
+                "check with"
+            ],
+            "Fit": [
+                "not suitable",
+                "concern",
+                "issue"
+            ],
+            "Competition": [
+                "already using",
+                "other vendor"
+            ]
+        },
+        "buying_signals": [
+            "sounds good",
+            "makes sense",
+            "next steps",
+            "how do we proceed",
+            "what's next",
+            "within budget",
+            "interested"
+        ]
+    },
+    "nlp_enrichment": {
+        "action_item": [
+            "action item",
+            "to do",
+            "take ownership",
+            "i will do",
+            "responsible for"
+        ],
+        "decision_made": [
+            "decision",
+            "decided",
+            "agreed",
+            "consensus",
+            "conclusion"
+        ],
+        "blocker": [
+            "blocked",
+            "stuck",
+            "dependency",
+            "waiting for",
+            "issue"
+        ],
+        "timeline_risk": [
+            "deadline",
+            "late",
+            "delay",
+            "push back",
+            "risk"
+        ],
+        "price_objection": [
+            "too expensive",
+            "price",
+            "budget",
+            "cost",
+            "discount"
+        ],
+        "negotiation": [
+            "negotiate",
+            "offer",
+            "deal",
+            "contract",
+            "terms"
+        ],
+        "competitor": [
+            "competitor",
+            "other vendor",
+            "using",
+            "switched to"
+        ],
+        "follow_up": [
+            "follow up",
+            "next steps",
+            "circle back",
+            "schedule",
+            "calendar"
+        ],
+        "positive_signal": [
+            "great",
+            "perfect",
+            "good fit",
+            "interested",
+            "exactly what we need"
+        ]
+    }
+}
