@@ -1,94 +1,114 @@
 # TalkSense AI - Backend
 
-The backend for TalkSense AI is a **FastAPI** application that provides offline speech analysis capabilities. It orchestrates the flow from audio transcription to NLP enrichment and context-aware insight generation.
+**Offline-First Conversation Intelligence Platform**
 
-## 🚀 Features
+This is the backend for **TalkSense AI**, a privacy-focused conversation analysis tool. It processes audio meetings and sales calls entirely offline using local AI models (Whisper & Transformers) to generate structured insights like sentiment trends, action items, and objection detection.
 
-- **Offline Speech-to-Text**: Powered by OpenAI's `whisper` model.
-- **NLP Enrichment**: Uses Hugging Face `transformers` for local sentiment analysis and keyword extraction.
-- **Context Awareness**: specialized logic for analyzing **Meetings** (action items, decisions) vs. **Sales Calls** (objections, buying signals).
-- **No Cloud APIs**: Runs entirely on your local machine for privacy and zero latency during demos.
+---
 
-## 🛠️ Setup & Installation
+## 🏗 Architecture & Logic Flow
 
-1. **Prerequisites**: Python 3.10+ installed.
+The backend follows a **Unidirectional Data Flow** pipeline optimized for responsiveness using FastAPI and Thread Pools.
 
-2. **Create Virtual Environment**:
-   ```bash
-   python -m venv venv
-   # Windows
-   .\venv\Scripts\activate
-   # Mac/Linux
-   source venv/bin/activate
-   ```
+```mermaid
+graph TD
+    A[Client Upload] -->|POST /analyze| B(FastAPI Endpoint)
+    B -->|Thread Pool| C{Processing Pipeline}
+    
+    subgraph "Core Logic (Non-Blocking)"
+        C -->|1. Transcribe| D[Whisper (STT)]
+        D -->|Raw Segments| E[NLP Engine]
+        E -->|2. Enrich| F[HuggingFace Transformers]
+        F -->|Sentiment + Keywords| G{Analysis Mode}
+        
+        G -->|Meeting Mode| H[Context Analyzer: Meeting]
+        G -->|Sales Mode| I[Context Analyzer: Sales]
+        
+        H -->|Rule Mapping| J[Decisions & Actions]
+        I -->|Rule Mapping| K[Objections & Signals]
+    end
+    
+    J --> L[JSON Response]
+    K --> L
+```
 
-3. **Install Dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-   *Note: This will download PyTorch and Transformers, which may take a few minutes.*
+### 1. Speech-to-Text (STT)
+- **Engine**: OpenAI Whisper (`base` model).
+- **Function**: Converts audio to text segments with timestamps.
+- **Optimization**: Loaded once at startup; runs in a thread pool to avoid blocking the API main loop.
 
-## 🏃‍♂️ Running the Server
+### 2. NLP Enrichment
+- **Engine**: `tabularisai/multilingual-sentiment-analysis` (DistilBERT).
+- **Function**: Enriches each text segment with:
+  - **Sentiment Score**: (-1.0 to 1.0) and Label (Positive/Negative/Neutral).
+  - **Confidence**: Model certainty score.
+  - **Keywords**: Fast regex-based extraction (decisions, dates, etc.).
 
-Start the API server using Uvicorn:
+### 3. Context Analysis (Rule-Based)
+After enrichment, data is passed to specialized analyzers based on the selected `mode`:
 
+- **Meeting Mode** (`analyze_meeting`):
+  - **Summary**: Heuristic generation based on sentiment ratio and end-call tone.
+  - **Action Items**: Detects phrases like "I will", "to do".
+  - **Decisions**: Detects consensus phrases like "agreed", "decided".
+
+- **Sales Mode** (`analyze_sales`):
+  - **Overall Sentiment**: Classifies call as Positive, Negative, Neutral, or Mixed.
+  - **Objections**: Classifies concerns into *Pricing, Timeline, Authority, Fit*.
+  - **Recommended Actions**: Generates follow-ups based on detected objections.
+
+---
+
+## ⚙️ Configuration & Concurrency
+
+### Configurable Keywords (`config/keywords.json`)
+Detection logic, such as words triggering an "Objection" or "Decision", is **not hardcoded**. 
+You can tune these rules in `backend/config/keywords.json` without restarting the server.
+- **Benefits**: Allows on-the-fly tuning for demos or specific industry jargon.
+
+### Concurrency Strategy
+- **Problem**: Whisper and Transformers are CPU-heavy and blocking.
+- **Solution**: We use `starlette.concurrency.run_in_threadpool`.
+- **Effect**: The API remains responsive (e.g., `/health` checks pass instantly) even while a large file is being transcribed on a background thread.
+
+---
+
+## 🚀 Setup & Usage
+
+### 1. Install Dependencies
+```bash
+cd backend
+pip install -r requirements.txt
+```
+
+### 2. Run Server
 ```bash
 uvicorn main:app --reload
 ```
+*Server runs on `http://localhost:8000`*
 
-The server will start at `http://127.0.0.1:8000`.
+### 3. API Endpoints
 
-### API Documentation
-Once running, visit **[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)** for the interactive Swagger UI.
-
-## 🔌 API Endpoints
-
-### `POST /analyze`
-Uploads an audio file and returns structured intelligence.
-
-**Parameters:**
-- `file`: Audio file (`.mp3`, `.wav`)
-- `mode`: Analysis context (`"meeting"` or `"sales"`)
-
-**Response Example:**
+#### `POST /analyze`
+Uploads an audio file for processing.
+- **Params**: 
+  - `file`: Audio file (mp3, wav, m4a)
+  - `mode`: `"meeting"` or `"sales"` (default: meeting)
+- **Response**:
 ```json
 {
-  "filename": "meeting.mp3",
-  "mode": "meeting",
-  "transcript": { ... },
+  "mode": "sales",
+  "transcript": [...],
   "insights": {
-    "action_items": ["Send report"],
-    "meeting_quality": "good",
-    "sentiment_score": 0.8
+    "objections": [...],
+    "buying_signals": [...],
+    "recommended_actions": [...]
   }
 }
 ```
 
-## 📂 Project Structure
-
-```text
-backend/
-├── main.py                 # FastAPI application entry point & API routes
-├── requirements.txt        # Python dependencies
-├── verify_session.py       # Script for session validation
-├── services/               # Core intelligence modules
-│   ├── speech_to_text.py   # Wrapper for Whisper ASR
-│   ├── nlp_engine.py       # Sentiment analysis & keyword extraction
-│   ├── context_analyzer.py # Logic for specific modes (Sales vs Meeting)
-│   ├── pattern_miner.py    # Advanced pattern detection (risks, trends)
-│   ├── insight_composer.py # Generates human-readable summaries
-│   ├── timeline_builder.py # Constructs chronological events
-│   ├── prediction/         # ML models for outcome prediction
-│   └── embeddings/         # Vector embeddings logic
-├── uploads/                # Temporary storage for uploaded audio files
-└── tests/                  # Unit and integration tests
+#### `GET /health`
+Returns quick status check (useful for load balancers).
+```json
+{ "status": "TalkSense AI backend running" }
 ```
-
-## 🔧 Core Services Overview
-
-| Service | Responsibility |
-| :--- | :--- |
-| **speech_to_text** | Converts raw audio bytes into text with timestamps. |
-| **nlp_engine** | Enriches text with sentiment scores (-1 to 1) and keywords. |
-| **context_analyzer** | Applies business logic to interpret NLP data based on the selected mode. |
-| **pattern_miner** | Identifies complex sequences (e.g., "Objection followed by Discount"). |
