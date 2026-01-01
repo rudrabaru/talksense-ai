@@ -88,23 +88,40 @@ def analyze_meeting(nlp_input: dict) -> dict:
     enriched_segments = nlp_input.get("segments", [])
     segments = sorted(enriched_segments, key=lambda x: x["start"])
 
+    # 5.3 Sentiment Aggregation (Core Signal)
     sentiment_counts = aggregate_sentiment(segments)
+
+    # 5.4 Generate Meeting Summary (RULE-BASED)
     summary = generate_meeting_summary(segments, sentiment_counts)
+    
+    # Calculate Overall Label (Unified Logic)
+    # Reusing the sales logic helper which is generic enough
+    overall_sentiment = overall_call_sentiment(segments)
+
+    # 5.5 Detect Decisions Made
     decisions = detect_decisions(segments)
+
+    # 5.6 Detect Action Items
     action_items = detect_action_items(segments)
 
+    # 5.7 Detect Tension / Unresolved Moments
+    tension_points = detect_tension_points(segments)
+
+    # 5.8 Build Final Meeting Output
     return {
         "mode": "meeting",
         "summary": summary,
-        "decisions": decisions, # Key insights or Decisions Made
+        "overall_sentiment_label": overall_sentiment, # NEW: Explicit Label
+        "sentiment_overview": sentiment_counts,
+        "decisions": decisions,
         "action_items": action_items,
+        "tension_points": tension_points,
         "transcript": [
             {
                 "start": seg["start"],
                 "end": seg["end"],
                 "text": seg["text"],
                 "sentiment": seg["sentiment"],
-                "sentiment_label": seg.get("sentiment_label", "Neutral"),
                 "confidence": seg.get("sentiment_confidence", 0)
             }
             for seg in segments

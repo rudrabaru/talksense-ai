@@ -90,8 +90,8 @@ export default function ResultsPage() {
         const avgSent = segments.length ? (totalSent / segments.length) : 0
 
         // Extract Summary & Explicit Sentiment Label
-        // Sales: overall_call_sentiment (or empty)
-        // Meeting: summary (String)
+        // Sales: overall_call_sentiment
+        // Meeting: overall_sentiment_label
         let summaryText = ""
         let explicitSentiment = null
 
@@ -100,6 +100,7 @@ export default function ResultsPage() {
             explicitSentiment = insights.overall_call_sentiment
         } else {
             summaryText = insights.summary || "No summary available."
+            explicitSentiment = insights.overall_sentiment_label
         }
 
         return {
