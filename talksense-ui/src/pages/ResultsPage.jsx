@@ -110,6 +110,7 @@ export default function ResultsPage() {
             sentimentScore: avgSent,
             sentimentLabel: explicitSentiment,
             // meetingHealth removed from UI data structure
+            quality: insights.quality, // NEW: Quality Object
             keyInsights: keyInsights, // Object array
             actionPlan: actionPlan,   // String array
             transcript: mappedTranscript
@@ -191,9 +192,22 @@ export default function ResultsPage() {
                         </svg>
                         Executive Summary
                     </h2>
-                    <p className="text-gray-600 leading-relaxed text-lg">
+                    <p className="text-gray-600 leading-relaxed text-lg mb-4">
                         {data.summary}
                     </p>
+
+                    {/* Quiet Quality Indicator */}
+                    {data.quality && (
+                        <div className="text-sm text-gray-500 font-medium border-t border-gray-100 pt-3 flex items-center gap-2">
+                            <span>{isSales ? "Sales" : "Meeting"} Quality:</span>
+                            <span className={`px-2 py-0.5 rounded text-xs tracking-wide ${data.quality.label === "High" ? "bg-gray-100 text-gray-700" :
+                                    data.quality.label === "Low" ? "bg-gray-50 text-gray-500" :
+                                        "bg-gray-50 text-gray-600"
+                                }`}>
+                                {data.quality.label}
+                            </span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Key Insights Grid (Conditionally Rendered) */}

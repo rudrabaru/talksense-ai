@@ -98,60 +98,254 @@ def assess_risk_level(tension_points, sentiment_counts):
         return "moderate"
     return "low"
 
-def compose_executive_summary(signals):
-    """
-    Composes a dense executive summary paragraph from signals.
-    Includes guardrails for low-confidence topics.
-    """
-    topic = signals["topic"]
-    decision = signals["decision_state"]
-    action = signals["action_clarity"]
-    risk = signals["risk"]
-    
-    # GUARDRAIL: Refuse to be specific if topic is generic
-    if topic in ["general discussion", "misc"]:
-        topic_phrase = "key issues"
-    else:
-        topic_phrase = topic
+# --- EXECUTIVE SUMMARY ENGINE ---
 
-    summary_parts = []
+def classify_issue(issue):
+    """
+    Classifies an issue as 'controlled' or 'uncontrolled'.
+    Control = Owner AND Timeline.
+    """
+    # If the issue object already has owner/deadline structure (like an action item)
+    if "owner" in issue and "deadline" in issue:
+        has_owner = issue["owner"] != "Unassigned"
+        has_timeline = issue["deadline"] != "Not specified"
+        return "controlled" if has_owner and has_timeline else "uncontrolled"
     
-    # Part 1: Topic & Risk Context
-    if risk == "elevated":
-        summary_parts.append(f"The discussion centered on {topic_phrase} and surfaced unresolved concerns.")
-    elif risk == "moderate":
-        summary_parts.append(f"The discussion regarding {topic_phrase} was mixed, with some points requiring attention.")
-    else:
-        summary_parts.append(f"The team discussed {topic_phrase} with no major blockers identified.")
-        
-    # Part 2: Decisions & Actions (CALIBRATED LOGIC)
-    
-    # Case: Indecision + No Action + Risk -> Emphasize Stagnation/Risk
-    if decision == "no final decision" and action == "no clear next steps":
-        if risk != "low":
-            summary_parts.append("Discussions remain open, and the lack of clear next steps poses a risk to progress.")
-        else:
-            summary_parts.append("No final decisions were made, and future actions need to be clarified.")
-            
-    # Case: Decision Made + Actions
-    elif decision == "decision made" and action == "next steps identified":
-        summary_parts.append("Key decisions were locked in, and clear next steps have been assigned.")
-        
-    # Case: Decision Made + No Actions
-    elif decision == "decision made" and action == "no clear next steps":
-        summary_parts.append("Decisions were reached, but specific follow-up actions remain undefined.")
-        
-    # Case: No Decision + Strong Actions (Unusual but possible - "Let's explore X")
-    elif decision == "no final decision" and action == "next steps identified":
-        summary_parts.append("While no final consensus was reached, action items were set to drive progress.")
-    
-    # Fallback
-    else:
-        summary_parts.append("Future actions need to be defined to move forward.")
-        
-    return " ".join(summary_parts)
+    # If it's a raw tension point (unstructured)
+    # By definition, raw tension points lack control unless explicitly resolved
+    return "uncontrolled"
 
-# --- BUSINESS SENTIMENT ENGINE ---
+def get_uncontrolled_issues(issues, action_items):
+    """
+    Identifies truly uncontrolled issues.
+    1. Uncontrolled Action Items (Dependencies/Fixes without owner/time).
+    2. Unresolved Tension Points (Blockers not wiped by overrides).
+    """
+    uncontrolled = []
+    
+    # Check Action Items that are "Issues" (Execution/Fixes)
+    for action in action_items:
+        text = action.get("task", "").lower()
+        if any(t in text for t in EXECUTION_TERMS):
+            if classify_issue(action) == "uncontrolled":
+               uncontrolled.append(action)
+
+    # Check Tension Points (Blockers)
+    # These are already filtered by 'no blockers' override in main flow
+    for issue in issues:
+         uncontrolled.append(issue) # Raw tension points are uncontrolled by default
+         
+    return uncontrolled
+
+def assess_meeting_quality(decisions, uncontrolled_issues, explicit_no_blockers):
+    """
+    Computes Meeting Quality strictly from outcomes.
+    """
+    has_decisions = len(decisions) > 0
+    has_issues = len(uncontrolled_issues) > 0
+    
+    if has_decisions and not has_issues:
+        return "good"
+    elif has_issues:
+        # If explicitly said "no blockers", downgrade severity? 
+        # But 'uncontrolled_issues' logic should handle that upstream.
+        return "needs_attention"
+    else:
+        # No decisions, no issues -> Neutral
+        return "neutral"
+
+def compose_executive_summary(signals, decisions, action_items, tension_points, explicit_no_blockers):
+    """
+    Generates Executive Summary using strict Case A/B/C templates.
+    """
+    topic = signals.get("topic", "key initiatives")
+    if topic == "general discussion": topic = "key initiatives"
+    
+    # 1. Normalize & Classify
+    uncontrolled_issues = get_uncontrolled_issues(tension_points, action_items)
+    quality = assess_meeting_quality(decisions, uncontrolled_issues, explicit_no_blockers)
+    
+    # 2. Hard Gate: Forbid concern language if no uncontrolled issues
+    forbid_concern = len(uncontrolled_issues) == 0
+
+    # 3. Select Template
+    summary = ""
+    
+    # Case A (GOOD): Decisions + No Uncontrolled Issues
+    if quality == "good":
+        summary = (
+            f"The discussion focused on {topic}, with key decisions locked in and clear next steps assigned. "
+            "Minor issues were identified with ownership and resolution plans in place."
+        )
+        # End State Override: Boost tone if strictly positive end
+        if explicit_no_blockers:
+             summary = summary.replace("Minor issues were identified", "Execution details were addressed")
+
+    # Case B (ATTENTION): Decisions + Uncontrolled Issues
+    elif quality == "needs_attention" and len(decisions) > 0:
+        summary = (
+            f"The discussion addressed {topic} and resulted in decisions, but some issues remain unresolved and require follow-up."
+        )
+
+    # Case C (POOR): No Decisions + Uncontrolled Issues (or Neutral with Issues)
+    elif quality == "needs_attention":
+        summary = (
+             f"The discussion surfaced unresolved concerns regarding {topic} without clear decisions or ownership, indicating potential risk."
+        )
+        
+    # Case D (NEUTRAL): No Decisions + No Issues (Status Check)
+    else:
+        summary = (
+            f"The team discussed {topic}. Future actions need to be defined to move forward."
+        )
+
+    return summary
+
+# --- QUALITY ENGINE ---
+
+def compute_meeting_quality(signals, decisions, action_items, tension_points, explicit_no_blockers):
+    """
+    Computes Meeting Quality Score (0-10).
+    Drivers: Decisions, Ownership, Timeline, No Blockers, Progression.
+    """
+    score = 0
+    drivers = []
+    
+    # 1. Decisions (+2)
+    if signals.get("decision_state") == "decision made":
+        score += 2
+        drivers.append("Decisions finalized")
+        
+    # 2. Ownership (+2)
+    has_owners = any(a["owner"] != "Unassigned" for a in action_items)
+    if has_owners:
+        score += 2
+        drivers.append("Ownership assigned")
+        
+    # 3. Timeline (+2)
+    # Check if any action has a specific deadline (not "Not specified")
+    has_timeline = any(a["deadline"] != "Not specified" for a in action_items)
+    if has_timeline:
+        score += 2
+        drivers.append("Timeline defined")
+        
+    # 4. Blockers Cleared (+2)
+    # Either explicit "no blockers" OR no detected tension points
+    if explicit_no_blockers or not tension_points:
+        score += 2
+        drivers.append("No active blockers")
+        
+    # 5. Agenda Progression (+2)
+    # If topic is specific (not general) and risk is not elevated
+    if signals.get("topic") != "general discussion" and signals.get("risk") != "elevated":
+        score += 2
+        drivers.append("Agenda progressed")
+
+    # --- GUARDRAILS ---
+    # 1. No decisions + No owners -> Low (Max 4)
+    if not decisions and not has_owners:
+        score = min(score, 4)
+        
+    # 2. Decision + Owner + Timeline -> High (Min 8)
+    if decisions and has_owners and has_timeline:
+        score = max(score, 8)
+
+    # Map to Label
+    if score >= 8: label = "High"
+    elif score >= 5: label = "Medium"
+    else: label = "Low"
+    
+    return {
+        "label": label,
+        "score": score,
+        "drivers": drivers
+    }
+
+def assess_sales_signals(segments, objections, recommendations):
+    """
+    Extracts binary signals for Sales Quality.
+    """
+    text_blob = " ".join([s["text"].lower() for s in segments])
+    
+    # 1. Decision Maker Identified
+    # Heuristic: "I decide", "my budget", "authorized", "decision maker"
+    dm_terms = ["i decide", "my budget", "authorization", "sign the contract", "decision maker"]
+    decision_maker = any(t in text_blob for t in dm_terms)
+    
+    # 2. Next Step Agreed
+    # Strong recommendations exist OR explicit agreement
+    next_step = len(recommendations) > 0 or any(t in text_blob for t in ["schedule next", "book a demo", "send the invite"])
+    
+    # 3. Objection Addressed
+    # If objections existed, were they followed by positive sentiment? 
+    # Simplify: If objections exist but call sentiment is NOT negative -> Managed.
+    objection_handled = False
+    if objections:
+        # Check sentiment of last 20% of call? 
+        # For now, simplistic: if recommendations exist, we have a plan for them.
+        objection_handled = True
+    else:
+        # No objections = implicit handling/clean
+        objection_handled = True
+        
+    # 4. Value Articulated
+    # Heuristic: "save", "roi", "benefit", "increase", "reduce cost"
+    value_terms = ["save", "roi", "benefit", "increase revenue", "reduce cost", "efficiency"]
+    value_articulated = any(t in text_blob for t in value_terms)
+    
+    # 5. Momentum (Not Stalled)
+    # Stalled if "send info" is the ONLY outcome or sentiment is Negative
+    stalled = "send info" in text_blob and not next_step
+    
+    return {
+        "decision_maker_known": decision_maker,
+        "next_step": next_step,
+        "objection_handled": objection_handled,
+        "value_articulated": value_articulated,
+        "stalled": stalled
+    }
+
+def compute_sales_quality(signals):
+    """
+    Computes Sales Quality Score (0-10).
+    """
+    score = 0
+    drivers = []
+    
+    if signals["decision_maker_known"]:
+        score += 2
+        drivers.append("Decision maker identified")
+        
+    if signals["next_step"]:
+        score += 3
+        drivers.append("Next step agreed")
+        
+    if signals["objection_handled"]:
+        score += 2
+        drivers.append("Objections managed")
+        
+    if signals["value_articulated"]:
+        score += 2
+        drivers.append("Value articulated")
+        
+    if not signals["stalled"]:
+        score += 1
+        drivers.append("Momentum maintained")
+        
+    # --- GUARDRAILS ---
+    if not signals["next_step"]:
+        score = min(score, 4) # Low if no next step
+        
+    # Map to Label
+    if score >= 8: label = "High"
+    elif score >= 5: label = "Medium"
+    else: label = "Low"
+    
+    return {
+        "label": label,
+        "score": score,
+        "drivers": drivers
+    }
 
 EXECUTION_TERMS = [
     "bug", "issue", "qa", "approval", "dependency",
@@ -547,6 +741,8 @@ def analyze_meeting(nlp_input: dict) -> dict:
     Main entry point for Meeting Mode analysis.
     Requested: Summary, Key Insights/Decisions, Action Items, Transcript
     """
+    summary = None # Default initialization
+    
     enriched_segments = nlp_input.get("segments", [])
     segments = sorted(enriched_segments, key=lambda x: x["start"])
 
@@ -592,22 +788,31 @@ def analyze_meeting(nlp_input: dict) -> dict:
     # --- 4. KEY INSIGHTS GENERATION (With Outcome Override) ---
     key_insights = generate_key_insights(signals, action_items, decisions, actual_blockers, meeting_health)
     
-    # 5.4 Generate Meeting Summary (SIGNAL-BASED)
-    summary = compose_executive_summary(signals)
+    # --- 5. QUALITY SCORING ---
+    quality = compute_meeting_quality(signals, decisions, action_items, actual_blockers, no_blockers_declared)
+
+    # 5.4 Generate Meeting Summary (SIGNAL-BASED) & SAFEGUARD
+    # Restore the summary generation call
+    summary = compose_executive_summary(signals, decisions, action_items, actual_blockers, no_blockers_declared)
+
+    # Defensive Fallback (Non-negotiable)
+    if summary is None:
+        summary = "The discussion covered key topics and next steps."
 
     # 5.8 Build Final Meeting Output
     return {
         "mode": "meeting",
+        "quality": quality, # NEW: Quality Dimension
         "summary": summary,
         "executive_signals": signals,
         "meeting_health": meeting_health,
         "key_insights": key_insights,
-        "overall_sentiment_label": biz_sentiment_label, # Use NEW Business Label
-        "sentiment_score": biz_sentiment_score, # Pass score for UI badge color mapping if needed
+        "overall_sentiment_label": biz_sentiment_label, 
+        "sentiment_score": biz_sentiment_score,
         "sentiment_overview": sentiment_counts,
         "decisions": decisions,
         "action_items": action_items,
-        "tension_points": actual_blockers, # Return the effective list
+        "tension_points": actual_blockers,
         "blockers_present": len(actual_blockers) > 0,
         "dependencies_controlled": meeting_health != "at_risk",
         "transcript": [
@@ -703,6 +908,7 @@ def analyze_sales(enriched_segments: list) -> dict:
     if not enriched_segments:
         return {
             "mode": "sales",
+            "quality": {"label": "Low", "score": 0, "drivers": []},
             "overall_call_sentiment": "neutral",
             "objections": [],
             "recommended_actions": [],
@@ -714,9 +920,14 @@ def analyze_sales(enriched_segments: list) -> dict:
     call_sentiment = overall_call_sentiment(segments)
     objections = detect_objections(segments)
     recommendations = recommend_actions(objections)
+    
+    # --- QUALITY SCORING ---
+    sales_signals = assess_sales_signals(segments, objections, recommendations)
+    quality = compute_sales_quality(sales_signals)
 
     return {
         "mode": "sales",
+        "quality": quality, # NEW: Quality Dimension
         "overall_call_sentiment": call_sentiment,
         "objections": objections,
         "recommended_actions": recommendations,
