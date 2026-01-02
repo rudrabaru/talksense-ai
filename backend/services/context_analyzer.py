@@ -10,6 +10,12 @@ from utils.config_loader import KEYWORDS_CONFIG
 DECISION_KEYWORDS = KEYWORDS_CONFIG["meeting"]["decisions"]
 ACTION_KEYWORDS = KEYWORDS_CONFIG["meeting"]["actions"]
 
+# --- NEW: INDEPENDENT DETECTOR KEYWORDS ---
+OWNERSHIP_COMMITMENT_KEYWORDS = KEYWORDS_CONFIG["meeting"]["ownership_commitment"]
+DIRECTIONAL_DECISION_KEYWORDS = KEYWORDS_CONFIG["meeting"]["directional_decisions"]
+ISSUE_KEYWORDS = KEYWORDS_CONFIG["meeting"]["issues"]
+RISK_KEYWORDS = KEYWORDS_CONFIG["meeting"]["risks"]
+
 # --- SALES MODE HELPERS ---
 OBJECTION_KEYWORDS = KEYWORDS_CONFIG["sales"]["objections"]
 
@@ -38,6 +44,56 @@ def aggregate_sentiment(segments):
             counts[label] += 1
 
     return counts
+
+# --- STEP 1: INDEPENDENT DETECTORS (NO SENTIMENT) ---
+
+def detect_ownership_committed(segments):
+    """
+    Detects commitment language patterns.
+    Returns True if ANY speaker commits to an action.
+    MANDATORY: Ownership is NOT just keywords like "owner".
+    """
+    for seg in segments:
+        text = seg.get("text", "").lower()
+        # Check for commitment patterns
+        if any(pattern in text for pattern in OWNERSHIP_COMMITMENT_KEYWORDS):
+            return True
+    return False
+
+def detect_decisions_made(segments):
+    """
+    Detects directional commitments.
+    Returns True if any direction is set.
+    NOT just looking for "decided" - includes "we will", "next step is", etc.
+    """
+    for seg in segments:
+        text = seg.get("text", "").lower()
+        # Check for directional decision patterns
+        if any(pattern in text for pattern in DIRECTIONAL_DECISION_KEYWORDS):
+            return True
+    return False
+
+def detect_issues_present(segments):
+    """
+    Non-punitive issue detection.
+    Returns True if issues mentioned (signal only, not penalty).
+    """
+    for seg in segments:
+        text = seg.get("text", "").lower()
+        if any(pattern in text for pattern in ISSUE_KEYWORDS):
+            return True
+    return False
+
+def detect_risks_present(segments):
+    """
+    Non-punitive risk detection.
+    Returns True if risks mentioned (signal only, not penalty).
+    """
+    for seg in segments:
+        text = seg.get("text", "").lower()
+        if any(pattern in text for pattern in RISK_KEYWORDS):
+            return True
+    return False
 
 # --- EXECUTIVE SIGNAL EXTRACTORS ---
 
@@ -213,12 +269,168 @@ def compose_executive_summary(signals, decisions, action_items, tension_points, 
 
     return summary
 
-# --- QUALITY ENGINE ---
+def compose_executive_summary_v2(meeting_quality, project_risk, signals, decisions, action_items, tension_points, explicit_no_blockers):
+    """
+    STEP 8: Fix executive summary generation.
+    Emphasizes clarity, ownership, decisions when quality = High.
+    Mentions risks without blaming the meeting when risk = High.
+    NEVER says "no ownership" when ownership exists.
+    NEVER says "no decisions" when direction exists.
+    """
+    topic = signals.get("topic", "key initiatives")
+    if topic == "general discussion":
+        topic = "key initiatives"
+    
+    quality_label = meeting_quality["label"]
+    risk_label = project_risk["label"]
+    
+    # Build summary based on quality and risk combination
+    summary = ""
+    
+    # HIGH QUALITY cases
+    if quality_label == "High":
+        if risk_label == "High":
+            # High quality + High risk: Good meeting, but project has risks
+            summary = (
+                f"Clear ownership and next steps were established for {topic}, "
+                f"though delivery risk remains due to external dependencies."
+            )
+        elif risk_label == "Medium":
+            # High quality + Medium risk
+            summary = (
+                f"The discussion focused on {topic}, with key decisions locked in and clear next steps assigned. "
+                f"Some execution dependencies were identified and are being tracked."
+            )
+        else:
+            # High quality + Low risk: Best case
+            summary = (
+                f"The discussion focused on {topic}, with key decisions locked in and clear next steps assigned. "
+                f"Execution details were addressed with ownership and resolution plans in place."
+            )
+    
+    # MEDIUM QUALITY cases
+    elif quality_label == "Medium":
+        if risk_label == "High":
+            # Medium quality + High risk
+            summary = (
+                f"The discussion addressed {topic} with some progress made, "
+                f"but critical blockers require immediate attention and ownership assignment."
+            )
+        elif risk_label == "Medium":
+            # Medium quality + Medium risk
+            summary = (
+                f"The team discussed {topic} and made progress on next steps. "
+                f"Some dependencies and timeline concerns were raised for follow-up."
+            )
+        else:
+            # Medium quality + Low risk
+            summary = (
+                f"The team discussed {topic} with partial clarity on next steps. "
+                f"Additional ownership assignment would strengthen execution."
+            )
+    
+    # LOW QUALITY cases
+    else:
+        if risk_label == "High":
+            # Low quality + High risk: Worst case
+            summary = (
+                f"The discussion surfaced unresolved concerns regarding {topic} "
+                f"without clear decisions or ownership, indicating potential risk."
+            )
+        elif risk_label == "Medium":
+            # Low quality + Medium risk
+            summary = (
+                f"The team discussed {topic}. Issues were identified, but ownership "
+                f"and next steps need to be defined to move forward."
+            )
+        else:
+            # Low quality + Low risk: Status check
+            summary = (
+                f"The team discussed {topic}. Future actions and ownership "
+                f"need to be defined to move forward."
+            )
+    
+    return summary
+
+
+# --- STEP 2 & 3: NEW QUALITY ENGINE (SENTIMENT-FREE) ---
+
+def compute_meeting_quality_v2(ownership_detected, decision_detected):
+    """
+    STEP 6: Redefine meeting quality logic.
+    Computes Meeting Quality based ONLY on ownership and decisions.
+    Sentiment, issues, and risks DO NOT affect quality.
+    
+    IF ownership_detected AND decision_detected → High
+    ELSE IF ownership_detected OR decision_detected → Medium
+    ELSE → Low
+    """
+    if ownership_detected and decision_detected:
+        return {
+            "label": "High",
+            "score": 9,
+            "drivers": ["Ownership committed", "Decisions made"]
+        }
+    elif ownership_detected or decision_detected:
+        drivers = []
+        if ownership_detected:
+            drivers.append("Ownership committed")
+        if decision_detected:
+            drivers.append("Decisions made")
+        return {
+            "label": "Medium",
+            "score": 5,
+            "drivers": drivers
+        }
+    else:
+        return {
+            "label": "Low",
+            "score": 2,
+            "drivers": ["No ownership or decisions detected"]
+        }
+
+def compute_project_risk(issues_detected, risks_detected, uncontrolled_dependencies):
+    """
+    STEP 7: Separate "Meeting Quality" from "Project Risk".
+    Computes Project Risk independently from meeting quality.
+    This is about the PROJECT, not the MEETING.
+    """
+    risk_score = 0
+    drivers = []
+    
+    if issues_detected:
+        risk_score += 3
+        drivers.append("Issues identified")
+    
+    if risks_detected:
+        risk_score += 3
+        drivers.append("Risks flagged")
+    
+    if uncontrolled_dependencies:
+        risk_score += 4
+        drivers.append("Uncontrolled dependencies")
+    
+    # Map score to label
+    if risk_score >= 7:
+        label = "High"
+    elif risk_score >= 4:
+        label = "Medium"
+    else:
+        label = "Low"
+    
+    return {
+        "label": label,
+        "score": risk_score,
+        "drivers": drivers
+    }
+
+# --- OLD QUALITY ENGINE (DEPRECATED - KEPT FOR REFERENCE) ---
 
 def compute_meeting_quality(signals, decisions, action_items, tension_points, explicit_no_blockers):
     """
-    Computes Meeting Quality Score (0-10).
-    Drivers: Decisions, Ownership, Timeline, No Blockers, Progression.
+    OLD VERSION - DEPRECATED
+    This function is kept for backward compatibility but should not be used.
+    Use compute_meeting_quality_v2 instead.
     """
     score = 0
     drivers = []
@@ -779,18 +991,24 @@ def detect_action_items(segments):
 
 def analyze_meeting(nlp_input: dict) -> dict:
     """
-    Main entry point for Meeting Mode analysis.
-    Requested: Summary, Key Insights/Decisions, Action Items, Transcript
+    STEP 9: Apply globally - Main entry point for Meeting Mode analysis.
+    Uses new independent detectors and separates meeting_quality from project_risk.
     """
     summary = None # Default initialization
     
     enriched_segments = nlp_input.get("segments", [])
     segments = sorted(enriched_segments, key=lambda x: x["start"])
 
-    # 5.3 Sentiment Aggregation (Core Signal)
+    # STEP 2: Call Independent Detectors (Boolean Flags)
+    ownership_detected = detect_ownership_committed(segments)
+    decision_detected = detect_decisions_made(segments)
+    issues_detected = detect_issues_present(segments)
+    risks_detected = detect_risks_present(segments)
+
+    # 5.3 Sentiment Aggregation (Metadata Only - NOT used in quality)
     sentiment_counts = aggregate_sentiment(segments)
     
-    # 5.5 Detect Decisions Made
+    # 5.5 Detect Decisions Made (Legacy - for action items)
     decisions = detect_decisions(segments)
 
     # 5.6 Detect Action Items
@@ -799,51 +1017,59 @@ def analyze_meeting(nlp_input: dict) -> dict:
     # 5.7 Detect Tension / Unresolved Moments
     tension_points = detect_tension_points(segments)
 
-    # --- NEW: EXECUTIVE SIGNAL GENERATION ---
+    # --- EXECUTIVE SIGNAL GENERATION (Legacy - for summary) ---
     signals = {
         "topic": extract_primary_topic(segments),
-        "decision_state": assess_decision_state(decisions),
+        "decision_state": "decision made" if decision_detected else "no final decision",
         "action_clarity": assess_action_clarity(action_items),
-        "risk": assess_risk_level(tension_points, sentiment_counts)
+        "risk": "elevated" if (issues_detected or risks_detected) else "low"
     }
 
     # --- 1. OVERRIDES (NO BLOCKERS) ---
-    # Determine explicit "No Blockers"
     no_blockers_declared = detect_explicit_no_blockers(segments)
     
-    # If explicit no blockers, WIPE tension points designated as "Potential blocker"
-    # But keep specific "Negative sentiment" ones if they are strong? 
-    # User said: "if explicit_no_blockers: blockers = []"
     actual_blockers = tension_points[:]
     if no_blockers_declared:
         actual_blockers = []
 
-    # --- 2. MEETING HEALTH EVALUATION ---
-    # Pass corrected blockers list
+    # --- 2. MEETING HEALTH EVALUATION (for legacy compatibility) ---
     meeting_health = evaluate_meeting_health(decisions, action_items, actual_blockers, sentiment_counts, segments)
     
-    # --- 3. BUSINESS SENTIMENT ---
-    # Calculates Adjusted Score + Label (Neutral/Focused)
+    # Check for uncontrolled dependencies
+    uncontrolled_deps = meeting_health == "at_risk"
+    
+    # --- 3. BUSINESS SENTIMENT (Metadata Only) ---
     biz_sentiment_score, biz_sentiment_label = calculate_business_sentiment(segments, meeting_health)
 
-    # --- 4. KEY INSIGHTS GENERATION (With Outcome Override) ---
+    # --- 4. KEY INSIGHTS GENERATION ---
     key_insights = generate_key_insights(signals, action_items, decisions, actual_blockers, meeting_health)
     
-    # --- 5. QUALITY SCORING ---
-    quality = compute_meeting_quality(signals, decisions, action_items, actual_blockers, no_blockers_declared)
+    # --- STEP 6: NEW QUALITY SCORING (Ownership + Decisions ONLY) ---
+    meeting_quality = compute_meeting_quality_v2(ownership_detected, decision_detected)
+    
+    # --- STEP 7: PROJECT RISK SCORING (Separate from Quality) ---
+    project_risk = compute_project_risk(issues_detected, risks_detected, uncontrolled_deps)
 
-    # 5.4 Generate Meeting Summary (SIGNAL-BASED) & SAFEGUARD
-    # Restore the summary generation call
-    summary = compose_executive_summary(signals, decisions, action_items, actual_blockers, no_blockers_declared)
+    # --- STEP 8: EXECUTIVE SUMMARY (Updated Logic) ---
+    summary = compose_executive_summary_v2(
+        meeting_quality, 
+        project_risk, 
+        signals, 
+        decisions, 
+        action_items, 
+        actual_blockers, 
+        no_blockers_declared
+    )
 
-    # Defensive Fallback (Non-negotiable)
+    # Defensive Fallback
     if summary is None:
         summary = "The discussion covered key topics and next steps."
 
-    # 5.8 Build Final Meeting Output
+    # --- STEP 7: Build Final Meeting Output (Two Separate Metrics) ---
     return {
         "mode": "meeting",
-        "quality": quality, # NEW: Quality Dimension
+        "meeting_quality": meeting_quality,  # NEW: Separate meeting quality
+        "project_risk": project_risk,        # NEW: Separate project risk
         "summary": summary,
         "executive_signals": signals,
         "meeting_health": meeting_health,

@@ -56,7 +56,11 @@ export default function ResultsPage() {
                 summary: analysisData.insights?.summary || "Analysis complete.",
                 sentimentScore: analysisData.insights?.sentiment_score || 0,
                 sentimentLabel: analysisData.insights?.overall_sentiment_label || analysisData.insights?.overall_call_sentiment || "Neutral",
-                quality: analysisData.insights?.quality || { label: "Medium", score: 5 },
+                // NEW: Separate meeting_quality and project_risk
+                meetingQuality: analysisData.insights?.meeting_quality || { label: "Medium", score: 5 },
+                projectRisk: analysisData.insights?.project_risk || { label: "Low", score: 0 },
+                // Legacy fallback for old API responses
+                quality: analysisData.insights?.quality || analysisData.insights?.meeting_quality || { label: "Medium", score: 5 },
                 keyInsights: analysisData.insights?.key_insights || [],
                 actionPlan: actionPlan,
                 transcript: analysisData.transcript?.segments?.map(seg => ({
@@ -139,8 +143,14 @@ export default function ResultsPage() {
         doc.text(`Duration: ${data.duration}`, margin + 120, yPosition)
         yPosition += 8
         doc.text(`Sentiment: ${data.sentimentLabel}`, margin, yPosition)
-        if (data.quality) {
-            doc.text(`Quality: ${data.quality.label}`, margin + 60, yPosition)
+        // NEW: Show both Meeting Quality and Project Risk
+        if (data.meetingQuality) {
+            doc.text(`Meeting Quality: ${data.meetingQuality.label}`, margin + 60, yPosition)
+        }
+        yPosition += 6
+        if (data.projectRisk && data.projectRisk.label !== "Low") {
+            doc.text(`Project Risk: ${data.projectRisk.label}`, margin, yPosition)
+            yPosition += 6
         }
         yPosition += 5
 
@@ -304,7 +314,15 @@ export default function ResultsPage() {
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                             </span>
-                            Processed on {new Date().toLocaleDateString()} • {data.duration || "00:00"}
+                            Processed on {new Date().toLocaleString('en-IN', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: 'numeric',
+                                minute: '2-digit',
+                                hour12: true,
+                                timeZone: 'Asia/Kolkata'
+                            })} IST • Duration: {data.duration || "00:00"}
                         </p>
                     </div>
 
@@ -336,17 +354,31 @@ export default function ResultsPage() {
                                 {data.summary}
                             </p>
 
-                            {data.quality && (
-                                <div className="text-sm text-gray-500 font-medium border-t border-gray-100 pt-3 flex items-center gap-2">
-                                    <span>{isSales ? "Sales" : "Meeting"} Quality:</span>
-                                    <span className={`px-2 py-0.5 rounded text-xs tracking-wide font-semibold ${data.quality.label === "High" ? "bg-green-100 text-green-700" :
-                                        data.quality.label === "Low" ? "bg-red-100 text-red-700" :
-                                            "bg-yellow-100 text-yellow-700"
-                                        }`}>
-                                        {data.quality.label}
-                                    </span>
-                                </div>
-                            )}
+                            {/* NEW: Display both Meeting Quality and Project Risk */}
+                            <div className="border-t border-gray-100 pt-3 space-y-2">
+                                {data.meetingQuality && (
+                                    <div className="text-sm text-gray-500 font-medium flex items-center gap-2">
+                                        <span>Meeting Quality:</span>
+                                        <span className={`px-2 py-0.5 rounded text-xs tracking-wide font-semibold ${data.meetingQuality.label === "High" ? "bg-green-100 text-green-700" :
+                                            data.meetingQuality.label === "Low" ? "bg-red-100 text-red-700" :
+                                                "bg-yellow-100 text-yellow-700"
+                                            }`}>
+                                            {data.meetingQuality.label}
+                                        </span>
+                                    </div>
+                                )}
+                                {data.projectRisk && data.projectRisk.label !== "Low" && (
+                                    <div className="text-sm text-gray-500 font-medium flex items-center gap-2">
+                                        <span>Project Risk:</span>
+                                        <span className={`px-2 py-0.5 rounded text-xs tracking-wide font-semibold ${data.projectRisk.label === "High" ? "bg-red-100 text-red-700" :
+                                            data.projectRisk.label === "Medium" ? "bg-orange-100 text-orange-700" :
+                                                "bg-green-100 text-green-700"
+                                            }`}>
+                                            {data.projectRisk.label}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Key Insights */}
