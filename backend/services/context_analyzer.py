@@ -962,6 +962,84 @@ def compose_sales_summary(signals, quality):
     # Medium
     return "The call generated soft momentum, but requires firmer commitment to next steps."
 
+def generate_sales_insights(objections, signals, quality):
+    """
+    Generates structured key insights for sales calls.
+    Similar structure to meeting insights but sales-focused.
+    """
+    insights = []
+    
+    # 1. Disqualification Signal (Highest Priority)
+    if signals.get("no_intent") or signals.get("deferred"):
+        insights.append({
+            "type": "Execution Risk",
+            "text": "Prospect indicated no immediate intent or deferred timeline. Opportunity may require re-qualification."
+        })
+        return insights[:3]  # Return early for disqualified leads
+    
+    # 2. Hard Commitment (Positive Momentum)
+    if signals.get("hard_commitment"):
+        insights.append({
+            "type": "Positive Momentum",
+            "text": "Hard commitment secured with confirmed next steps. Strong buying signal detected."
+        })
+    
+    # 3. Objection Handling
+    if objections:
+        objection_types = list(set([o["type"] for o in objections]))
+        if len(objection_types) > 2:
+            insights.append({
+                "type": "Execution Risk",
+                "text": f"Multiple objection types raised ({', '.join(objection_types)}). Requires comprehensive follow-up strategy."
+            })
+        elif signals.get("objection_handled"):
+            insights.append({
+                "type": "Positive Momentum",
+                "text": f"Objections around {', '.join(objection_types)} were addressed during the call."
+            })
+        else:
+            insights.append({
+                "type": "Decision Ambiguity",
+                "text": f"Unresolved concerns regarding {', '.join(objection_types)} require follow-up."
+            })
+    
+    # 4. Value Articulation
+    if signals.get("value_articulated"):
+        insights.append({
+            "type": "Positive Momentum",
+            "text": "Value proposition clearly communicated with ROI/benefit discussion."
+        })
+    else:
+        insights.append({
+            "type": "Ownership Gap",
+            "text": "Value proposition not clearly established. Consider stronger ROI messaging in follow-up."
+        })
+    
+    # 5. Next Steps
+    if signals.get("next_step") and not signals.get("hard_commitment"):
+        insights.append({
+            "type": "Decision Ambiguity",
+            "text": "Soft next step agreed but lacks firm commitment. Requires confirmation."
+        })
+    elif not signals.get("next_step"):
+        insights.append({
+            "type": "Execution Risk",
+            "text": "No clear next steps defined. Follow-up strategy needed to maintain momentum."
+        })
+    
+    # 6. Decision Maker
+    if not signals.get("decision_maker_known"):
+        insights.append({
+            "type": "Ownership Gap",
+            "text": "Decision maker not clearly identified. May need to engage additional stakeholders."
+        })
+    
+    # Sort by priority and return top 3
+    priority_order = ["Execution Risk", "Decision Ambiguity", "Ownership Gap", "Positive Momentum"]
+    insights.sort(key=lambda x: priority_order.index(x["type"]) if x["type"] in priority_order else 99)
+    
+    return insights[:3]
+
 def analyze_sales(enriched_segments: list) -> dict:
     """
     Main entry point for Sales Mode analysis.
@@ -972,6 +1050,8 @@ def analyze_sales(enriched_segments: list) -> dict:
             "mode": "sales",
             "quality": {"label": "Low", "score": 0, "drivers": []},
             "overall_call_sentiment": "neutral",
+            "sentiment_score": 0,
+            "key_insights": [],
             "objections": [],
             "recommended_actions": [],
             "transcript": []
@@ -989,12 +1069,26 @@ def analyze_sales(enriched_segments: list) -> dict:
 
     # --- SUMMARY GENERATION ---
     summary = compose_sales_summary(sales_signals, quality)
+    
+    # --- KEY INSIGHTS GENERATION (NEW) ---
+    key_insights = generate_sales_insights(objections, sales_signals, quality)
+    
+    # Calculate sentiment score from call_sentiment label
+    sentiment_score_map = {
+        "positive": 0.6,
+        "mixed": 0.0,
+        "negative": -0.6,
+        "neutral": 0.0
+    }
+    sentiment_score = sentiment_score_map.get(call_sentiment, 0.0)
 
     return {
         "mode": "sales",
         "quality": quality, 
-        "summary": summary, # New field
+        "summary": summary,
         "overall_call_sentiment": call_sentiment,
+        "sentiment_score": sentiment_score,
+        "key_insights": key_insights,  # NEW: Structured insights
         "objections": objections,
         "recommended_actions": recommendations,
         "transcript": [

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
@@ -39,7 +39,7 @@ def health_check():
 @app.post("/analyze")
 async def analyze_audio(
     file: UploadFile = File(...),
-    mode: str = "meeting"  # "meeting" or "sales"
+    mode: str = Form("meeting")  # Explicitly mark as Form field
 ):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     file_path = os.path.join(UPLOAD_DIR, file.filename)
