@@ -1,4 +1,7 @@
+import { useNavigate } from "react-router-dom"
+
 export default function HomePage() {
+    const navigate = useNavigate()
     return (
         <div className="min-h-screen bg-white">
             {/* Navbar - Full Width with Contained Content */}
@@ -8,9 +11,9 @@ export default function HomePage() {
                         {/* Logo Mark - Waveform + Bubble */}
                         <div className="relative w-9 h-9">
                             <svg viewBox="0 0 36 36" className="w-full h-full">
-                                <rect x="2" y="2" width="32" height="32" rx="8" fill="#4F46E5"/>
-                                <path d="M12 18h2v-4h-2v4zm4 0h2v-8h-2v8zm4 0h2v-6h-2v6zm4 0h2v-10h-2v10z" fill="white" opacity="0.9"/>
-                                <path d="M10 22c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2" stroke="white" strokeWidth="1.5" fill="none" opacity="0.7"/>
+                                <rect x="2" y="2" width="32" height="32" rx="8" fill="#4F46E5" />
+                                <path d="M12 18h2v-4h-2v4zm4 0h2v-8h-2v8zm4 0h2v-6h-2v6zm4 0h2v-10h-2v10z" fill="white" opacity="0.9" />
+                                <path d="M10 22c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2" stroke="white" strokeWidth="1.5" fill="none" opacity="0.7" />
                             </svg>
                         </div>
                         <span className="font-bold text-xl tracking-tight text-gray-900">TalkSense</span>
@@ -20,12 +23,12 @@ export default function HomePage() {
                         <a href="#solutions" className="hover:text-indigo-600 transition-colors">Solutions</a>
                     </div>
                     <div>
-                        <a
-                            href="/upload"
-                            className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-all shadow-sm hover:shadow-md"
+                        <button
+                            onClick={() => navigate('/upload')}
+                            className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition-smooth shadow-sm hover:shadow-md hover-lift active:scale-95"
                         >
                             Start Analysis
-                        </a>
+                        </button>
                     </div>
                 </div>
             </nav>
@@ -59,16 +62,19 @@ export default function HomePage() {
                             </p>
 
                             <div className="flex flex-col sm:flex-row gap-4">
-                                <a
-                                    href="/upload"
-                                    className="inline-flex items-center justify-center px-8 py-4 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                                <button
+                                    onClick={() => navigate('/upload')}
+                                    className="inline-flex items-center justify-center px-8 py-4 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-smooth shadow-lg hover:shadow-xl hover-lift active:scale-95"
                                 >
                                     Analyze Conversation
                                     <svg className="w-5 h-5 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                                     </svg>
-                                </a>
-                                <button className="inline-flex items-center justify-center px-8 py-4 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all">
+                                </button>
+                                <button
+                                    onClick={() => navigate('/results')}
+                                    className="inline-flex items-center justify-center px-8 py-4 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-smooth hover-lift active:scale-95"
+                                >
                                     View Demo
                                 </button>
                             </div>
@@ -149,7 +155,7 @@ export default function HomePage() {
                                 color: "indigo"
                             }
                         ].map((item, i) => (
-                            <div key={i} className="relative bg-gray-50 p-8 rounded-2xl border border-gray-200 hover:border-indigo-200 hover:shadow-lg transition-all duration-300 group">
+                            <div key={i} className="relative bg-gray-50 p-8 rounded-2xl border border-gray-200 hover:border-indigo-200 hover:shadow-lg transition-smooth group hover-lift">
                                 <div className="absolute top-4 right-4 text-6xl font-black text-gray-100 select-none group-hover:text-indigo-50 transition-colors">
                                     {item.step}
                                 </div>
@@ -174,7 +180,7 @@ export default function HomePage() {
 
                     <div className="grid lg:grid-cols-2 gap-8">
                         {/* Meeting Mode */}
-                        <div className="bg-white rounded-2xl border-2 border-indigo-100 p-10 hover:border-indigo-200 hover:shadow-xl transition-all duration-300">
+                        <div className="bg-white rounded-2xl border-2 border-indigo-100 p-10 hover:border-indigo-200 hover:shadow-xl transition-smooth hover-lift">
                             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 text-indigo-700 text-xs font-bold uppercase tracking-wider mb-6">
                                 Meeting Mode
                             </div>
@@ -202,7 +208,7 @@ export default function HomePage() {
                         </div>
 
                         {/* Sales Mode */}
-                        <div className="bg-white rounded-2xl border-2 border-teal-100 p-10 hover:border-teal-200 hover:shadow-xl transition-all duration-300">
+                        <div className="bg-white rounded-2xl border-2 border-teal-100 p-10 hover:border-teal-200 hover:shadow-xl transition-smooth hover-lift">
                             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-teal-50 text-teal-700 text-xs font-bold uppercase tracking-wider mb-6">
                                 Sales Mode
                             </div>
@@ -240,12 +246,12 @@ export default function HomePage() {
                         <p className="text-gray-400 mb-10 text-lg">
                             Enterprise-grade security. Local processing options. No data leaves your control without permission.
                         </p>
-                        <a
-                            href="/upload"
-                            className="inline-flex items-center justify-center px-10 py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-lg hover:shadow-xl"
+                        <button
+                            onClick={() => navigate('/upload')}
+                            className="inline-flex items-center justify-center px-10 py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-smooth shadow-lg hover:shadow-xl hover-lift active:scale-95"
                         >
                             Start Your First Analysis
-                        </a>
+                        </button>
                     </div>
 
                     <div className="pt-12 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center text-gray-400 text-sm">
