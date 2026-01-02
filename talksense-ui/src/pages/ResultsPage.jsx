@@ -1,269 +1,248 @@
-import { useMemo, useEffect, useState } from "react"
-import { Link, useLocation, useNavigate } from "react-router-dom"
-import mockData from "../mock/analysis.json"
-import SentimentBadge from "../components/SentimentBadge"
-import InsightCard from "../components/InsightCard"
-import TranscriptBlock from "../components/TranscriptBlock"
+import { useState } from "react"
 
-function formatTime(seconds) {
-    if (seconds === undefined || seconds === null) return ""
-    const mins = Math.floor(seconds / 60)
-    const secs = Math.round(seconds % 60)
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+// Mock data structure
+const mockData = {
+    mode: "meeting",
+    duration: "32:45",
+    summary: "Discussion focused on Q4 product roadmap priorities. Team aligned on mobile-first approach with concerns about timeline feasibility. Three key decisions made regarding feature prioritization.",
+    sentimentScore: 0.65,
+    sentimentLabel: "Positive / Engaged",
+    quality: { label: "High", score: 0.87 },
+    keyInsights: [
+        { text: "Team unanimously agreed on mobile-first strategy for Q4", type: "decision" },
+        { text: "Timeline concerns raised by engineering regarding December delivery", type: "risk" },
+        { text: "Budget approval needed from finance before final commitment", type: "blocker" },
+        { text: "Strong alignment on customer feedback integration approach", type: "positive" }
+    ],
+    actionPlan: [
+        "Decision: Prioritize mobile app development for Q4 launch",
+        "Action: Sarah to prepare detailed timeline analysis (@Sarah)",
+        "Action: Mike to schedule budget review meeting with finance (@Mike)",
+        "Decision: Weekly sync meetings every Thursday at 2pm"
+    ],
+    transcript: [
+        { time: "00:15", text: "Let's start with the Q4 roadmap discussion. I want to make sure we're all aligned on priorities.", sentiment: 0.7 },
+        { time: "01:23", text: "I think we need to be realistic about the timeline. December is really tight for a full mobile release.", sentiment: 0.3 },
+        { time: "02:45", text: "Agreed on mobile-first. The customer feedback has been clear on this point.", sentiment: 0.8 },
+        { time: "04:12", text: "We'll need budget approval before we can commit resources to this timeline.", sentiment: 0.5 },
+        { time: "05:30", text: "I'm confident we can deliver if we scope it properly and get the right support.", sentiment: 0.75 }
+    ]
+}
+
+function SentimentBadge({ score, label }) {
+    const getColor = (s) => {
+        if (s >= 0.6) return "bg-teal-50 text-teal-700 border-teal-200"
+        if (s >= 0.4) return "bg-gray-50 text-gray-700 border-gray-200"
+        return "bg-orange-50 text-orange-700 border-orange-200"
+    }
+    
+    return (
+        <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border ${getColor(score)}`}>
+            <span className="w-2 h-2 rounded-full bg-current"></span>
+            {label}
+        </span>
+    )
+}
+
+function InsightCard({ text, type }) {
+    const typeConfig = {
+        decision: { color: "indigo", icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z", label: "Decision" },
+        risk: { color: "orange", icon: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z", label: "Risk" },
+        blocker: { color: "red", icon: "M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636", label: "Blocker" },
+        positive: { color: "teal", icon: "M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5", label: "Insight" }
+    }
+    
+    const config = typeConfig[type] || typeConfig.positive
+    
+    return (
+        <div className={`bg-white border-l-4 border-${config.color}-400 rounded-xl p-5 shadow-sm hover:shadow-md transition-shadow`}>
+            <div className="flex items-start gap-3">
+                <div className={`w-8 h-8 rounded-lg bg-${config.color}-50 flex items-center justify-center flex-shrink-0`}>
+                    <svg className={`w-4 h-4 text-${config.color}-600`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={config.icon} />
+                    </svg>
+                </div>
+                <div className="flex-1 min-w-0">
+                    <div className={`text-xs font-bold uppercase tracking-wider text-${config.color}-600 mb-2`}>
+                        {config.label}
+                    </div>
+                    <p className="text-gray-700 leading-relaxed">{text}</p>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+function TranscriptBlock({ segment }) {
+    const getSentimentColor = (s) => {
+        if (s >= 0.6) return "border-teal-200 bg-teal-50/30"
+        if (s >= 0.4) return "border-gray-200 bg-gray-50/30"
+        return "border-orange-200 bg-orange-50/30"
+    }
+    
+    return (
+        <div className={`p-4 border-l-2 ${getSentimentColor(segment.sentiment)} hover:bg-white/50 transition-colors`}>
+            <div className="flex items-start gap-4">
+                <span className="text-xs font-mono text-gray-500 mt-1 flex-shrink-0 w-12">{segment.time}</span>
+                <p className="text-gray-700 leading-relaxed flex-1">{segment.text}</p>
+            </div>
+        </div>
+    )
 }
 
 export default function ResultsPage() {
-    const location = useLocation()
-    const navigate = useNavigate()
-    const [persistedData, setPersistedData] = useState(null)
+    const [data] = useState(mockData)
+    const isSales = data.mode === "sales"
 
-    // Effect: Handle State Persistence & Redirect
-    useEffect(() => {
-        if (location.state?.data) {
-            // New data incoming -> Save to Storage
-            localStorage.setItem("ts_analysis_data", JSON.stringify(location.state.data))
-            localStorage.setItem("ts_analysis_mode", location.state.mode || "meeting")
-        } else {
-            // No state -> Try to load from Storage
-            const savedData = localStorage.getItem("ts_analysis_data")
-            const savedMode = localStorage.getItem("ts_analysis_mode")
-
-            if (savedData) {
-                try {
-                    setPersistedData({
-                        data: JSON.parse(savedData),
-                        mode: savedMode || "meeting"
-                    })
-                } catch (e) {
-                    console.error("Failed to parse saved data", e)
-                    navigate("/")
-                }
-            } else {
-                // No data at all -> Redirect
-                navigate("/")
-            }
-        }
-    }, [location.state, navigate])
-
-    const displayData = useMemo(() => {
-        // Source priority: Location State -> Persisted State -> Mock (Fallback)
-        const sourceData = location.state?.data || persistedData?.data
-        const sourceMode = location.state?.mode || persistedData?.mode
-
-        if (!sourceData) return null
-
-        const { insights, transcript } = sourceData
-        const mode = sourceMode || "meeting"
-        const segments = transcript.segments || []
-
-        // Helper to format backend segments
-        const mappedTranscript = segments.map(s => ({
-            time: formatTime(s.start),
-            text: s.text,
-            sentiment: s.sentiment
-        }))
-
-        // Helper to calculate duration
-        const lastSegmentEnd = segments.length > 0 ? segments[segments.length - 1].end : 0
-        const formattedDuration = formatTime(lastSegmentEnd)
-
-        // 1. Key Insights (Strict Separation)
-        const keyInsights = (insights.key_insights || []).map(i => ({
-            text: i.text,
-            type: i.type
-        }))
-
-        // 2. Action Plan (Decisions + Actions)
-        let actionPlan = []
-        if (mode === "sales") {
-            const objections = (insights.objections || []).map(o => `Objection: ${o.text} (${o.type})`)
-            const actions = (insights.recommended_actions || []).map(a => `Recommendation: ${a}`)
-            actionPlan = [...objections, ...actions]
-        } else {
-            const decisions = (insights.decisions || []).map(d => `Decision: ${d.text}`)
-            const actions = (insights.action_items || []).map(a => `Action: ${a.task} ${a.owner !== "Unassigned" ? `(@${a.owner})` : ""}`)
-            actionPlan = [...decisions, ...actions]
-        }
-
-        // Calculate average sentiment
-        const totalSent = segments.reduce((acc, s) => acc + (s.sentiment || 0), 0)
-        const avgSent = segments.length ? (totalSent / segments.length) : 0
-
-        // Extract Summary & Explicit Sentiment Label
-        // Sales: overall_call_sentiment
-        // Meeting: overall_sentiment_label
-        let summaryText = ""
-        let explicitSentiment = null
-
-        if (mode === "sales") {
-            summaryText = `Overall Call Sentiment: ${insights.overall_call_sentiment || "Neutral"}. Detected ${insights.objections?.length || 0} objections.`
-            explicitSentiment = insights.overall_call_sentiment
-        } else {
-            summaryText = insights.summary || "No summary available."
-            explicitSentiment = insights.overall_sentiment_label || "Neutral / Focused"
-        }
-
-        return {
-            mode: mode,
-            duration: formattedDuration,
-            summary: summaryText,
-            sentimentScore: avgSent,
-            sentimentLabel: explicitSentiment,
-            // meetingHealth removed from UI data structure
-            quality: insights.quality, // NEW: Quality Object
-            keyInsights: keyInsights, // Object array
-            actionPlan: actionPlan,   // String array
-            transcript: mappedTranscript
-        }
-
-    }, [location.state, persistedData])
-
-    // Wait for data resolution
-    if (!displayData) return null
-
-    const isSales = displayData.mode === "sales"
-    const data = displayData // Alias
-
-    // 1. MODE BADGE (Locked)
-    const modeLabel = isSales ? "Sales Call" : "Meeting";
-    const modeColor = isSales ? "bg-purple-50 text-purple-700 border-purple-100" : "bg-blue-50 text-blue-700 border-blue-100";
-    const modeDot = isSales ? "bg-purple-500" : "bg-blue-500";
-
-    // 2. HEALTH BADGE (New, Separate)
-    // Mapping: good -> On Track, at_risk -> At Risk, uncertain -> Needs Attention
-    // 2. HEALTH BADGE (Removed from Header as per UX request)
-    // Meeting Health is now only used in logic/insights, not as a badge.
+    const modeLabel = isSales ? "Sales Call" : "Meeting"
+    const modeColor = isSales ? "bg-teal-50 text-teal-700 border-teal-100" : "bg-indigo-50 text-indigo-700 border-indigo-100"
+    const modeDot = isSales ? "bg-teal-500" : "bg-indigo-500"
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-12">
-            {/* Header */}
-            <div className="bg-white border-b sticky top-0 z-20 bg-opacity-80 backdrop-blur-md">
-                <div className="max-w-5xl mx-auto px-6 py-4 flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold shadow-indigo-200 shadow-lg">
-                            T
+        <div className="min-h-screen bg-gray-50">
+            {/* Header - Fixed */}
+            <div className="bg-white border-b border-gray-200 sticky top-0 z-20 backdrop-blur-md bg-white/95">
+                <div className="mx-auto px-6 lg:px-12 py-4 flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                        <div className="relative w-9 h-9">
+                            <svg viewBox="0 0 36 36" className="w-full h-full">
+                                <rect x="2" y="2" width="32" height="32" rx="8" fill="#4F46E5"/>
+                                <path d="M12 18h2v-4h-2v4zm4 0h2v-8h-2v8zm4 0h2v-6h-2v6zm4 0h2v-10h-2v10z" fill="white" opacity="0.9"/>
+                                <path d="M10 22c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2" stroke="white" strokeWidth="1.5" fill="none" opacity="0.7"/>
+                            </svg>
                         </div>
                         <span className="font-bold text-xl tracking-tight text-gray-900">TalkSense</span>
                     </div>
-                    <Link
-                        to="/"
-                        className="text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors"
-                    >
-                        Start New Analysis &rarr;
-                    </Link>
+                    <button className="text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors">
+                        New Analysis →
+                    </button>
                 </div>
             </div>
 
-            <div className="max-w-5xl mx-auto px-6 py-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-
-                {/* Header & Meta */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-                            Analysis Results
-                        </h1>
-                        <p className="text-gray-500 mt-1 flex items-center gap-2">
-                            <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                            </span>
-                            Processed on {new Date().toLocaleDateString()} • {data.duration || "00:00"}
-                        </p>
-                    </div>
-
-                    {/* Status Badges Section */}
-                    <div className="flex items-center gap-3">
-                        {/* BADGE 1: MODE (Infrastructure) */}
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border ${modeColor}`}>
-                            <span className={`w-2 h-2 rounded-full ${modeDot}`}></span>
-                            {modeLabel}
-                        </span>
-
-                        {/* BADGE 3: SENTIMENT (Context only) */}
-                        <SentimentBadge score={data.sentimentScore} label={data.sentimentLabel} />
-                    </div>
-                </div>
-
-                {/* Summary Section */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 md:p-8 hover:shadow-md transition-shadow">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                        <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        Executive Summary
-                    </h2>
-                    <p className="text-gray-600 leading-relaxed text-lg mb-4">
-                        {data.summary}
-                    </p>
-
-                    {/* Quiet Quality Indicator */}
-                    {data.quality && (
-                        <div className="text-sm text-gray-500 font-medium border-t border-gray-100 pt-3 flex items-center gap-2">
-                            <span>{isSales ? "Sales" : "Meeting"} Quality:</span>
-                            <span className={`px-2 py-0.5 rounded text-xs tracking-wide ${data.quality.label === "High" ? "bg-gray-100 text-gray-700" :
-                                    data.quality.label === "Low" ? "bg-gray-50 text-gray-500" :
-                                        "bg-gray-50 text-gray-600"
-                                }`}>
-                                {data.quality.label}
-                            </span>
-                        </div>
-                    )}
-                </div>
-
-                {/* Key Insights Grid (Conditionally Rendered) */}
-                {data.keyInsights.length > 0 && (
-                    <div>
-                        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                            <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
-                            Key Insights
-                        </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-                            {data.keyInsights.map((item, i) => (
-                                <div key={i} className="h-full">
-                                    <InsightCard text={item.text} type={item.type} />
+            {/* Main Content - Asymmetric Grid Layout */}
+            <div className="mx-auto px-6 lg:px-12 xl:px-16 py-8 lg:py-12">
+                <div className="grid lg:grid-cols-12 gap-8 lg:gap-12">
+                    
+                    {/* Left Column - Main Content (8 cols) */}
+                    <div className="lg:col-span-8 space-y-8">
+                        
+                        {/* Header Card */}
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 lg:p-8">
+                            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
+                                <div>
+                                    <h1 className="text-3xl lg:text-4xl font-bold text-gray-900 tracking-tight mb-2">
+                                        Analysis Complete
+                                    </h1>
+                                    <p className="text-gray-500 flex items-center gap-2 text-sm">
+                                        <span className="relative flex h-2 w-2">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-500"></span>
+                                        </span>
+                                        Processed {new Date().toLocaleDateString()} • {data.duration}
+                                    </p>
                                 </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
+                                <div className="flex flex-wrap items-center gap-3">
+                                    <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border ${modeColor}`}>
+                                        <span className={`w-2 h-2 rounded-full ${modeDot}`}></span>
+                                        {modeLabel}
+                                    </span>
+                                    <SentimentBadge score={data.sentimentScore} label={data.sentimentLabel} />
+                                </div>
+                            </div>
+                            
+                            <div className="prose max-w-none">
+                                <p className="text-lg text-gray-700 leading-relaxed">
+                                    {data.summary}
+                                </p>
+                            </div>
 
-                {/* Action Plan (Separate Section) */}
-                {data.actionPlan.length > 0 && (
-                    <div>
-                        <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                            <svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                            </svg>
-                            Action Plan
-                        </h2>
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                            <ul className="space-y-3">
-                                {data.actionPlan.map((item, i) => (
-                                    <li key={i} className="flex items-start gap-3">
-                                        <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></div>
-                                        <span className="text-gray-700">{item}</span>
-                                    </li>
-                                ))}
-                            </ul>
+                            {data.quality && (
+                                <div className="mt-6 pt-6 border-t border-gray-100 flex items-center justify-between">
+                                    <span className="text-sm text-gray-600">Analysis Quality</span>
+                                    <span className="px-3 py-1 rounded-lg text-sm font-semibold bg-gray-100 text-gray-700">
+                                        {data.quality.label}
+                                    </span>
+                                </div>
+                            )}
                         </div>
+
+                        {/* Key Insights */}
+                        {data.keyInsights.length > 0 && (
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                    <svg className="w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                    Key Insights
+                                </h2>
+                                <div className="grid gap-4">
+                                    {data.keyInsights.map((item, i) => (
+                                        <InsightCard key={i} text={item.text} type={item.type} />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Action Plan */}
+                        {data.actionPlan.length > 0 && (
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                    <svg className="w-5 h-5 text-teal-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                    </svg>
+                                    Action Items
+                                </h2>
+                                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                                    <ul className="space-y-4">
+                                        {data.actionPlan.map((item, i) => (
+                                            <li key={i} className="flex items-start gap-3 group">
+                                                <div className="mt-1.5 w-5 h-5 rounded-full border-2 border-gray-300 group-hover:border-teal-500 flex-shrink-0 transition-colors"></div>
+                                                <span className="text-gray-700 leading-relaxed">{item}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                )}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow">
-                    <div className="bg-gray-50/80 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                        <h2 className="font-semibold text-gray-900">Transcript</h2>
-                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Chronological
-                        </span>
-                    </div>
-                    <div className="divide-y divide-gray-50 p-2">
-                        {data.transcript.map((segment, i) => (
-                            <TranscriptBlock key={i} segment={segment} />
-                        ))}
+
+                    {/* Right Sidebar - Transcript (4 cols) */}
+                    <div className="lg:col-span-4">
+                        <div className="lg:sticky lg:top-24">
+                            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                                <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                                    <h2 className="font-bold text-gray-900">Transcript</h2>
+                                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Timeline
+                                    </span>
+                                </div>
+                                <div className="max-h-[600px] overflow-y-auto">
+                                    <div className="divide-y divide-gray-100">
+                                        {data.transcript.map((segment, i) => (
+                                            <TranscriptBlock key={i} segment={segment} />
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Quick Actions */}
+                            <div className="mt-6 space-y-3">
+                                <button className="w-full px-4 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Export Report
+                                </button>
+                                <button className="w-full px-4 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-200 hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                    </svg>
+                                    Share
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
             </div>
         </div>
     )
