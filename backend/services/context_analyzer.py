@@ -13,6 +13,18 @@ ACTION_KEYWORDS = KEYWORDS_CONFIG["meeting"]["actions"]
 # --- SALES MODE HELPERS ---
 OBJECTION_KEYWORDS = KEYWORDS_CONFIG["sales"]["objections"]
 
+NO_INTENT_TERMS = [
+    "not planning to switch", "not switching", "not this quarter",
+    "later this year", "maybe later", "happy with current",
+    "already using", "just exploring", "no budget",
+    "not a priority", "no urgency", "not interested"
+]
+
+DEFER_TERMS = [
+    "later this year", "few months",
+    "next quarter", "sometime later"
+]
+
 def aggregate_sentiment(segments):
     counts = {
         "Positive": 0,
@@ -275,8 +287,17 @@ def assess_sales_signals(segments, objections, recommendations):
     # 2. Next Step Agreed
     # Strong recommendations exist OR explicit agreement
     next_step = len(recommendations) > 0 or any(t in text_blob for t in ["schedule next", "book a demo", "send the invite"])
+
+    # 2b. Hard Commitment (NEW)
+    # Strict list of booking confirmations
+    HARD_COMMITMENT_TERMS = ["demo booked", "let’s schedule", "calendar invite", "meeting on tuesday"]
+    hard_commitment = any(t in text_blob for t in HARD_COMMITMENT_TERMS)
+
+    # 3. Disqualification Signal (Deal-Killer)
+    no_intent = any(t in text_blob for t in NO_INTENT_TERMS)
+    deferred = any(t in text_blob for t in DEFER_TERMS)
     
-    # 3. Objection Addressed
+    # 4. Objection Addressed
     # If objections existed, were they followed by positive sentiment? 
     # Simplify: If objections exist but call sentiment is NOT negative -> Managed.
     objection_handled = False
@@ -300,6 +321,9 @@ def assess_sales_signals(segments, objections, recommendations):
     return {
         "decision_maker_known": decision_maker,
         "next_step": next_step,
+        "hard_commitment": hard_commitment,
+        "no_intent": no_intent,
+        "deferred": deferred,
         "objection_handled": objection_handled,
         "value_articulated": value_articulated,
         "stalled": stalled
@@ -312,6 +336,14 @@ def compute_sales_quality(signals):
     score = 0
     drivers = []
     
+    # 🔴 HARD DISQUALIFICATION OVERRIDE
+    if signals.get("no_intent") or signals.get("deferred"):
+        return {
+            "label": "Low",
+            "score": 2,
+            "drivers": ["Disqualified: No Intent/Deferred"]
+        }
+
     if signals["decision_maker_known"]:
         score += 2
         drivers.append("Decision maker identified")
@@ -319,6 +351,10 @@ def compute_sales_quality(signals):
     if signals["next_step"]:
         score += 3
         drivers.append("Next step agreed")
+
+    if signals.get("hard_commitment"):
+        score += 2
+        drivers.append("Hard commitment locked")
         
     if signals["objection_handled"]:
         score += 2
@@ -332,14 +368,19 @@ def compute_sales_quality(signals):
         score += 1
         drivers.append("Momentum maintained")
         
-    # --- GUARDRAILS ---
-    if not signals["next_step"]:
-        score = min(score, 4) # Low if no next step
-        
-    # Map to Label
-    if score >= 8: label = "High"
-    elif score >= 5: label = "Medium"
-    else: label = "Low"
+    # --- GUARDRAILS (UPDATED) ---
+    # 1. High Quality = HARD COMMITMENT ONLY
+    if signals.get("hard_commitment"):
+        label = "High"
+        score = max(score, 8) 
+    # 2. Medium Quality = Next Step Agreed
+    elif signals.get("next_step"):
+        label = "Medium"
+        score = max(score, 5)
+    # 3. Low Quality = Everything else
+    else:
+        label = "Low"
+        score = min(score, 4)
     
     return {
         "label": label,
@@ -900,6 +941,27 @@ def recommend_actions(objections):
 
     return list(set(actions))
 
+def compose_sales_summary(signals, quality):
+    """
+    Generates a sales-specific executive summary.
+    Enforces explicit mention of disqualification if Low quality.
+    """
+    # 1. Disqualification Override
+    if quality["label"] == "Low":
+        if signals.get("no_intent"):
+             return "The prospect indicated no plans to switch or lack of interest. The opportunity is currently not active."
+        if signals.get("deferred"):
+             return "The prospect signaled a deferral to a later timeline. The opportunity is currently paused."
+        # Fallback Low
+        return "The discussion concluded without clear next steps or momentum."
+
+    # 2. High/Medium Summaries
+    if quality["label"] == "High":
+        return "Strong progress made with a hard commitment to next steps. The opportunity is advancing."
+    
+    # Medium
+    return "The call generated soft momentum, but requires firmer commitment to next steps."
+
 def analyze_sales(enriched_segments: list) -> dict:
     """
     Main entry point for Sales Mode analysis.
@@ -925,9 +987,13 @@ def analyze_sales(enriched_segments: list) -> dict:
     sales_signals = assess_sales_signals(segments, objections, recommendations)
     quality = compute_sales_quality(sales_signals)
 
+    # --- SUMMARY GENERATION ---
+    summary = compose_sales_summary(sales_signals, quality)
+
     return {
         "mode": "sales",
-        "quality": quality, # NEW: Quality Dimension
+        "quality": quality, 
+        "summary": summary, # New field
         "overall_call_sentiment": call_sentiment,
         "objections": objections,
         "recommended_actions": recommendations,
