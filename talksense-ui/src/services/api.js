@@ -44,82 +44,89 @@ export async function loadDemoData(mode = 'meeting') {
                 : "Team meeting discussing Q4 priorities, timeline concerns, and budget approval needs.",
             segments: [
                 {
-                    time: '00:15',
+                    start: 15,
+                    end: 45,
                     text: mode === 'sales'
                         ? "Thanks for taking the time today. I'd love to understand your current workflow challenges."
                         : "Let's start with the Q4 roadmap discussion. I want to make sure we're all aligned on priorities.",
                     sentiment: 0.7,
-                    sentiment_label: 'positive'
+                    sentiment_label: 'Positive'
                 },
                 {
-                    time: '01:23',
+                    start: 83,
+                    end: 120,
                     text: mode === 'sales'
                         ? "We're struggling with manual data entry. It's taking up 30% of our team's time."
                         : "I think we need to be realistic about the timeline. December is really tight for a full mobile release.",
-                    sentiment: 0.3,
-                    sentiment_label: 'negative'
+                    sentiment: -0.3,
+                    sentiment_label: 'Negative'
                 },
                 {
-                    time: '02:45',
+                    start: 165,
+                    end: 200,
                     text: mode === 'sales'
                         ? "Your automation features look promising. How does pricing work for teams of 50+?"
                         : "Agreed on mobile-first. The customer feedback has been clear on this point.",
                     sentiment: 0.8,
-                    sentiment_label: 'positive'
+                    sentiment_label: 'Positive'
                 },
                 {
-                    time: '04:12',
+                    start: 252,
+                    end: 290,
                     text: mode === 'sales'
                         ? "We'd need to see ROI within 6 months to justify the investment to our CFO."
                         : "We'll need budget approval before we can commit resources to this timeline.",
-                    sentiment: 0.5,
-                    sentiment_label: 'neutral'
+                    sentiment: 0.0,
+                    sentiment_label: 'Neutral'
                 },
                 {
-                    time: '05:30',
+                    start: 330,
+                    end: 365,
                     text: mode === 'sales'
                         ? "I'm confident this could work. Let me schedule a follow-up with our technical team."
                         : "I'm confident we can deliver if we scope it properly and get the right support.",
                     sentiment: 0.75,
-                    sentiment_label: 'positive'
+                    sentiment_label: 'Positive'
                 }
             ]
         },
         insights: mode === 'sales' ? {
             summary: "Productive sales call with strong engagement. Client has clear pain points around manual processes and is evaluating ROI. Technical validation meeting needed as next step.",
             sentiment_score: 0.65,
-            sentiment_label: "Positive / Engaged",
-            quality: { label: "High", score: 0.87 },
-            duration: "28:15",
+            overall_call_sentiment: "positive",
+            quality: { label: "High", score: 8, drivers: ["Hard commitment locked", "Value articulated"] },
             key_insights: [
-                { text: "Client spending 30% of team time on manual data entry - strong pain point", type: "positive" },
-                { text: "ROI requirement: must show value within 6 months", type: "blocker" },
-                { text: "Pricing discussion for 50+ user enterprise plan", type: "decision" },
-                { text: "Technical validation meeting scheduled as next step", type: "positive" }
+                { text: "Client spending 30% of team time on manual data entry - strong pain point", type: "Positive Momentum" },
+                { text: "ROI requirement: must show value within 6 months", type: "Execution Risk" },
+                { text: "Pricing discussion for 50+ user enterprise plan", type: "Decision Ambiguity" },
+                { text: "Technical validation meeting scheduled as next step", type: "Positive Momentum" }
             ],
-            action_plan: [
-                "Action: Prepare ROI calculator showing 6-month payback (@Sales)",
-                "Action: Send enterprise pricing proposal for 50+ users (@Sales)",
-                "Decision: Schedule technical validation call with client's engineering team",
-                "Action: Follow up with case studies from similar-sized companies (@Marketing)"
+            objections: [
+                { type: "Pricing", text: "How does pricing work for teams of 50+?", time: 165 },
+                { type: "Authority", text: "We'd need to see ROI within 6 months to justify the investment to our CFO", time: 252 }
+            ],
+            recommended_actions: [
+                "Send pricing clarification",
+                "Follow up after internal discussion"
             ]
         } : {
             summary: "Discussion focused on Q4 product roadmap priorities. Team aligned on mobile-first approach with concerns about timeline feasibility. Three key decisions made regarding feature prioritization.",
             sentiment_score: 0.65,
-            sentiment_label: "Positive / Engaged",
-            quality: { label: "High", score: 0.87 },
-            duration: "32:45",
+            overall_sentiment_label: "Neutral / Focused",
+            quality: { label: "High", score: 8, drivers: ["Decisions finalized", "Ownership assigned"] },
             key_insights: [
-                { text: "Team unanimously agreed on mobile-first strategy for Q4", type: "decision" },
-                { text: "Timeline concerns raised by engineering regarding December delivery", type: "risk" },
-                { text: "Budget approval needed from finance before final commitment", type: "blocker" },
-                { text: "Strong alignment on customer feedback integration approach", type: "positive" }
+                { text: "Team unanimously agreed on mobile-first strategy for Q4", type: "Positive Momentum" },
+                { text: "Timeline concerns raised by engineering regarding December delivery", type: "Execution Risk" },
+                { text: "Budget approval needed from finance before final commitment", type: "Ownership Gap" },
+                { text: "Strong alignment on customer feedback integration approach", type: "Positive Momentum" }
             ],
-            action_plan: [
-                "Decision: Prioritize mobile app development for Q4 launch",
-                "Action: Sarah to prepare detailed timeline analysis (@Sarah)",
-                "Action: Mike to schedule budget review meeting with finance (@Mike)",
-                "Decision: Weekly sync meetings every Thursday at 2pm"
+            decisions: [
+                { text: "Prioritize mobile app development for Q4 launch", time: 165 },
+                { text: "Weekly sync meetings every Thursday at 2pm", time: 330 }
+            ],
+            action_items: [
+                { task: "Prepare detailed timeline analysis", owner: "Sarah", deadline: "Friday", time: 200 },
+                { task: "Schedule budget review meeting with finance", owner: "Mike", deadline: "Next week", time: 252 }
             ]
         }
     };
