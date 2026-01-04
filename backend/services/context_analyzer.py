@@ -1751,7 +1751,6 @@ def analyze_sales(enriched_segments: list) -> dict:
     recommendations_temp = recommend_actions(objections_initial)
     
     # --- QUALITY SCORING ---
-<<<<<<< HEAD
     # STEPS 1, 2, 3, 4: Assess signals with all calibrations
     sales_signals = assess_sales_signals(segments, objections_initial, recommendations_temp)
     
@@ -1767,20 +1766,6 @@ def analyze_sales(enriched_segments: list) -> dict:
     
     # Compute quality with new signals
     quality = compute_sales_quality(sales_signals)
-=======
-    sales_signals = assess_sales_signals(segments, objections, recommendations)
-    
-    # Map to Standard Signals for Centralized Quality Engine (Step 2 & 8)
-    # This ensures "Logic lives in exactly one place"
-    std_signals = {
-        "ownership": sales_signals["decision_maker_known"] or sales_signals["next_step"],
-        "execution_decision": sales_signals.get("hard_commitment", False),
-        "decision": sales_signals["next_step"]
-    }
-    
-    # Use centralized quality logic
-    quality = compute_meeting_quality_v2(std_signals)
->>>>>>> 1656b0c6b4293e13e3ee7abfc5c92b95d1d551ab
 
     # RULE 7: Template-based summary generation with objection acknowledgment
     summary = compose_sales_summary(sales_signals, quality, objections=objections)
