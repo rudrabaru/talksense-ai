@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { analyzeAudio, loadDemoData } from "../services/api"
+import logoImage from "../assets/logo/logo.png"
 
 export default function UploadPage() {
     const navigate = useNavigate()
@@ -89,17 +90,19 @@ export default function UploadPage() {
         <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-indigo-50/20">
             {/* Navbar */}
             <nav className="border-b border-gray-200 bg-white/80 backdrop-blur-md sticky top-0 z-50">
-                <div className="mx-auto px-6 lg:px-12 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                <div className="mx-auto px-6 lg:px-12 xl:px-16 h-16 flex items-center justify-between">
+                    <button
+                        onClick={() => navigate('/')}
+                        className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                    >
                         <div className="relative w-9 h-9">
-                            <svg viewBox="0 0 36 36" className="w-full h-full">
-                                <rect x="2" y="2" width="32" height="32" rx="8" fill="#4F46E5" />
-                                <path d="M12 18h2v-4h-2v4zm4 0h2v-8h-2v8zm4 0h2v-6h-2v6zm4 0h2v-10h-2v10z" fill="white" opacity="0.9" />
-                                <path d="M10 22c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2" stroke="white" strokeWidth="1.5" fill="none" opacity="0.7" />
-                            </svg>
+                            <img src={logoImage} alt="TalkSense AI Logo" className="w-full h-full object-contain" />
                         </div>
-                        <span className="font-bold text-xl tracking-tight text-gray-900">TalkSense</span>
-                    </div>
+                        <span className="font-bold text-xl tracking-tight">
+                            <span style={{ color: '#4F46E5' }}>TalkSense</span>
+                            <span style={{ color: '#14B8A6' }}> AI</span>
+                        </span>
+                    </button>
                     <button
                         onClick={() => navigate('/')}
                         className="text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors"
@@ -232,8 +235,8 @@ export default function UploadPage() {
                                     onClick={() => setMode("meeting")}
                                     disabled={loading}
                                     className={`p-4 rounded-xl border-2 text-left transition-smooth hover-lift ${mode === "meeting"
-                                            ? "border-indigo-500 bg-indigo-50 shadow-sm"
-                                            : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
+                                        ? "border-indigo-500 bg-indigo-50 shadow-sm"
+                                        : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
                                         } disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:transform-none`}
                                 >
                                     <div className="font-semibold text-gray-900 mb-1">Meeting</div>
@@ -243,8 +246,8 @@ export default function UploadPage() {
                                     onClick={() => setMode("sales")}
                                     disabled={loading}
                                     className={`p-4 rounded-xl border-2 text-left transition-smooth hover-lift ${mode === "sales"
-                                            ? "border-teal-500 bg-teal-50 shadow-sm"
-                                            : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
+                                        ? "border-teal-500 bg-teal-50 shadow-sm"
+                                        : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm"
                                         } disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:transform-none`}
                                 >
                                     <div className="font-semibold text-gray-900 mb-1">Sales Call</div>
