@@ -2,15 +2,24 @@
     "meeting": {
         "decisions": [
             "we will",
-            "let's proceed",
-            "agreed",
-            "decided",
-            "finalize",
-            "moving forward",
-            "conclusion is",
             "we are going to",
+            "decided",
+            "agreed",
+            "finalize",
+            "lock",
+            "locked",
+            "tentative",
+            "release date",
+            "go live",
+            "deploy",
+            "deployment",
+            "launch date",
+            "ship",
+            "moving forward",
+            "settled on",
             "consensus",
-            "settled on"
+            "conclusion is",
+            "plan is to"
         ],
         "actions": [
             "please",
@@ -19,8 +28,6 @@
             "will handle",
             "by tomorrow",
             "deadline",
-            "take ownership",
-            "responsible for",
             "ensure that",
             "make sure to"
         ],
@@ -44,14 +51,12 @@
         ],
         "directional_decisions": [
             "decision is to",
-            "we will",
             "next step is",
             "let's prioritize",
             "we'll proceed with",
             "we'll review",
             "we'll do",
             "moving forward with",
-            "plan is to",
             "going to",
             "we're going to",
             "let's move forward",
@@ -145,9 +150,7 @@
         "action_item": [
             "action item",
             "to do",
-            "take ownership",
             "i will do",
-            "responsible for",
             "task",
             "assignment"
         ],

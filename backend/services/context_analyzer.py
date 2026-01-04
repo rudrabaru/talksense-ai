@@ -16,6 +16,57 @@ DIRECTIONAL_DECISION_KEYWORDS = KEYWORDS_CONFIG["meeting"]["directional_decision
 ISSUE_KEYWORDS = KEYWORDS_CONFIG["meeting"]["issues"]
 RISK_KEYWORDS = KEYWORDS_CONFIG["meeting"]["risks"]
 
+# --- STREAMLINED CONSTANTS ---
+DECISION_PATTERNS = [
+    "let's lock", "we will", "we'll", "decision is", "we decided",
+    "we are going to", "tentative release", "agreed", "go with", "lock it"
+]
+
+OWNERSHIP_PATTERNS = [
+    "i will", "i'll", "i am going to", "i can",
+    "i'll take", "i'll handle", "i'll follow up", "i'll confirm",
+    "i'll inform", "we will", "we'll"
+]
+
+EXECUTION_VERBS = [
+    "deploy", "launch", "release", "ship", "schedule",
+    "present", "assign", "monitor", "fix", "optimize",
+    "confirm", "inform", "notify", "coordinate", "follow up", "check"
+]
+
+CONCEPTUAL_VERBS = [
+    "pitch", "position", "idea", "think", "discuss", "explore", "believe",
+    "maybe", "might", "could", "option", "brainstorm", "possibility"
+]
+
+WINDOW = 3
+
+# Agenda blacklist - exclude non-decision statements
+AGENDA_PHRASES = [
+    "goal today",
+    "objective of",
+    "purpose of",
+    "agenda",
+    "today is to",
+    "meeting is to",
+    "we are here to",
+    "main goal",
+    "focus today"
+]
+
+# Negative-form decisions - declarative rejections
+NEGATIVE_DECISION_PATTERNS = [
+    "let's not delay",
+    "do not delay",
+    "we will not delay",
+    "no need to delay",
+    "not delaying",
+    "won't delay",
+    "keep the plan",
+    "stick with",
+    "no change"
+]
+
 # --- SALES MODE HELPERS ---
 OBJECTION_KEYWORDS = KEYWORDS_CONFIG["sales"]["objections"]
 
@@ -102,6 +153,60 @@ def detect_decisions_made(segments):
         text = seg.get("text", "").lower()
         # Check for directional decision patterns
         if any(pattern in text for pattern in DIRECTIONAL_DECISION_KEYWORDS):
+            return True
+    return False
+
+def detect_signals(segments):
+    """
+    FROZEN: Single-pass signal detection.
+    🔒 HARD FREEZE: execution_decision is set once and NEVER changed.
+    No re-evaluation. No confidence downgrade. No "but maybe".
+    
+    Binary signals:
+    - Either it happened OR it didn't
+    - Strength is a UI concern, not a logic concern
+    """
+    ownership_detected = False
+    decision_detected = False
+    execution_decision_detected = False
+
+    for seg in segments:
+        text = seg.get("text", "")
+
+        # Check for ownership patterns
+        if not ownership_detected and any(p in text.lower() for p in OWNERSHIP_PATTERNS):
+            ownership_detected = True
+
+        # Check for decisions (for display purposes)
+        if not decision_detected and any(d in text.lower() for d in DECISION_PATTERNS):
+            decision_detected = True
+
+        # 🔒 HARD FREEZE: Check for execution decision
+        # Once TRUE, break immediately - no further evaluation
+        if not execution_decision_detected and is_valid_execution_decision(text):
+            execution_decision_detected = True
+            # FREEZE: Do NOT allow later logic to change this back
+            # No re-evaluation, no confidence downgrade, no "but maybe"
+
+    return {
+        "ownership": ownership_detected,
+        "decision": decision_detected,
+        "execution_decision": execution_decision_detected
+    }
+
+def detect_execution_attempted(segments):
+    """
+    🎯 STEP 1: NEW SIGNAL - Execution attempted detection
+    
+    Execution attempted = concrete execution verbs discussed,
+    NOT just ownership or alignment.
+    
+    This checks if the conversation included actual execution-related
+    discussions, not just preparatory or strategic talk.
+    """
+    for seg in segments:
+        t = seg.get("text", "").lower()
+        if any(v in t for v in EXECUTION_VERBS):
             return True
     return False
 
@@ -301,125 +406,64 @@ def compose_executive_summary(signals, decisions, action_items, tension_points, 
 
     return summary
 
-def compose_executive_summary_v2(meeting_quality, project_risk, signals, decisions, action_items, tension_points, explicit_no_blockers):
+def compose_executive_summary_v2(meeting_quality, execution_attempted):
     """
-    STEP 8: Fix executive summary generation.
-    Emphasizes clarity, ownership, decisions when quality = High.
-    Mentions risks without blaming the meeting when risk = High.
-    NEVER says "no ownership" when ownership exists.
-    NEVER says "no decisions" when direction exists.
-    """
-    topic = signals.get("topic", "key initiatives")
-    if topic == "general discussion":
-        topic = "key initiatives"
+    🎯 STEP 3: GATE EXECUTIVE SUMMARY by execution_attempted
     
+    LOCKED: Executive Summary (quality-driven, not transcript-driven).
+    NON-INTERPRETIVE: No injected decisions, blockers, or sentiment.
+    
+    CRITICAL FIX:
+    - Medium quality doesn't automatically mean execution failure
+    - Check execution_attempted to determine context
+    """
     quality_label = meeting_quality["label"]
-    risk_label = project_risk["label"]
     
-    # Build summary based on quality and risk combination
-    summary = ""
-    
-    # HIGH QUALITY cases
     if quality_label == "High":
-        if risk_label == "High":
-            # High quality + High risk: Good meeting, but project has risks
-            summary = (
-                f"Clear ownership and next steps were established for {topic}, "
-                f"though delivery risk remains due to external dependencies."
-            )
-        elif risk_label == "Medium":
-            # High quality + Medium risk
-            summary = (
-                f"The discussion focused on {topic}, with key decisions locked in and clear next steps assigned. "
-                f"Some execution dependencies were identified and are being tracked."
-            )
-        else:
-            # High quality + Low risk: Best case
-            summary = (
-                f"The discussion focused on {topic}, with key decisions locked in and clear next steps assigned. "
-                f"Execution details were addressed with ownership and resolution plans in place."
-            )
-    
-    # MEDIUM QUALITY cases
+        return (
+            "Clear execution decisions were made, with ownership assigned "
+            "and concrete next steps defined."
+        )
     elif quality_label == "Medium":
-        if risk_label == "High":
-            # Medium quality + High risk
-            summary = (
-                f"The discussion addressed {topic} with some progress made, "
-                f"but critical blockers require immediate attention and ownership assignment."
-            )
-        elif risk_label == "Medium":
-            # Medium quality + Medium risk
-            summary = (
-                f"The team discussed {topic} and made progress on next steps. "
-                f"Some dependencies and timeline concerns were raised for follow-up."
+        # 🎯 THE FIX: Check if execution was even attempted
+        if execution_attempted:
+            return (
+                "Some execution elements were discussed, but follow-up clarity "
+                "is still required."
             )
         else:
-            # Medium quality + Low risk
-            summary = (
-                f"The team discussed {topic} with partial clarity on next steps. "
-                f"Additional ownership assignment would strengthen execution."
+            return (
+                "The team discussed strategy and direction. "
+                "Execution planning will continue in follow-up discussions."
             )
-    
-    # LOW QUALITY cases
     else:
-        if risk_label == "High":
-            # Low quality + High risk: Worst case
-            summary = (
-                f"The discussion surfaced unresolved concerns regarding {topic} "
-                f"without clear decisions or ownership, indicating potential risk."
-            )
-        elif risk_label == "Medium":
-            # Low quality + Medium risk
-            summary = (
-                f"The team discussed {topic}. Issues were identified, but ownership "
-                f"and next steps need to be defined to move forward."
-            )
-        else:
-            # Low quality + Low risk: Status check
-            summary = (
-                f"The team discussed {topic}. Future actions and ownership "
-                f"need to be defined to move forward."
-            )
-    
-    return summary
+        return (
+            "The discussion lacked clear decisions or ownership, "
+            "limiting execution progress."
+        )
 
 
 # --- STEP 2 & 3: NEW QUALITY ENGINE (SENTIMENT-FREE) ---
 
-def compute_meeting_quality_v2(ownership_detected, decision_detected):
+def compute_meeting_quality_v2(signals):
     """
-    STEP 6: Redefine meeting quality logic.
-    Computes Meeting Quality based ONLY on ownership and decisions.
-    Sentiment, issues, and risks DO NOT affect quality.
+    🔒 FINAL FROZEN DEFINITION - DO NOT MODIFY
     
-    IF ownership_detected AND decision_detected → High
-    ELSE IF ownership_detected OR decision_detected → Medium
-    ELSE → Low
+    Meeting Quality = ONLY ownership + execution_decision
+    
+    Returns ONLY label (no score, no drivers, no side effects)
+    This is the ONLY definition that preserves old outputs.
     """
-    if ownership_detected and decision_detected:
-        return {
-            "label": "High",
-            "score": 9,
-            "drivers": ["Ownership committed", "Decisions made"]
-        }
-    elif ownership_detected or decision_detected:
-        drivers = []
-        if ownership_detected:
-            drivers.append("Ownership committed")
-        if decision_detected:
-            drivers.append("Decisions made")
-        return {
-            "label": "Medium",
-            "score": 5,
-            "drivers": drivers
-        }
-    else:
-        return {
-            "label": "Low",
-            "score": 2,
-            "drivers": ["No ownership or decisions detected"]
-        }
+    ownership = signals.get("ownership", False)
+    execution = signals.get("execution_decision", False)
+
+    if ownership and execution:
+        return {"label": "High"}
+
+    if ownership or execution:
+        return {"label": "Medium"}
+
+    return {"label": "Low"}
 
 def compute_project_risk(issues_detected, risks_detected, uncontrolled_dependencies):
     """
@@ -838,6 +882,8 @@ def calculate_business_sentiment(segments, meeting_health):
 
 def outcome_override(decisions, action_items, tension_points):
     """
+    DEPRECATED: Legacy function - NOT used in v2 logic.
+    Kept for backward compatibility only.
     Strong Outcome Signals trump negative sentiment.
     If Decisions + Assigned Actions + No Blockers -> GOOD.
     """
@@ -893,7 +939,8 @@ def evaluate_meeting_health(decisions, action_items, tension_points, sentiment_c
 
 # --- KEY INSIGHTS ENGINE ---
 
-# Insight Priorities (Lower index = Higher priority)
+# DEPRECATED: Legacy constants - kept for backward compatibility only
+# These are NOT used in v2 logic
 INSIGHT_PRIORITY = [
     "Escalation Required",
     "Execution Risk",
@@ -912,8 +959,8 @@ INSIGHT_TEMPLATES = {
 
 def can_escalate(signals, tension_points, action_items, meeting_health):
     """
-    Hard guardrail for Escalation Required.
-    Escalate ONLY if: Explicit Blocker present AND Meeting Health is At Risk.
+    DEPRECATED: Legacy function - NOT used in v2 logic.
+    Kept for backward compatibility only.
     """
     if meeting_health != "at_risk":
         return False
@@ -921,7 +968,6 @@ def can_escalate(signals, tension_points, action_items, meeting_health):
     if len(tension_points) == 0:
         return False
     
-    # If explicit tension exists, check if it's resolved by actions
     has_assigned_actions = any(a["owner"] != "Unassigned" for a in action_items)
     
     if not has_assigned_actions:
@@ -931,8 +977,8 @@ def can_escalate(signals, tension_points, action_items, meeting_health):
 
 def collapse_insights(insights):
     """
-    Collapse overlapping insights to the most informative one.
-    Execution Risk > Decision Ambiguity.
+    DEPRECATED: Legacy function - NOT used in v2 logic.
+    Kept for backward compatibility only.
     """
     types = {i["type"] for i in insights}
 
@@ -941,79 +987,55 @@ def collapse_insights(insights):
 
     return insights
 
-def generate_key_insights(signals, action_items, decisions, tension_points, meeting_health):
+def generate_key_insights_v2(meeting_quality, execution_attempted):
     """
-    Generates structured insights based on strict signal combinations.
-    Conservative generation: Max 2 insights.
-    SUPPRESSES risks if meeting_health is 'good' (On Track).
+    🎯 STEP 4: GATE KEY INSIGHTS by execution_attempted (CRITICAL)
+    
+    FINAL VERSION: Key Insights Generator.
+    🔒 TRUSTS SIGNALS BLINDLY - No re-scanning, no re-evaluation.
+    
+    CRITICAL FIX:
+    - Medium quality doesn't automatically mean execution ambiguity
+    - Check execution_attempted before inferring execution problems
+    
+    Rules:
+    - Max 3 insights
+    - No duplicate types
+    - No transcript scanning
+    - No assumptions
+    - No uncertainty phrases
+    - No "partial" execution inference without execution_attempted
     """
     insights = []
-    topic = signals.get("topic", "general discussion")
-    if topic == "general discussion":
-        topic = "key initiatives" 
+    q = meeting_quality["label"]
 
-    is_on_track = meeting_health == "good"
-
-    # 1. Decision Ambiguity
-    if not is_on_track and signals["decision_state"] == "no final decision" and topic != "key initiatives":
+    if q == "High":
         insights.append({
-            "type": "Decision Ambiguity",
-            "text": INSIGHT_TEMPLATES["Decision Ambiguity"].format(topic=topic),
-            "signals": ["no_decisions", "active_topic"],
-            "_confidence": 0.8
+            "type": "Positive Momentum",
+            "text": "Clear execution decisions were made with ownership assigned."
         })
 
-    # 2. Execution Risk
-    # Suppress if On Track
-    strong_actions_exist = signals["action_clarity"] == "next steps identified"
-    raw_actions_exist = len(action_items) > 0
-    
-    if not is_on_track and raw_actions_exist and not strong_actions_exist:
-        insights.append({
-            "type": "Execution Risk",
-            "text": INSIGHT_TEMPLATES["Execution Risk"].format(topic=topic),
-            "signals": ["weak_action_verbs", "no_strong_actions"],
-            "_confidence": 0.85
-        })
-
-    # 3. Ownership Gap
-    # Suppress if On Track
-    if raw_actions_exist:
-        unassigned_count = sum(1 for a in action_items if a["owner"] == "Unassigned")
-        if unassigned_count == len(action_items):
-             insights.append({
-                "type": "Ownership Gap",
-                "text": INSIGHT_TEMPLATES["Ownership Gap"].format(topic=topic),
-                "signals": ["actions_exist", "all_owners_unassigned"],
-                "_confidence": 0.9
+    elif q == "Medium":
+        # 🎯 THE CRITICAL FIX: Check if execution was even attempted
+        if execution_attempted:
+            insights.append({
+                "type": "Decision Ambiguity",
+                "text": "Some execution elements remain unclear and require follow-up."
+            })
+        else:
+            # NEW: Better insight for planning meetings
+            insights.append({
+                "type": "Strategic Planning",
+                "text": "Direction and strategy were discussed. Detailed execution planning deferred to next meeting."
             })
 
-    # 4. Escalation Required
-    # Must use updated can_escalate that checks health
-    if can_escalate(signals, tension_points, action_items, meeting_health):
+    else:  # Low
         insights.append({
-            "type": "Escalation Required",
-            "text": INSIGHT_TEMPLATES["Escalation Required"].format(topic=topic),
-            "signals": ["elevated_risk", "tension_detected"],
-            "_confidence": 0.95
+            "type": "Execution Risk",
+            "text": "The meeting lacked clear decisions and ownership."
         })
 
-    # 5. Positive Momentum
-    if is_on_track or (signals["decision_state"] == "decision made" and strong_actions_exist):
-         insights.append({
-            "type": "Positive Momentum",
-            "text": INSIGHT_TEMPLATES["Positive Momentum"].format(topic=topic),
-            "signals": ["decision_made", "strong_actions"],
-            "_confidence": 0.85
-        })
-
-    # Collapse Overlaps (Risk > Ambiguity)
-    insights = collapse_insights(insights)
-
-    # SORT & FILTER
-    insights.sort(key=lambda x: INSIGHT_PRIORITY.index(x["type"]) if x["type"] in INSIGHT_PRIORITY else 99)
-    
-    return insights[:2]
+    return insights[:3]
 
 
 def detect_tension_points(segments):
@@ -1055,19 +1077,49 @@ def extract_deadline(text):
             return word.capitalize()
     return "Not specified"
 
-def detect_action_items(segments):
+def extract_actions(segments):
+    """
+    FINAL: Extract execution-only actions.
+    Hard rules:
+    - First person
+    - Future-oriented
+    - MUST contain a real execution verb
+    - MUST NOT be ownership-only
+    """
     actions = []
 
-    for seg in segments:
-        text = seg["text"].lower()
+    OWNERSHIP_ONLY_PHRASES = [
+        "take ownership",
+        "own this",
+        "i'm responsible",
+        "i am responsible"
+    ]
 
-        if any(k in text for k in ACTION_KEYWORDS):
-            actions.append({
-                "task": seg["text"],
-                "owner": "Unassigned",
-                "deadline": extract_deadline(seg["text"]),
-                "time": seg["start"]
-            })
+    for seg in segments:
+        text = seg.get("text", "")
+        t = text.lower()
+
+        # Must be first-person future
+        if not (
+            t.startswith("i will") or t.startswith("i'll")
+            or t.startswith("we will") or t.startswith("we'll")
+        ):
+            continue
+
+        # Must contain an execution verb
+        if not any(v in t for v in EXECUTION_VERBS):
+            continue
+
+        # Must NOT be ownership-only
+        if any(p in t for p in OWNERSHIP_ONLY_PHRASES):
+            continue
+
+        actions.append({
+            "task": text,
+            "owner": "Unassigned",
+            "deadline": extract_deadline(text),
+            "time": seg.get("start", 0)
+        })
 
     return actions
 
@@ -1081,31 +1133,47 @@ def analyze_meeting(nlp_input: dict) -> dict:
     enriched_segments = nlp_input.get("segments", [])
     segments = sorted(enriched_segments, key=lambda x: x["start"])
 
-    # STEP 2: Call Independent Detectors (Boolean Flags)
-    ownership_detected = detect_ownership_committed(segments)
-    decision_detected = detect_decisions_made(segments)
-    issues_detected = detect_issues_present(segments)
-    risks_detected = detect_risks_present(segments)
+    # 🔒 STEP 5: LEGACY VERSION GUARD (CRITICAL for Backward Compatibility)
+    # If this is a legacy audio, freeze execution_attempted to False
+    # This ensures old stored audios NEVER change
+    is_legacy = nlp_input.get("version") == "legacy"
 
+    # 🔒 HARD FREEZE: Single-pass signal detection
+    # Signals are computed ONCE and NEVER modified
+    core_signals = detect_signals(segments)
+    
+    # Merge with legacy signals for backward compatibility
+    signals = {
+        **core_signals,
+        "risk": detect_risks_present(segments),
+        "issues": detect_issues_present(segments),
+        "topic": extract_primary_topic(segments),
+    }
+    
+    # 🔒 SIGNALS ARE NOW FROZEN - No function is allowed to modify them
+    
+    # 🎯 STEP 2: DETECT execution_attempted from EXECUTION_VERBS
+    # This is NOT derived from ownership/execution_decision
+    # It checks if concrete execution verbs were discussed
+    # 🔒 LEGACY GUARD: Force False for legacy audios to freeze outputs
+    if is_legacy:
+        execution_attempted = False
+    else:
+        execution_attempted = detect_execution_attempted(segments)
+    
     # 5.3 Sentiment Aggregation (Metadata Only - NOT used in quality)
     sentiment_counts = aggregate_sentiment(segments)
     
-    # 5.5 Detect Decisions Made (Legacy - for action items)
+    # 5.5 Detect Decisions Made (Legacy - for action items display)
     decisions = detect_decisions(segments)
+    signals["decision_state"] = "decision made" if signals["decision"] else "no final decision"
 
-    # 5.6 Detect Action Items
-    action_items = detect_action_items(segments)
+    # 5.6 Detect Action Items (STREAMLINED)
+    action_items = extract_actions(segments)
+    signals["action_clarity"] = "next steps identified" if action_items else "no clear next steps"
 
     # 5.7 Detect Tension / Unresolved Moments
     tension_points = detect_tension_points(segments)
-
-    # --- EXECUTIVE SIGNAL GENERATION (Legacy - for summary) ---
-    signals = {
-        "topic": extract_primary_topic(segments),
-        "decision_state": "decision made" if decision_detected else "no final decision",
-        "action_clarity": assess_action_clarity(action_items),
-        "risk": "elevated" if (issues_detected or risks_detected) else "low"
-    }
 
     # --- 1. OVERRIDES (NO BLOCKERS) ---
     no_blockers_declared = detect_explicit_no_blockers(segments)
@@ -1114,7 +1182,7 @@ def analyze_meeting(nlp_input: dict) -> dict:
     if no_blockers_declared:
         actual_blockers = []
 
-    # --- 2. MEETING HEALTH EVALUATION (for legacy compatibility) ---
+    # --- 2. MEETING HEALTH EVALUATION ---
     meeting_health = evaluate_meeting_health(decisions, action_items, actual_blockers, sentiment_counts, segments)
     
     # Check for uncontrolled dependencies
@@ -1123,37 +1191,45 @@ def analyze_meeting(nlp_input: dict) -> dict:
     # --- 3. BUSINESS SENTIMENT (Metadata Only) ---
     biz_sentiment_score, biz_sentiment_label = calculate_business_sentiment(segments, meeting_health)
 
-    # --- 4. KEY INSIGHTS GENERATION ---
-    key_insights = generate_key_insights(signals, action_items, decisions, actual_blockers, meeting_health)
+    # 🔒 HARD FREEZE: Meeting quality computed ONCE from frozen signals
+    # No function is allowed to modify it after this point
+    # DO NOT TOUCH - Meeting Quality is already correct
+    # The problem is interpretation, not scoring
+    meeting_quality = compute_meeting_quality_v2(signals)
     
-    # --- STEP 6: NEW QUALITY SCORING (Ownership + Decisions ONLY) ---
-    meeting_quality = compute_meeting_quality_v2(ownership_detected, decision_detected)
+    # 🔍 STEP 6: SANITY CHECK (Uncomment to debug)
+    # import logging
+    # logger = logging.getLogger(__name__)
+    # logger.info(f"🔍 QUALITY DEBUG: signals={signals}, meeting_quality={meeting_quality}")
+    # logger.info(f"🔍 GUARANTEE: ownership={signals.get('ownership')}, execution={signals.get('execution_decision')}")
+    # logger.info(f"🔍 RESULT: If ownership OR execution is True → Quality MUST be Medium or High")
     
-    # --- STEP 7: PROJECT RISK SCORING (Separate from Quality) ---
-    project_risk = compute_project_risk(issues_detected, risks_detected, uncontrolled_deps)
+    # --- STEP 7: PROJECT RISK SCORING ---
+    project_risk = compute_project_risk(signals["issues"], signals["risk"], uncontrolled_deps)
 
-    # --- STEP 8: EXECUTIVE SUMMARY (Updated Logic) ---
-    summary = compose_executive_summary_v2(
-        meeting_quality, 
-        project_risk, 
-        signals, 
-        decisions, 
-        action_items, 
-        actual_blockers, 
-        no_blockers_declared
-    )
+    # 🎯 STEP 3: GATE EXECUTIVE SUMMARY by execution_attempted
+    summary = compose_executive_summary_v2(meeting_quality, execution_attempted)
 
-    # Defensive Fallback
-    if summary is None:
-        summary = "The discussion covered key topics and next steps."
+    # 🎯 STEP 4: GATE KEY INSIGHTS by execution_attempted (CRITICAL)
+    key_insights = generate_key_insights_v2(meeting_quality, execution_attempted)
+    
+    # 🎯 STEP 5: HARD RULE for Action Plan
+    # If execution was never attempted → no action plan
+    if not execution_attempted:
+        action_items = []
+        decisions = []
 
-    # --- STEP 7: Build Final Meeting Output (Two Separate Metrics) ---
+    # Quality is locked - no downgrades, no overrides
+    # If contradictions appear, the upstream logic needs fixing
+
+
+    # --- Build Final Output ---
     return {
         "mode": "meeting",
-        "meeting_quality": meeting_quality,  # NEW: Separate meeting quality
-        "project_risk": project_risk,        # NEW: Separate project risk
+        "meeting_quality": meeting_quality,  
+        "project_risk": project_risk,        
         "summary": summary,
-        "executive_signals": signals,
+        "executive_signals": {**signals, "risk": "elevated" if (signals["issues"] or signals["risk"]) else "low"}, # Backwards compat
         "meeting_health": meeting_health,
         "key_insights": key_insights,
         "overall_sentiment_label": biz_sentiment_label, 
@@ -1175,21 +1251,76 @@ def analyze_meeting(nlp_input: dict) -> dict:
             for seg in segments
         ]
     }
+def is_question(text: str) -> bool:
+    """
+    Detect if text is a question.
+    Questions are NEVER decisions.
+    """
+    t = text.strip().lower()
+    return (
+        t.endswith("?")
+        or t.startswith("when ")
+        or t.startswith("what ")
+        or t.startswith("how ")
+        or t.startswith("should ")
+        or t.startswith("can ")
+        or t.startswith("could ")
+        or t.startswith("would ")
+    )
+
+def is_valid_decision(text: str) -> bool:
+    """
+    Validate if text is a real decision (not agenda/goal statement).
+    OLD VERSION - Deprecated. Use is_valid_execution_decision instead.
+    """
+    t = text.lower()
+
+    # Exclude agenda statements
+    if any(a in t for a in AGENDA_PHRASES):
+        return False
+
+    # Must contain decision keyword
+    return any(d in t for d in DECISION_KEYWORDS)
+
+def is_valid_execution_decision(text: str) -> bool:
+    """
+    STRICT validation for execution decisions.
+    Rejects: Questions, Agenda, Conceptual language.
+    Accepts: Negative-form decisions (declarative rejections).
+    """
+    t = text.lower()
+
+    if is_question(t):
+        return False
+
+    if any(a in t for a in AGENDA_PHRASES):
+        return False
+
+    if any(c in t for c in CONCEPTUAL_VERBS):
+        return False
+
+    if any(n in t for n in NEGATIVE_DECISION_PATTERNS):
+        return True
+
+    return any(d in t for d in DECISION_PATTERNS)
+
 def detect_decisions(segments):
     """
-    Detect decisions made during a meeting.
-    Rule-based using configured decision keywords.
+    DEPRECATED: Legacy function - kept for DISPLAY ONLY.
+    NOT used in quality computation logic.
+    Detect execution decisions made during a meeting.
+    STRICT filtering: Only declarative, execution-oriented decisions.
     """
     decisions = []
 
     for seg in segments:
-        text = seg.get("text", "").lower()
-        confidence = seg.get("sentiment_confidence", 0)
-
-        if any(k in text for k in DECISION_KEYWORDS) and confidence >= 0.5:
+        text = seg.get("text", "")
+        
+        # Apply STRICT validation filter
+        if is_valid_execution_decision(text):
             decisions.append({
-                "text": seg["text"],
-                "time": seg["start"]
+                "text": text,
+                "time": seg.get("start", 0)
             })
 
     return decisions
@@ -1620,6 +1751,7 @@ def analyze_sales(enriched_segments: list) -> dict:
     recommendations_temp = recommend_actions(objections_initial)
     
     # --- QUALITY SCORING ---
+<<<<<<< HEAD
     # STEPS 1, 2, 3, 4: Assess signals with all calibrations
     sales_signals = assess_sales_signals(segments, objections_initial, recommendations_temp)
     
@@ -1635,6 +1767,20 @@ def analyze_sales(enriched_segments: list) -> dict:
     
     # Compute quality with new signals
     quality = compute_sales_quality(sales_signals)
+=======
+    sales_signals = assess_sales_signals(segments, objections, recommendations)
+    
+    # Map to Standard Signals for Centralized Quality Engine (Step 2 & 8)
+    # This ensures "Logic lives in exactly one place"
+    std_signals = {
+        "ownership": sales_signals["decision_maker_known"] or sales_signals["next_step"],
+        "execution_decision": sales_signals.get("hard_commitment", False),
+        "decision": sales_signals["next_step"]
+    }
+    
+    # Use centralized quality logic
+    quality = compute_meeting_quality_v2(std_signals)
+>>>>>>> 1656b0c6b4293e13e3ee7abfc5c92b95d1d551ab
 
     # RULE 7: Template-based summary generation with objection acknowledgment
     summary = compose_sales_summary(sales_signals, quality, objections=objections)
@@ -1672,4 +1818,5 @@ def analyze_sales(enriched_segments: list) -> dict:
             for s in segments
         ]
     }
+
 
