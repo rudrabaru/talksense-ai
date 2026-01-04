@@ -4,6 +4,7 @@ import SentimentBadge from "../components/SentimentBadge"
 import InsightCard from "../components/InsightCard"
 import TranscriptBlock from "../components/TranscriptBlock"
 import { jsPDF } from "jspdf"
+import logoImage from "../assets/logo/logo.png"
 
 function formatTime(seconds) {
     if (seconds === undefined || seconds === null) return ""
@@ -335,17 +336,19 @@ export default function ResultsPage() {
         <div className="min-h-screen bg-gray-50 animate-fade-in">
             {/* Header - Fixed */}
             <div className="bg-white border-b border-gray-200 sticky top-0 z-20 backdrop-blur-md bg-white/95">
-                <div className="mx-auto px-6 lg:px-12 py-4 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
+                <div className="mx-auto px-6 lg:px-12 xl:px-16 h-16 flex justify-between items-center">
+                    <button
+                        onClick={() => navigate('/')}
+                        className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                    >
                         <div className="relative w-9 h-9">
-                            <svg viewBox="0 0 36 36" className="w-full h-full">
-                                <rect x="2" y="2" width="32" height="32" rx="8" fill="#4F46E5" />
-                                <path d="M12 18h2v-4h-2v4zm4 0h2v-8h-2v8zm4 0h2v-6h-2v6zm4 0h2v-10h-2v10z" fill="white" opacity="0.9" />
-                                <path d="M10 22c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2" stroke="white" strokeWidth="1.5" fill="none" opacity="0.7" />
-                            </svg>
+                            <img src={logoImage} alt="TalkSense AI Logo" className="w-full h-full object-contain" />
                         </div>
-                        <span className="font-bold text-xl tracking-tight text-gray-900">TalkSense</span>
-                    </div>
+                        <span className="font-bold text-xl tracking-tight">
+                            <span style={{ color: '#4F46E5' }}>TalkSense</span>
+                            <span style={{ color: '#14B8A6' }}> AI</span>
+                        </span>
+                    </button>
                     <button
                         onClick={() => navigate('/upload')}
                         className="text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors"
