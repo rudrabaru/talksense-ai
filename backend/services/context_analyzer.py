@@ -31,6 +31,38 @@ DEFER_TERMS = [
     "next quarter", "sometime later"
 ]
 
+# STEP 1: End-of-Call Commitment Keywords
+COMMITMENT_KEYWORDS = [
+    "by friday", "by monday", "by tuesday", "by wednesday", "by thursday",
+    "review", "follow up", "send proposal", "send the proposal",
+    "will send", "will review", "get back to you", "circle back",
+    "yes please do that", "yes please", "that works", "sounds good let's do it",
+    "let's move forward", "let's proceed"
+]
+
+# STEP 2: Budget Alignment Keywords (Buying Signal)
+BUDGET_ALIGNMENT_KEYWORDS = [
+    "within budget", "within our budget", "fits our budget",
+    "fits the budget", "budget works", "affordable"
+]
+
+# STEP 3: Authority Classification Keywords
+SOFT_AUTHORITY_TERMS = [
+    "need to check internally", "check with team", "discuss with team",
+    "run by colleagues", "get input from", "consult with"
+]
+
+HARD_AUTHORITY_RISK_TERMS = [
+    "i'm not the decision maker", "not my decision", "someone else decides",
+    "not authorized", "need approval from", "boss decides"
+]
+
+# STEP 5: Buying Signal Keywords (for context-aware actions)
+BUYING_SIGNAL_KEYWORDS = [
+    "interested", "this looks good", "sounds good", "makes sense",
+    "this is useful", "this helps", "solves our problem", "addresses our need"
+]
+
 def aggregate_sentiment(segments):
     counts = {
         "Positive": 0,
@@ -488,62 +520,99 @@ def compute_meeting_quality(signals, decisions, action_items, tension_points, ex
 def assess_sales_signals(segments, objections, recommendations):
     """
     Extracts binary signals for Sales Quality.
+    STEPS 1, 2, 3, 4 implemented here.
     """
     text_blob = " ".join([s["text"].lower() for s in segments])
     
+    # STEP 1: End-of-Call Commitment Override
+    # Analyze last 20-25% of transcript
+    total_segments = len(segments)
+    end_start_idx = int(total_segments * 0.75)  # Last 25%
+    end_segments = segments[end_start_idx:]
+    
+    end_of_call_commitment = False
+    for seg in end_segments:
+        label = seg.get("sentiment_label", "Neutral")
+        confidence = seg.get("sentiment_confidence", 0)
+        text = seg["text"].lower()
+        
+        # Check for Positive/Neutral sentiment with confidence >= 0.6
+        if (label in ["Positive", "Neutral"]) and confidence >= 0.6:
+            # Check for commitment keywords
+            if any(keyword in text for keyword in COMMITMENT_KEYWORDS):
+                end_of_call_commitment = True
+                break
+    
+    # STEP 2: Budget Alignment as Buying Signal
+    budget_alignment = any(keyword in text_blob for keyword in BUDGET_ALIGNMENT_KEYWORDS)
+    
+    # STEP 3: Authority Classification
+    # Split into soft notes vs hard risks
+    has_soft_authority = any(term in text_blob for term in SOFT_AUTHORITY_TERMS)
+    has_hard_authority_risk = any(term in text_blob for term in HARD_AUTHORITY_RISK_TERMS)
+    
+    # Check if next step and timeline exist
+    next_step_exists = len(recommendations) > 0 or any(t in text_blob for t in ["schedule next", "book a demo", "send the invite"])
+    timeline_exists = any(keyword in text_blob for keyword in COMMITMENT_KEYWORDS[:5])  # Day-specific keywords
+    
+    # Only flag decision_authority_risk if hard risk AND no next step AND no timeline
+    decision_authority_risk = has_hard_authority_risk and not next_step_exists and not timeline_exists
+    shared_decision_making = has_soft_authority and not decision_authority_risk
+    
     # 1. Decision Maker Identified
-    # Heuristic: "I decide", "my budget", "authorized", "decision maker"
     dm_terms = ["i decide", "my budget", "authorization", "sign the contract", "decision maker"]
     decision_maker = any(t in text_blob for t in dm_terms)
     
     # 2. Next Step Agreed
-    # Strong recommendations exist OR explicit agreement
-    next_step = len(recommendations) > 0 or any(t in text_blob for t in ["schedule next", "book a demo", "send the invite"])
-
-    # 2b. Hard Commitment (NEW)
-    # Strict list of booking confirmations
-    HARD_COMMITMENT_TERMS = ["demo booked", "let’s schedule", "calendar invite", "meeting on tuesday"]
+    next_step = next_step_exists
+    
+    # 2b. Hard Commitment
+    HARD_COMMITMENT_TERMS = ["demo booked", "let's schedule", "calendar invite", "meeting on tuesday"]
     hard_commitment = any(t in text_blob for t in HARD_COMMITMENT_TERMS)
-
+    
+    # STEP 1 Override: If end_of_call_commitment detected, upgrade to hard_commitment
+    if end_of_call_commitment and not hard_commitment:
+        hard_commitment = True
+    
     # 3. Disqualification Signal (Deal-Killer)
     no_intent = any(t in text_blob for t in NO_INTENT_TERMS)
     deferred = any(t in text_blob for t in DEFER_TERMS)
     
     # 4. Objection Addressed
-    # If objections existed, were they followed by positive sentiment? 
-    # Simplify: If objections exist but call sentiment is NOT negative -> Managed.
     objection_handled = False
     if objections:
-        # Check sentiment of last 20% of call? 
-        # For now, simplistic: if recommendations exist, we have a plan for them.
+        # If recommendations exist, we have a plan for them
         objection_handled = True
     else:
         # No objections = implicit handling/clean
         objection_handled = True
-        
-    # 4. Value Articulated
-    # Heuristic: "save", "roi", "benefit", "increase", "reduce cost"
-    value_terms = ["save", "roi", "benefit", "increase revenue", "reduce cost", "efficiency"]
-    value_articulated = any(t in text_blob for t in value_terms)
+    
+    # STEP 4: Value Articulated - ONLY explicit buyer acknowledgment
+    # REMOVED: ROI-based inference
+    value_articulated = any(keyword in text_blob for keyword in BUYING_SIGNAL_KEYWORDS)
     
     # 5. Momentum (Not Stalled)
-    # Stalled if "send info" is the ONLY outcome or sentiment is Negative
     stalled = "send info" in text_blob and not next_step
     
     return {
         "decision_maker_known": decision_maker,
         "next_step": next_step,
         "hard_commitment": hard_commitment,
+        "end_of_call_commitment": end_of_call_commitment,  # STEP 1
+        "budget_alignment": budget_alignment,  # STEP 2
+        "shared_decision_making": shared_decision_making,  # STEP 3
+        "decision_authority_risk": decision_authority_risk,  # STEP 3
         "no_intent": no_intent,
         "deferred": deferred,
         "objection_handled": objection_handled,
-        "value_articulated": value_articulated,
+        "value_articulated": value_articulated,  # STEP 4 - Fixed
         "stalled": stalled
     }
 
 def compute_sales_quality(signals):
     """
     Computes Sales Quality Score (0-10).
+    STEPS 1 & 2: Incorporate end-of-call commitment and budget alignment.
     """
     score = 0
     drivers = []
@@ -567,6 +636,16 @@ def compute_sales_quality(signals):
     if signals.get("hard_commitment"):
         score += 2
         drivers.append("Hard commitment locked")
+    
+    # STEP 1: End-of-Call Commitment (strong signal)
+    if signals.get("end_of_call_commitment"):
+        score += 3
+        drivers.append("Strong end-of-call commitment")
+    
+    # STEP 2: Budget Alignment (strong buying signal)
+    if signals.get("budget_alignment"):
+        score += 2
+        drivers.append("Budget alignment confirmed")
         
     if signals["objection_handled"]:
         score += 2
@@ -581,10 +660,13 @@ def compute_sales_quality(signals):
         drivers.append("Momentum maintained")
         
     # --- GUARDRAILS (UPDATED) ---
-    # 1. High Quality = HARD COMMITMENT ONLY
-    if signals.get("hard_commitment"):
+    # STEP 1 Override: End-of-call commitment upgrades to "Strong" (High)
+    if signals.get("end_of_call_commitment") or signals.get("hard_commitment"):
         label = "High"
-        score = max(score, 8) 
+        score = max(score, 8)
+        # Update momentum classification
+        if "Strong end-of-call commitment" in drivers or "Hard commitment locked" in drivers:
+            drivers.append("Momentum: Strong")
     # 2. Medium Quality = Next Step Agreed
     elif signals.get("next_step"):
         label = "Medium"
@@ -1116,23 +1198,65 @@ def detect_decisions(segments):
 # --- SALES MODE HELPERS ---
 
 def overall_call_sentiment(segments):
-    counts = {"Positive": 0, "Neutral": 0, "Negative": 0}
-
-    for seg in segments:
-        if seg["sentiment_confidence"] >= 0.6:
-            label = seg.get("sentiment_label", "Neutral")
-            if label in counts:
-                counts[label] += 1
-
-    if counts["Negative"] > counts["Positive"]:
+    """
+    STEP 6: Reweight end-of-call sentiment.
+    Apply weighted sentiment scoring:
+    - Start segments (first 33%): 1× weight
+    - Middle segments (middle 34%): 1× weight
+    - End segments (last 33%): 2× weight
+    """
+    if not segments:
+        return "neutral"
+    
+    total_segments = len(segments)
+    start_end = total_segments // 3
+    middle_end = 2 * total_segments // 3
+    
+    weighted_positive = 0
+    weighted_neutral = 0
+    weighted_negative = 0
+    total_weight = 0
+    
+    for idx, seg in enumerate(segments):
+        if seg["sentiment_confidence"] < 0.6:
+            continue
+            
+        label = seg.get("sentiment_label", "Neutral")
+        
+        # Determine weight based on position
+        if idx >= middle_end:
+            weight = 2.0  # End segments: 2x weight
+        else:
+            weight = 1.0  # Start and middle segments: 1x weight
+        
+        total_weight += weight
+        
+        if label == "Positive":
+            weighted_positive += weight
+        elif label == "Negative":
+            weighted_negative += weight
+        elif label == "Neutral":
+            weighted_neutral += weight
+    
+    if total_weight == 0:
+        return "neutral"
+    
+    # Calculate weighted percentages
+    pos_ratio = weighted_positive / total_weight
+    neg_ratio = weighted_negative / total_weight
+    
+    if neg_ratio > pos_ratio:
         return "negative"
-    if counts["Positive"] > counts["Negative"]:
+    if pos_ratio > neg_ratio:
         return "positive"
-    if counts["Positive"] > 0 and counts["Negative"] > 0:
+    if pos_ratio > 0 and neg_ratio > 0:
         return "mixed"
     return "neutral"
 
-def detect_objections(segments):
+def detect_objections(segments, budget_alignment=False):
+    """
+    STEP 2: Suppress pricing objections when budget alignment is detected.
+    """
     objections = []
 
     for seg in segments:
@@ -1143,6 +1267,10 @@ def detect_objections(segments):
         text = seg["text"].lower()
 
         for obj_type, keywords in OBJECTION_KEYWORDS.items():
+            # STEP 2: Skip pricing objections if budget alignment detected
+            if obj_type == "Pricing" and budget_alignment:
+                continue
+                
             if any(k in text for k in keywords):
                 objections.append({
                     "type": obj_type,
@@ -1152,46 +1280,226 @@ def detect_objections(segments):
 
     return objections
 
-def recommend_actions(objections):
-    actions = []
+def is_objection_resolved(objection, segments):
+    """
+    RULE 3: Pricing Objection Resolution Guard.
+    Only mark objection as resolved if buyer sentiment improves after it.
+    """
+    objection_time = objection["time"]
+    
+    # Find segments after the objection
+    later_segments = [s for s in segments if s["start"] > objection_time]
+    
+    if not later_segments:
+        return False
+    
+    # Check next 3-5 segments for sentiment improvement
+    check_window = later_segments[:5]
+    
+    # Count positive/neutral responses after objection
+    positive_count = sum(1 for s in check_window 
+                        if s.get("sentiment_label") in ["Positive", "Neutral"] 
+                        and s.get("sentiment_confidence", 0) >= 0.6)
+    
+    # Also check for explicit acceptance phrases
+    acceptance_phrases = [
+        "that makes sense", "okay got it", "understood", 
+        "fair enough", "that works", "sounds reasonable",
+        "i see", "makes sense", "good to know"
+    ]
+    
+    for seg in check_window:
+        text = seg["text"].lower()
+        if any(phrase in text for phrase in acceptance_phrases):
+            return True
+    
+    # Resolved if majority of follow-up is positive/neutral
+    return positive_count >= len(check_window) / 2
 
+def classify_objections(objections, segments):
+    """
+    Classify objections as resolved or unresolved.
+    Returns tuple: (resolved_objections, unresolved_objections)
+    """
+    resolved = []
+    unresolved = []
+    
+    for obj in objections:
+        if obj["type"] == "Pricing":
+            # Apply resolution guard for pricing objections
+            if is_objection_resolved(obj, segments):
+                resolved.append(obj)
+            else:
+                unresolved.append(obj)
+        else:
+            # Other objections use simpler logic
+            unresolved.append(obj)
+    
+    return resolved, unresolved
+
+def _determine_call_stage(signals):
+    """
+    Determine call stage based on signals.
+    Returns: 'strong', 'moderate', 'ambiguous', or 'weak'
+    """
+    if signals.get("no_intent") or signals.get("deferred"):
+        return "weak"
+    
+    if signals.get("end_of_call_commitment") or signals.get("hard_commitment"):
+        return "strong"
+    
+    if signals.get("next_step") and signals.get("value_articulated"):
+        return "moderate"
+    
+    return "ambiguous"
+
+def _fallback_actions(objections):
+    """Fallback action generation when no signals available."""
+    actions = []
+    
     if any(o["type"] == "Pricing" for o in objections):
         actions.append("Send pricing clarification")
-
+    
     if any(o["type"] == "Authority" for o in objections):
         actions.append("Follow up after internal discussion")
+    
+    return actions if actions else ["Schedule follow-up call"]
 
-    # Fallback/Generic
-    if not actions:
-        actions.append("Schedule follow-up call")
-
-    return list(set(actions))
-
-def compose_sales_summary(signals, quality):
+def recommend_actions(objections, signals=None, segments=None):
     """
-    Generates a sales-specific executive summary.
-    Enforces explicit mention of disqualification if Low quality.
+    RULE 6: Stage-based follow-up action mapping.
+    Actions must reflect call stage and never over-promise.
     """
-    # 1. Disqualification Override
+    actions = []
+    
+    if not signals:
+        return _fallback_actions(objections)
+    
+    # Determine call stage
+    call_stage = _determine_call_stage(signals)
+    text_blob = signals.get("_text_blob", "")
+    
+    # STAGE 1: Strong Progress
+    if call_stage == "strong":
+        if "proposal" in text_blob or "send proposal" in text_blob:
+            actions.append("Send proposal")
+        
+        if any(keyword in text_blob for keyword in ["review", "by friday", "by monday", "by tuesday", "by wednesday", "by thursday"]):
+            actions.append("Follow up on agreed deadline")
+        
+        # Only suggest onboarding if buying signal exists
+        if signals.get("budget_alignment") or signals.get("value_articulated"):
+            if not actions:
+                actions.append("Prepare onboarding details")
+        
+        # If still no actions but strong commitment, add generic strong action
+        if not actions:
+            actions.append("Follow up on agreed deadline")
+    
+    # STAGE 2: Moderate Progress
+    elif call_stage == "moderate":
+        # Check for unresolved pricing objections
+        if segments and any(o["type"] == "Pricing" for o in objections):
+            resolved, unresolved = classify_objections(objections, segments)
+            if unresolved:
+                actions.append("Share proposal and pricing details")
+            else:
+                actions.append("Send proposal for review")
+        else:
+            actions.append("Send proposal for review")
+        
+        # Address specific objections
+        objection_types = [o["type"] for o in objections]
+        if "Integration" in objection_types:
+            actions.append("Address integration concerns")
+        if "Timeline" in objection_types:
+            actions.append("Clarify implementation timeline")
+    
+    # STAGE 3: Ambiguous / Early
+    elif call_stage == "ambiguous":
+        actions.append("Send summary and pricing for internal review")
+        
+        if signals.get("shared_decision_making"):
+            actions.append("Schedule stakeholder meeting")
+        
+        # If there are objections, address them
+        if objections:
+            actions.append("Address raised concerns in follow-up")
+    
+    # STAGE 4: Weak / Deferred
+    else:  # weak
+        if signals.get("deferred"):
+            actions.append("Re-engage later in the year")
+        else:
+            actions.append("Re-qualify opportunity")
+    
+    # CRITICAL GUARDRAIL: Never suggest onboarding for weak/ambiguous calls
+    if call_stage in ["ambiguous", "weak"]:
+        actions = [a for a in actions if "onboarding" not in a.lower() and "prepare" not in a.lower()]
+    
+    # GUARDRAIL: Never suggest generic follow-up for strong calls
+    if call_stage == "strong":
+        actions = [a for a in actions if "schedule follow-up" not in a.lower()]
+    
+    return list(set(actions)) if actions else ["Schedule follow-up call"]
+
+def compose_sales_summary(signals, quality, objections=None):
+    """
+    RULE 7: Template-based executive summary selection.
+    Summaries are confident when justified, conservative when necessary.
+    Weak calls must acknowledge objections.
+    """
+    # Determine call stage for conservative handling
+    call_stage = _determine_call_stage(signals)
+    
+    # Template 4: Disqualification Override
     if quality["label"] == "Low":
         if signals.get("no_intent"):
-             return "The prospect indicated no plans to switch or lack of interest. The opportunity is currently not active."
+            return "The prospect indicated no plans to switch or lack of interest. The opportunity is currently not active."
         if signals.get("deferred"):
-             return "The prospect signaled a deferral to a later timeline. The opportunity is currently paused."
-        # Fallback Low
-        return "The discussion concluded without clear next steps or momentum."
-
-    # 2. High/Medium Summaries
-    if quality["label"] == "High":
-        return "Strong progress made with a hard commitment to next steps. The opportunity is advancing."
+            return "The prospect signaled a deferral to a later timeline. The opportunity is currently paused."
+        
+        # Check for objections in weak calls
+        if objections and len(objections) > 0:
+            objection_types = list(set([o["type"] for o in objections]))
+            if len(objection_types) > 1:
+                return f"Multiple concerns raised ({', '.join(objection_types).lower()}) without clear resolution. Opportunity requires re-qualification."
+            else:
+                return f"Concerns raised regarding {objection_types[0].lower()} without clear path forward. Follow-up needed to assess viability."
+        
+        # Fallback Low - Template 3: Early Exploration
+        return "Early exploration phase. Buyer is gathering information. Follow-up needed to assess fit and timeline."
     
-    # Medium
-    return "The call generated soft momentum, but requires firmer commitment to next steps."
+    # Template 1: Strong Progress
+    # Condition: Proposal agreed AND review timeline exists
+    if signals.get("end_of_call_commitment") or signals.get("hard_commitment"):
+        text_blob = signals.get("_text_blob", "")
+        has_proposal = "proposal" in text_blob or "send proposal" in text_blob
+        has_timeline = any(keyword in text_blob for keyword in ["review", "by friday", "by monday", "by tuesday", "by wednesday", "by thursday"])
+        
+        if has_proposal and has_timeline:
+            return "Strong progress made with proposal agreed and review scheduled. Clear buying signals detected with confirmed next steps."
+        elif has_proposal or has_timeline:
+            return "Strong progress made with clear commitment to next steps. The opportunity is advancing with confirmed actions."
+        else:
+            return "Strong progress made with hard commitment to next steps. The opportunity is advancing."
+    
+    # Template 2: Moderate Progress
+    # Condition: Interest shown AND next step exists BUT no explicit deadline
+    if quality["label"] == "Medium":
+        if signals.get("value_articulated") and signals.get("next_step"):
+            return "Moderate progress made with buyer interest confirmed. Next steps identified but require firmer commitment and timeline."
+        else:
+            # Conservative for moderate without clear signals
+            return "Discovery call completed with some interest shown. Requires follow-up to establish clear next steps and timeline."
+    
+    # Fallback - Conservative
+    return "The discussion concluded without clear next steps or momentum. Additional qualification needed."
 
 def generate_sales_insights(objections, signals, quality):
     """
     Generates structured key insights for sales calls.
-    Similar structure to meeting insights but sales-focused.
+    STEPS 3 & 4: Authority classification and value gap removal.
     """
     insights = []
     
@@ -1204,10 +1512,17 @@ def generate_sales_insights(objections, signals, quality):
         return insights[:3]  # Return early for disqualified leads
     
     # 2. Hard Commitment (Positive Momentum)
-    if signals.get("hard_commitment"):
+    if signals.get("hard_commitment") or signals.get("end_of_call_commitment"):
         insights.append({
             "type": "Positive Momentum",
             "text": "Hard commitment secured with confirmed next steps. Strong buying signal detected."
+        })
+    
+    # 2b. Budget Alignment (STEP 2)
+    if signals.get("budget_alignment"):
+        insights.append({
+            "type": "Positive Momentum",
+            "text": "Budget alignment confirmed. Pricing fit established."
         })
     
     # 3. Objection Handling
@@ -1229,17 +1544,14 @@ def generate_sales_insights(objections, signals, quality):
                 "text": f"Unresolved concerns regarding {', '.join(objection_types)} require follow-up."
             })
     
-    # 4. Value Articulation
+    # STEP 4: Value Articulation - REMOVED penalty for missing ROI
+    # Only flag positive when explicitly detected
     if signals.get("value_articulated"):
         insights.append({
             "type": "Positive Momentum",
-            "text": "Value proposition clearly communicated with ROI/benefit discussion."
+            "text": "Buyer acknowledged value and usefulness of solution."
         })
-    else:
-        insights.append({
-            "type": "Ownership Gap",
-            "text": "Value proposition not clearly established. Consider stronger ROI messaging in follow-up."
-        })
+    # DO NOT flag missing value proposition as a gap
     
     # 5. Next Steps
     if signals.get("next_step") and not signals.get("hard_commitment"):
@@ -1253,10 +1565,23 @@ def generate_sales_insights(objections, signals, quality):
             "text": "No clear next steps defined. Follow-up strategy needed to maintain momentum."
         })
     
-    # 6. Decision Maker
-    if not signals.get("decision_maker_known"):
+    # STEP 3: Decision Maker - Distinguish between shared decision-making and authority risk
+    if signals.get("decision_authority_risk"):
+        # True authority risk: hard blocker
         insights.append({
             "type": "Ownership Gap",
+            "text": "Decision authority unclear and no next steps defined. May need to engage decision maker."
+        })
+    elif signals.get("shared_decision_making"):
+        # Soft note: not a blocker
+        insights.append({
+            "type": "Decision Ambiguity",
+            "text": "Shared decision-making process identified. Stakeholder alignment may be needed."
+        })
+    elif not signals.get("decision_maker_known"):
+        # Neutral: just note it
+        insights.append({
+            "type": "Decision Ambiguity",
             "text": "Decision maker not clearly identified. May need to engage additional stakeholders."
         })
     
@@ -1269,7 +1594,7 @@ def generate_sales_insights(objections, signals, quality):
 def analyze_sales(enriched_segments: list) -> dict:
     """
     Main entry point for Sales Mode analysis.
-    Requested: Overall Sentiment, Objections, Recommended Actions, Transcript
+    All 7 calibration steps integrated here.
     """
     if not enriched_segments:
         return {
@@ -1285,18 +1610,36 @@ def analyze_sales(enriched_segments: list) -> dict:
 
     segments = sorted(enriched_segments, key=lambda x: x["start"])
 
+    # STEP 6: Weighted sentiment
     call_sentiment = overall_call_sentiment(segments)
-    objections = detect_objections(segments)
-    recommendations = recommend_actions(objections)
+    
+    # Initial objection detection (will be refined after signals)
+    objections_initial = detect_objections(segments)
+    
+    # Temporary recommendations for signal assessment
+    recommendations_temp = recommend_actions(objections_initial)
     
     # --- QUALITY SCORING ---
-    sales_signals = assess_sales_signals(segments, objections, recommendations)
+    # STEPS 1, 2, 3, 4: Assess signals with all calibrations
+    sales_signals = assess_sales_signals(segments, objections_initial, recommendations_temp)
+    
+    # Add text_blob to signals for template selection (STEP 7) and action generation (STEP 5)
+    text_blob = " ".join([s["text"].lower() for s in segments])
+    sales_signals["_text_blob"] = text_blob
+    
+    # STEP 2: Re-detect objections with budget_alignment suppression
+    objections = detect_objections(segments, budget_alignment=sales_signals.get("budget_alignment", False))
+    
+    # RULE 6: Context-aware action generation with stage-based mapping
+    recommendations = recommend_actions(objections, signals=sales_signals, segments=segments)
+    
+    # Compute quality with new signals
     quality = compute_sales_quality(sales_signals)
 
-    # --- SUMMARY GENERATION ---
-    summary = compose_sales_summary(sales_signals, quality)
+    # RULE 7: Template-based summary generation with objection acknowledgment
+    summary = compose_sales_summary(sales_signals, quality, objections=objections)
     
-    # --- KEY INSIGHTS GENERATION (NEW) ---
+    # STEPS 3 & 4: Generate insights with authority classification and value gap removal
     key_insights = generate_sales_insights(objections, sales_signals, quality)
     
     # Calculate sentiment score from call_sentiment label
@@ -1314,7 +1657,7 @@ def analyze_sales(enriched_segments: list) -> dict:
         "summary": summary,
         "overall_call_sentiment": call_sentiment,
         "sentiment_score": sentiment_score,
-        "key_insights": key_insights,  # NEW: Structured insights
+        "key_insights": key_insights,
         "objections": objections,
         "recommended_actions": recommendations,
         "transcript": [

@@ -118,13 +118,6 @@ export default function UploadPage() {
 
                     {/* Left Column - Info */}
                     <div className="lg:pr-8 animate-slide-up">
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-sm font-medium mb-6 border border-indigo-100">
-                            <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-                            </span>
-                            Step 1 of 3
-                        </div>
 
                         <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6 tracking-tight">
                             Upload your conversation
