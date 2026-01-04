@@ -44,3 +44,4 @@ def load_keywords():
 
 # Singleton-like access
 KEYWORDS_CONFIG = load_keywords()
+

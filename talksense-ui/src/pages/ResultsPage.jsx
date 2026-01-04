@@ -12,6 +12,30 @@ function formatTime(seconds) {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
+function selectPrimaryDecision(decisions) {
+    if (!decisions || decisions.length === 0) return null
+
+    const EXECUTION_DECISION_HINTS = [
+        "lock",
+        "finalize",
+        "deploy",
+        "release",
+        "ship",
+        "go live",
+        "launch",
+        "tentative"
+    ]
+
+    // Prefer execution-locking decisions
+    const executionDecision = decisions.find(d =>
+        EXECUTION_DECISION_HINTS.some(h =>
+            d.text.toLowerCase().includes(h)
+        )
+    )
+
+    return executionDecision || decisions[0]
+}
+
 export default function ResultsPage() {
     const location = useLocation()
     const navigate = useNavigate()
@@ -24,7 +48,8 @@ export default function ResultsPage() {
         sentimentLabel: "Neutral",
         quality: { label: "Medium", score: 5 },
         keyInsights: [],
-        actionPlan: [],
+        decisions: [],
+        actions: [],
         transcript: []
     })
 
@@ -35,18 +60,32 @@ export default function ResultsPage() {
         if (analysisData) {
             const mode = analysisData.mode || "meeting"
 
-            // Build action plan based on mode
-            let actionPlan = []
+            // Build data based on mode
+            let decisions = []
+            let actions = []
+
             if (mode === "sales") {
-                // Sales mode: combine objections and recommendations
-                const objections = (analysisData.insights?.objections || []).map(o => `Objection: ${o.text} (${o.type})`)
-                const actions = (analysisData.insights?.recommended_actions || []).map(a => `Recommendation: ${a}`)
-                actionPlan = [...objections, ...actions]
+                // Sales mode: objections as decisions, recommendations as actions
+                decisions = (analysisData.insights?.objections || []).map(o => `Objection: ${o.text} (${o.type})`)
+                actions = (analysisData.insights?.recommended_actions || []).map(a => `Recommendation: ${a}`)
             } else {
-                // Meeting mode: combine decisions and action items
-                const decisions = (analysisData.insights?.decisions || []).map(d => `Decision: ${d.text}`)
-                const actions = (analysisData.insights?.action_items || []).map(a => `Action: ${a.task}${a.owner && a.owner !== "Unassigned" ? ` (@${a.owner})` : ""}`)
-                actionPlan = [...decisions, ...actions]
+                // Meeting mode: keep decisions and actions SEPARATE
+                // Select primary (execution-locking) decision
+                const rawDecisions = analysisData.insights?.decisions || []
+                const primaryDecision = selectPrimaryDecision(rawDecisions)
+
+                decisions = primaryDecision
+                    ? [`Decision: ${primaryDecision.text}`]
+                    : []
+
+                actions = (analysisData.insights?.action_items || [])
+                    .filter(a => {
+                        const t = a.task.toLowerCase()
+                        // Block ownership-only noise
+                        if (t.includes("take ownership")) return false
+                        return true
+                    })
+                    .map(a => `Action: ${a.task}`)
             }
 
             // Transform backend response to match UI expectations
@@ -62,7 +101,8 @@ export default function ResultsPage() {
                 // Legacy fallback for old API responses
                 quality: analysisData.insights?.quality || analysisData.insights?.meeting_quality || { label: "Medium", score: 5 },
                 keyInsights: analysisData.insights?.key_insights || [],
-                actionPlan: actionPlan,
+                decisions: decisions,
+                actions: actions,
                 transcript: analysisData.transcript?.segments?.map(seg => ({
                     time: formatTime(seg.start),
                     text: seg.text || "",
@@ -171,12 +211,26 @@ export default function ResultsPage() {
             })
         }
 
-        // Action Plan
-        if (data.actionPlan.length > 0) {
-            addSectionHeader("Action Plan", [16, 185, 129])
-            data.actionPlan.forEach((action, index) => {
-                addText(`${index + 1}. ${action}`, 10, false)
-            })
+        // Decisions & Action Plan
+        if (data.decisions.length > 0 || data.actions.length > 0) {
+            addSectionHeader("Decisions & Action Plan", [16, 185, 129])
+
+            if (data.decisions.length > 0) {
+                addText("Decisions:", 10, true)
+                data.decisions.forEach((d, i) => {
+                    addText(`${i + 1}. ${d}`, 10)
+                })
+            } else if (data.actions.length === 0) {
+                addText("No explicit decisions were finalized.", 10, false, [100, 100, 100])
+            }
+
+            if (data.actions.length > 0) {
+                yPosition += 4
+                addText("Action Plan:", 10, true)
+                data.actions.forEach((a, i) => {
+                    addText(`${i + 1}. ${a}`, 10)
+                })
+            }
         }
 
         // Transcript
@@ -332,6 +386,7 @@ export default function ResultsPage() {
                             <span className={`w-2 h-2 rounded-full ${modeDot}`}></span>
                             {modeLabel}
                         </span>
+
                         <SentimentBadge score={data.sentimentScore} label={data.sentimentLabel} />
                     </div>
                 </div>
@@ -400,24 +455,56 @@ export default function ResultsPage() {
                             </div>
                         )}
 
-                        {/* Action Plan */}
-                        {data.actionPlan.length > 0 && (
+                        {/* Decisions & Action Plan */}
+                        {(data.decisions.length > 0 || data.actions.length > 0) && (
                             <div>
                                 <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                                     <svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                                     </svg>
-                                    {isSales ? "Objections & Follow-Up Actions" : "Decisions & Action Items"}
+                                    Decisions & Action Plan
                                 </h2>
-                                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-                                    <ul className="space-y-3">
-                                        {data.actionPlan.map((item, i) => (
-                                            <li key={i} className="flex items-start gap-3">
-                                                <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></div>
-                                                <span className="text-gray-700 text-sm">{item}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
+
+                                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-4">
+
+                                    {data.decisions.length > 0 ? (
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">
+                                                Decisions
+                                            </h3>
+                                            <ul className="space-y-2">
+                                                {data.decisions.map((d, i) => (
+                                                    <li key={i} className="flex items-start gap-3">
+                                                        <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-indigo-400 flex-shrink-0"></div>
+                                                        <span className="text-sm text-gray-700">{d}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ) : (
+                                        data.actions.length === 0 && (
+                                            <div className="text-sm text-gray-500 italic">
+                                                No explicit decisions were finalized.
+                                            </div>
+                                        )
+                                    )}
+
+                                    {data.actions.length > 0 && (
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-gray-500 uppercase mb-2">
+                                                Action Plan
+                                            </h3>
+                                            <ul className="space-y-2">
+                                                {data.actions.map((a, i) => (
+                                                    <li key={i} className="flex items-start gap-3">
+                                                        <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0"></div>
+                                                        <span className="text-sm text-gray-700">{a}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+
                                 </div>
                             </div>
                         )}
