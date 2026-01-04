@@ -14,7 +14,17 @@ export default function UploadPage() {
 
     const handleFileChange = (e) => {
         if (e.target.files && e.target.files[0]) {
-            setFile(e.target.files[0])
+            const selectedFile = e.target.files[0]
+
+            // File size validation (50MB max)
+            const maxSize = 50 * 1024 * 1024 // 50MB in bytes
+            if (selectedFile.size > maxSize) {
+                setError(`File size exceeds 50MB limit. Please select a smaller file.`)
+                setFile(null)
+                return
+            }
+
+            setFile(selectedFile)
             setError(null)
             setSuccess(false)
         }
@@ -52,7 +62,8 @@ export default function UploadPage() {
             }, 800)
 
         } catch (err) {
-            setError(err.message || "Analysis failed. Please try again.")
+            const errorMessage = err.message || "Analysis failed"
+            setError(`${errorMessage}. Please check your connection and try again.`)
             setLoading(false)
             setProgress("")
         }

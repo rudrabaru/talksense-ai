@@ -28,6 +28,8 @@ export async function analyzeAudio(file, mode = 'meeting') {
 
 /**
  * Load demo data (mock for now, can be replaced with backend endpoint)
+ * NOTE: This provides offline demo data for testing when backend is unavailable.
+ * Data structure mirrors actual /analyze response for consistency.
  * @param {string} mode - Analysis mode ('meeting' or 'sales')
  * @returns {Promise<Object>} Demo analysis results
  */

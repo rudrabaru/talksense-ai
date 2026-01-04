@@ -75,10 +75,10 @@ export default function HomePage() {
                                     </svg>
                                 </button>
                                 <button
-                                    onClick={() => navigate('/results')}
+                                    onClick={() => navigate('/upload')}
                                     className="inline-flex items-center justify-center px-8 py-4 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-smooth hover-lift active:scale-95"
                                 >
-                                    View Demo
+                                    Try Demo
                                 </button>
                             </div>
                         </div>

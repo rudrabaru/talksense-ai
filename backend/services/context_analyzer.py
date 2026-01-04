@@ -1198,8 +1198,6 @@ def analyze_meeting(nlp_input: dict) -> dict:
     meeting_quality = compute_meeting_quality_v2(signals)
     
     # 🔍 STEP 6: SANITY CHECK (Uncomment to debug)
-    # import logging
-    # logger = logging.getLogger(__name__)
     # logger.info(f"🔍 QUALITY DEBUG: signals={signals}, meeting_quality={meeting_quality}")
     # logger.info(f"🔍 GUARANTEE: ownership={signals.get('ownership')}, execution={signals.get('execution_decision')}")
     # logger.info(f"🔍 RESULT: If ownership OR execution is True → Quality MUST be Medium or High")
