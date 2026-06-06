@@ -10,8 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@ricky0123/vad-web": "^0.0.30",
     "html2canvas": "^1.4.1",
     "jspdf": "^3.0.4",
+    "onnxruntime-web": "1.19.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.11.0"
@@ -28,7 +30,8 @@
     "globals": "^16.5.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
-    "vite": "npm:rolldown-vite@7.2.5"
+    "vite": "npm:rolldown-vite@7.2.5",
+    "vite-plugin-static-copy": "^4.1.1"
   },
   "overrides": {
     "vite": "npm:rolldown-vite@7.2.5"

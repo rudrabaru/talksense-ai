@@ -1,10 +1,16 @@
-from fastapi import FastAPI, UploadFile, File, Form
+# pyrefly: ignore [missing-import]
+from fastapi import FastAPI, UploadFile, File, Form, WebSocket
+# pyrefly: ignore [missing-import]
 from fastapi.responses import JSONResponse
+# pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
+
+# pyrefly: ignore [missing-import]
 from starlette.concurrency import run_in_threadpool
 import os
 import shutil
 import sys
+import asyncio
 
 # Add the current directory to sys.path to allow imports of 'services'
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -27,7 +33,7 @@ app.add_middleware(
     allow_origins=["*"],  # Allow all origins (for hackathon/demo)
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=[" *"],
+    allow_headers=["*"],
 )
 
 nlp_engine = NLPEngine()
@@ -43,6 +49,52 @@ def health_check():
         dict: Status message indicating backend is running
     """
     return {"status": "TalkSense AI backend running"}
+
+@app.websocket("/ws/transcript")
+async def websocket_transcript(websocket: WebSocket):
+    """
+    WebSocket endpoint for real-time audio streaming.
+
+    Day 1: Sends initial greeting messages (Hello, World, Testing).
+    Day 3: Receives binary audio chunks from the browser, logs their size,
+           and sends back chunk_ack acknowledgments.
+
+    Flow: Browser 🎙 → WebSocket 📡 → FastAPI 🖥
+    """
+    await websocket.accept()
+    print("Client connected")
+
+    try:
+        # Day 1: Send initial greeting messages
+        messages = ["Hello", "World", "Testing"]
+        for msg in messages:
+            await websocket.send_json({"text": msg})
+            await asyncio.sleep(1)
+
+        # Day 3: Receive binary audio chunks continuously
+        chunk_count = 0
+        total_bytes = 0
+        while True:
+            audio_chunk = await websocket.receive_bytes()
+            chunk_count += 1
+            total_bytes += len(audio_chunk)
+
+            print(
+                f"Received chunk #{chunk_count}: "
+                f"{len(audio_chunk)} bytes "
+                f"(total: {total_bytes / 1024:.1f} KB)"
+            )
+
+            # Send acknowledgment back to frontend
+            await websocket.send_json({
+                "type": "chunk_ack",
+                "chunk": chunk_count,
+                "size": len(audio_chunk),
+            })
+
+    except Exception as e:
+        print(f"Disconnected: {e}")
+        print(f"Session summary: {chunk_count} chunks, {total_bytes / 1024:.1f} KB total")
 
 @app.post("/analyze")
 async def analyze_audio(
