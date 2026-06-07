@@ -47,8 +47,9 @@ Transaction ownership rules (Approved CRUD Refactor Design):
 import logging
 import uuid
 from datetime import datetime, timezone
+from typing import cast
 
-from sqlalchemy import select, update
+from sqlalchemy import select, update, CursorResult
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -347,10 +348,10 @@ async def save_transcript_segments(
     rows = [
         DBTranscriptSegment(
             session_id=sid,
-            speaker_id=seg.get("speaker_id"),
-            start_time=seg["start_time"],
-            end_time=seg["end_time"],
-            text=seg["text"],
+            speaker_id=seg.get("speaker", seg.get("speaker_id")),
+            start_time=seg.get("start", seg.get("start_time", 0.0)),
+            end_time=seg.get("end", seg.get("end_time", 0.0)),
+            text=seg.get("text", ""),
             sentiment=seg.get("sentiment"),
             sentiment_label=seg.get("sentiment_label"),
         )
@@ -444,20 +445,23 @@ async def save_alerts_batch(
     sid = uuid.UUID(session_id)
     rows = []
     for alert in alerts:
-        # Normalise timestamp: accept ISO string, datetime object, or None
+        # Normalise timestamp: accept epoch float, ISO string, datetime object, or None
         ts = alert.get("timestamp")
-        if isinstance(ts, str):
+        if isinstance(ts, (float, int)):
+            ts = datetime.fromtimestamp(ts, tz=timezone.utc)
+        elif isinstance(ts, str):
             ts = datetime.fromisoformat(ts)
-        if ts is None:
+        elif ts is None:
             ts = datetime.now(tz=timezone.utc)
+            
         if ts.tzinfo is None:
             ts = ts.replace(tzinfo=timezone.utc)
 
         rows.append(DBAlert(
             session_id=sid,
-            type=alert.get("type"),
-            severity=alert["severity"],
-            message=alert["message"],
+            type=alert.get("alert_type", alert.get("type")),
+            severity=alert.get("level", alert.get("severity", "info")),
+            message=alert.get("message", ""),
             timestamp=ts,
         ))
 
@@ -613,7 +617,7 @@ async def recover_stale_sessions(db: AsyncSession) -> int:
     )
     result = await db.execute(stmt)
     await db.commit()
-    affected = result.rowcount
+    affected = cast(CursorResult, result).rowcount
     if affected:
         logger.warning(
             "DB — startup recovery: %d stale session(s) marked as interrupted",

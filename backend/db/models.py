@@ -21,6 +21,7 @@ Design rules (from .agent/ARCHITECTURE.md):
     - No migration tooling (Alembic deferred) — tables are created via
       Base.metadata.create_all() inside the lifespan startup hook in main.py
 """
+from datetime import datetime
 import uuid as _uuid_mod
 
 from sqlalchemy import (
@@ -60,7 +61,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at: Mapped[DateTime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
@@ -106,7 +107,7 @@ class Client(Base):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     industry: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    created_at: Mapped[DateTime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
@@ -167,10 +168,10 @@ class Session(Base):
         String(50), nullable=False                # "meeting" | "sales" | "interview"
     )
     title: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    started_at: Mapped[DateTime] = mapped_column(
+    started_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    ended_at: Mapped[DateTime | None] = mapped_column(
+    ended_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     duration: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -296,7 +297,7 @@ class SessionMetric(Base):
     metric_value: Mapped[dict | list | int | float | str] = mapped_column(
         JSONB, nullable=False
     )
-    timestamp: Mapped[DateTime] = mapped_column(
+    timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
@@ -345,7 +346,7 @@ class AnalysisResult(Base):
     health_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     report_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    created_at: Mapped[DateTime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
@@ -392,7 +393,7 @@ class Alert(Base):
         String(50), nullable=False               # "critical" | "warning" | "info"
     )
     message: Mapped[str] = mapped_column(Text, nullable=False)
-    timestamp: Mapped[DateTime] = mapped_column(
+    timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
 
@@ -438,7 +439,7 @@ class ClientSnapshot(Base):
         ForeignKey("clients.id", ondelete="CASCADE"),
         nullable=False,
     )
-    snapshot_date: Mapped[DateTime] = mapped_column(
+    snapshot_date: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -447,7 +448,7 @@ class ClientSnapshot(Base):
         String(50), nullable=True               # "improving" | "stable" | "declining"
     )
     meetings_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    last_meeting_date: Mapped[DateTime | None] = mapped_column(
+    last_meeting_date: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     common_objections: Mapped[list | None] = mapped_column(
