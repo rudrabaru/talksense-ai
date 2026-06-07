@@ -1,0 +1,13 @@
+{
+  "pythonVersion": "3.12",
+  "venvPath": ".",
+  "venv": "venv",
+  "include": ["."],
+  "extraPaths": ["."],
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": ["."]
+    }
+  ]
+}
