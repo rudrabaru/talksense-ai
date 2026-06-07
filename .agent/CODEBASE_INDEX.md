@@ -90,3 +90,28 @@ This index is optimized for AI context loading and rapid codebase onboarding.
   - [deprecated_docs/](file:///e:/Work/SCET%20Hackathon/talksense-ai/archive/deprecated_docs/): Holds legacy meeting/sales logic simplification plans and surgical fix guides.
   - [old_plans/](file:///e:/Work/SCET%20Hackathon/talksense-ai/archive/old_plans/): Holds legacy v3 agent guides and frozen signals strategies.
 - **Owner System**: Archive Management.
+
+### .agent/
+- **Purpose**: Persistent context, architecture rules, build stages, and specialized agent directives.
+- **Key Files**:
+  - [API_CONTRACT.md](file:///e:/Work/SCET%20Hackathon/talksense-ai/.agent/API_CONTRACT.md): Single source of truth for all API endpoints and payloads.
+  - [TEAM_ASSIGNMENTS.md](file:///e:/Work/SCET%20Hackathon/talksense-ai/.agent/TEAM_ASSIGNMENTS.md): Directory ownership and merge conflict prevention rules.
+  - [DEVELOPMENT_RULES.md](file:///e:/Work/SCET%20Hackathon/talksense-ai/.agent/DEVELOPMENT_RULES.md): Git branch strategies, commit naming, and AI agent instructions.
+  - [DECISION_LOG.md](file:///e:/Work/SCET%20Hackathon/talksense-ai/.agent/DECISION_LOG.md): Architectural decision history and project memory.
+  - [FEATURE_TRACKER.md](file:///e:/Work/SCET%20Hackathon/talksense-ai/.agent/FEATURE_TRACKER.md): Completion status, dependencies, and blocked/planned/completed features tracking.
+  - [TESTING_CHECKLIST.md](file:///e:/Work/SCET%20Hackathon/talksense-ai/.agent/TESTING_CHECKLIST.md): Quality assurance criteria, unit/integration test rules, and manual checks.
+  - [RELEASE_CHECKLIST.md](file:///e:/Work/SCET%20Hackathon/talksense-ai/.agent/RELEASE_CHECKLIST.md): Production checklist, environment audits, and security checkpoints.
+  - [DAILY_STANDUP.md](file:///e:/Work/SCET%20Hackathon/talksense-ai/.agent/DAILY_STANDUP.md): Daily team standup logs, updates, blockers, and project health metrics.
+  - [SKILLS.md](file:///e:/Work/SCET%20Hackathon/talksense-ai/.agent/SKILLS.md): Full project overview, tech stack, and conventions.
+  - [ARCHITECTURE.md](file:///e:/Work/SCET%20Hackathon/talksense-ai/.agent/ARCHITECTURE.md): Locked architectural decisions and matrices.
+  - [PROJECT_STATUS.md](file:///e:/Work/SCET%20Hackathon/talksense-ai/.agent/PROJECT_STATUS.md): Build stages status tracking.
+  - [CLEANUP_AUDIT.md](file:///e:/Work/SCET%20Hackathon/talksense-ai/.agent/CLEANUP_AUDIT.md): Clean-up recommendation records.
+- **Owner System**: Agent System / DevOps Context.
+
+
+
+
+
+
+
+
