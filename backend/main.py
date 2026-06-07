@@ -68,45 +68,81 @@ async def lifespan(app: FastAPI):
     logger.info("TalkSense AI v4 — Starting up")
     logger.info("=" * 60)
 
-    # 1. VAD (CPU, fast)
-    logger.info("Loading Silero VAD …")
-    from audio.vad import get_vad
-    get_vad()  # loads and caches singleton
+    try:
+        # 0. PostgreSQL — create tables if they do not exist
+        logger.info("DB — connecting to PostgreSQL and running create_all() …")
+        from db.database import create_all, AsyncSessionLocal
+        await create_all()
 
-    # 2. Faster Whisper (GPU)
-    logger.info(
-        f"Loading Whisper ({settings.whisper_model}, "
-        f"{settings.whisper_compute_type}, {settings.whisper_device}) …"
-    )
-    from audio.transcriber import get_transcriber
-    transcriber = get_transcriber()
-    transcriber.load(
-        model_name=settings.whisper_model,
-        compute_type=settings.whisper_compute_type,
-        device=settings.whisper_device,
-    )
+        # 0b. Startup recovery: bulk-transition orphaned sessions
+        logger.info("DB — running startup recovery for stale sessions …")
+        from db.crud import recover_stale_sessions
+        async with AsyncSessionLocal() as db:
+            await recover_stale_sessions(db)
 
-    # 3. Pyannote (GPU, optional)
-    if settings.pyannote_enabled and settings.hf_token:
-        logger.info("Loading Pyannote speaker diarization …")
-        from audio.diarizer import get_diarizer
-        diarizer = get_diarizer()
-        diarizer.load(hf_token=settings.hf_token, device=settings.pyannote_device)
-    else:
-        logger.info("Pyannote: disabled or no HF_TOKEN — using heuristic speaker assignment")
+        # 1. VAD (CPU, fast)
+        logger.info("Loading Silero VAD …")
+        from audio.vad import get_vad
+        get_vad()  # loads and caches singleton
 
-    # 4. Sentiment model (CPU/GPU — Transformers)
-    logger.info("Loading sentiment model …")
-    from services.nlp_engine import NLPEngine
-    NLPEngine()  # loads and warms up transformers pipeline
+        # 2. Faster Whisper (GPU)
+        logger.info(
+            f"Loading Whisper ({settings.whisper_model}, "
+            f"{settings.whisper_compute_type}, {settings.whisper_device}) …"
+        )
+        from audio.transcriber import get_transcriber
+        transcriber = get_transcriber()
+        transcriber.load(
+            model_name=settings.whisper_model,
+            compute_type=settings.whisper_compute_type,
+            device=settings.whisper_device,
+        )
 
-    logger.info("=" * 60)
-    logger.info("All models loaded. TalkSense AI is ready.")
-    logger.info("=" * 60)
+        # 3. Pyannote (GPU, optional)
+        if settings.pyannote_enabled and settings.hf_token:
+            logger.info("Loading Pyannote speaker diarization …")
+            from audio.diarizer import get_diarizer
+            diarizer = get_diarizer()
+            diarizer.load(hf_token=settings.hf_token, device=settings.pyannote_device)
+        else:
+            logger.info("Pyannote: disabled or no HF_TOKEN — using heuristic speaker assignment")
+
+        # 4. Sentiment model (CPU/GPU — Transformers)
+        logger.info("Loading sentiment model …")
+        from services.nlp_engine import NLPEngine
+        NLPEngine()  # loads and warms up transformers pipeline
+
+        # 5. Start background flusher loop
+        logger.info("Flusher — starting background flusher scheduler …")
+        from ws.session_manager import start_flusher
+        import inspect
+        res = start_flusher()
+        if inspect.isawaitable(res):
+            await res
+
+        logger.info("=" * 60)
+        logger.info("All models loaded. TalkSense AI is ready.")
+        logger.info("=" * 60)
+
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Application startup failed: %s", exc)
+        raise
 
     yield  # ── App is running ──────────────────────────────────────────────
 
+    # ── Shutdown ──────────────────────────────────────────────────────────────
     logger.info("TalkSense AI — Shutting down")
+    
+    try:
+        from ws.session_manager import stop_flusher
+        await stop_flusher()
+        logger.info("Flusher — background flusher stopped.")
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Flusher — shutdown failed: %s", exc)
+    finally:
+        from db.database import engine
+        await engine.dispose()
+        logger.info("DB — connection pool disposed.")
 
 
 # ── App ───────────────────────────────────────────────────────────────────────
@@ -235,6 +271,114 @@ async def get_dashboard_snapshot(session_id: str):
         "buying_signals": conv.buying_signals,
         "active_alerts": conv.active_alerts,
         "transcript_segments": conv.transcript_segments[-50:],  # last 50 segments
+    }
+
+
+# ── Client REST endpoints ─────────────────────────────────────────────────────
+from pydantic import BaseModel
+from fastapi import Depends as _Depends
+from db.database import get_db as _get_db
+from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession
+
+
+class ClientCreateRequest(BaseModel):
+    """Request body for POST /clients — mirrors the API Contract schema."""
+    name: str
+    industry: str | None = None
+
+
+@app.post("/clients", status_code=201, tags=["Clients"])
+async def post_client(
+    body: ClientCreateRequest,
+    db: _AsyncSession = _Depends(_get_db),
+):
+    """
+    Create a new client profile.
+
+    Request:  { name, industry? }
+    Response 201: { id, name, industry, created_at }
+    Auth: deferred to Phase 5 — user_id is NULL for now.
+    """
+    from db.crud import create_client as _crud_create_client
+
+    row = await _crud_create_client(
+        db,
+        name=body.name,
+        industry=body.industry,
+    )
+    return {
+        "id": str(row.id),
+        "name": row.name,
+        "industry": row.industry,
+        "created_at": row.created_at.isoformat(),
+    }
+
+
+@app.get("/clients", tags=["Clients"])
+async def get_clients(
+    db: _AsyncSession = _Depends(_get_db),
+):
+    """
+    List all client profiles.
+
+    Response 200: [ { id, name, industry, created_at }, ... ]
+    Auth: deferred to Phase 5 — returns all clients (no user scope yet).
+    """
+    from db.crud import list_clients as _crud_list_clients
+
+    rows = await _crud_list_clients(db)
+    return [
+        {
+            "id": str(row.id),
+            "name": row.name,
+            "industry": row.industry,
+            "created_at": row.created_at.isoformat(),
+        }
+        for row in rows
+    ]
+
+
+@app.get("/clients/{client_id}", tags=["Clients"])
+async def get_client(
+    client_id: str,
+    db: _AsyncSession = _Depends(_get_db),
+):
+    """
+    Get client briefing card.
+
+    Response 200: {
+        client_id, name, meetings_count,
+        sentiment_trend, common_objections, last_meeting_date
+    }
+    Briefing data is sourced from the latest client_snapshots row.
+    If no snapshot exists yet (no completed sessions), safe defaults are returned.
+    """
+    from sqlalchemy import select
+    from db.crud import get_client as _crud_get_client
+    from db.models import ClientSnapshot
+
+    row = await _crud_get_client(db, client_id)
+    if row is None:
+        return JSONResponse(status_code=404, content={"error": "Client not found"})
+
+    # Load the latest snapshot for this client (may not exist yet)
+    snap_result = await db.execute(
+        select(ClientSnapshot)
+        .where(ClientSnapshot.client_id == row.id)
+        .order_by(ClientSnapshot.snapshot_date.desc())
+        .limit(1)
+    )
+    snap = snap_result.scalar_one_or_none()
+
+    return {
+        "client_id": str(row.id),
+        "name": row.name,
+        "meetings_count": snap.meetings_count if snap else 0,
+        "sentiment_trend": snap.sentiment_trend if snap else None,
+        "common_objections": snap.common_objections if snap else [],
+        "last_meeting_date": (
+            snap.last_meeting_date.isoformat() if snap and snap.last_meeting_date else None
+        ),
     }
 
 
