@@ -3,7 +3,7 @@ import whisper
 # Load model once (important for performance)
 model = whisper.load_model("base")  # base = balance of speed + accuracy
 
-def transcribe_audio(file_path: str):
+def transcribe_audio(file_path: str) -> dict:
     """
     Transcribes audio file into text segments.
     """

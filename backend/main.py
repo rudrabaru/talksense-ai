@@ -419,6 +419,8 @@ async def analyze_audio(
         from services.speech_to_text import transcribe_audio
         raw_transcript_data = await run_in_threadpool(transcribe_audio, file_path)
         raw_segments = raw_transcript_data.get("segments", [])
+        if not isinstance(raw_segments, list):
+            raw_segments = []
 
         nlp = NLPEngine()
         enriched_segments = await run_in_threadpool(nlp.enrich_transcript, raw_segments)
