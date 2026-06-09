@@ -626,3 +626,63 @@ async def recover_stale_sessions(db: AsyncSession) -> int:
     else:
         logger.info("DB — startup recovery: no stale sessions found.")
     return affected
+
+
+async def get_transcript_segments(
+    db: AsyncSession,
+    session_id: str,
+    limit: int = 50,
+) -> list[DBTranscriptSegment]:
+    """
+    Fetch the last `limit` transcript segments for a session.
+    Returns them ordered chronologically by start_time (ascending).
+    """
+    sid = uuid.UUID(session_id)
+    stmt = (
+        select(DBTranscriptSegment)
+        .where(DBTranscriptSegment.session_id == sid)
+        .order_by(DBTranscriptSegment.start_time.desc())
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    rows = list(result.scalars().all())
+    rows.reverse()
+    return rows
+
+
+async def get_latest_session_metrics(
+    db: AsyncSession,
+    session_id: str,
+) -> list[DBSessionMetric]:
+    """
+    Fetch the latest value for each metric name for the session.
+    """
+    sid = uuid.UUID(session_id)
+    stmt = (
+        select(DBSessionMetric)
+        .distinct(DBSessionMetric.metric_name)
+        .where(DBSessionMetric.session_id == sid)
+        .order_by(DBSessionMetric.metric_name, DBSessionMetric.timestamp.desc())
+    )
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def get_alerts(
+    db: AsyncSession,
+    session_id: str,
+    limit: int = 50,
+) -> list[DBAlert]:
+    """
+    Fetch the last `limit` alerts for a session, ordered by timestamp descending.
+    """
+    sid = uuid.UUID(session_id)
+    stmt = (
+        select(DBAlert)
+        .where(DBAlert.session_id == sid)
+        .order_by(DBAlert.timestamp.desc())
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+

@@ -30,7 +30,7 @@ SILENCE_TURN_THRESHOLD = 1.5   # seconds; gap > this → likely speaker change
 @dataclass
 class DiarizedSegment(TranscriptSegment):
     """TranscriptSegment extended with a confirmed speaker label."""
-    speaker: str = "Speaker 1"
+    speaker: str = "Speaker 1"  # type: ignore
 
 
 class SpeakerDiarizer:
@@ -57,7 +57,14 @@ class SpeakerDiarizer:
             return
 
         try:
-            from pyannote.audio import Pipeline
+            import warnings
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    message=".*torchcodec is not installed correctly.*",
+                    category=UserWarning,
+                )
+                from pyannote.audio import Pipeline
             import torch
 
             logger.info(f"Diarizer: Loading pyannote/speaker-diarization-3.1 on {device} …")
@@ -65,7 +72,7 @@ class SpeakerDiarizer:
 
             self._pipeline = Pipeline.from_pretrained(
                 "pyannote/speaker-diarization-3.1",
-                use_auth_token=hf_token,
+                token=hf_token,
             )
             self._pipeline.to(torch.device(device))
 
@@ -82,6 +89,7 @@ class SpeakerDiarizer:
         segments: list[TranscriptSegment],
         pcm_bytes: bytes,
         chunk_time_offset: float = 0.0,
+        fallback_speaker: str = "Speaker 1",
     ) -> list[DiarizedSegment]:
         """
         Assign speaker labels to transcript segments.
@@ -92,6 +100,7 @@ class SpeakerDiarizer:
             segments:          Output of WhisperTranscriber.transcribe().
             pcm_bytes:         The same raw PCM chunk used for transcription.
             chunk_time_offset: Absolute time of the chunk start (seconds).
+            fallback_speaker:  Speaker to assign if chunk is too short.
 
         Returns:
             List of DiarizedSegment with speaker labels.
@@ -100,9 +109,9 @@ class SpeakerDiarizer:
             return []
 
         if self._loaded and self._pipeline is not None:
-            return self._diarize_with_pyannote(segments, pcm_bytes, chunk_time_offset)
+            return self._diarize_with_pyannote(segments, pcm_bytes, chunk_time_offset, fallback_speaker)
         else:
-            return self._diarize_heuristic(segments)
+            return self._diarize_heuristic(segments, fallback_speaker)
 
     # ── Pyannote diarization ──────────────────────────────────────────────────
 
@@ -111,6 +120,7 @@ class SpeakerDiarizer:
         segments: list[TranscriptSegment],
         pcm_bytes: bytes,
         chunk_time_offset: float,
+        fallback_speaker: str,
     ) -> list[DiarizedSegment]:
         """Run Pyannote on the audio and map turns to Whisper segments."""
         try:
@@ -119,6 +129,14 @@ class SpeakerDiarizer:
 
             # Convert PCM → float32 tensor
             audio_int16 = np.frombuffer(pcm_bytes, dtype=np.int16)
+            
+            # Guard: Pyannote clustering fails on extremely short chunks (e.g. < 0.5s)
+            # leading to divide-by-zero errors. Minimum recommended is ~1.5s.
+            duration = len(audio_int16) / SAMPLE_RATE
+            if duration < 1.5:
+                logger.warning(f"Diarizer: Chunk too short ({duration:.2f}s < 1.5s). Falling back to previous speaker.")
+                return self._diarize_heuristic(segments, fallback_speaker)
+
             audio_float32 = audio_int16.astype(np.float32) / 32768.0
             audio_tensor = torch.from_numpy(audio_float32).unsqueeze(0)  # [1, samples]
 
@@ -129,9 +147,19 @@ class SpeakerDiarizer:
             elapsed = (time.monotonic() - t0) * 1000
             logger.debug(f"Diarizer: Pyannote finished in {elapsed:.0f}ms")
 
+            # pyannote-audio 4.x returns a DiarizeOutput dataclass, not an
+            # Annotation directly.  Unwrap it to get the pyannote.core.Annotation
+            # that actually carries the itertracks() API.
+            from pyannote.audio.pipelines.speaker_diarization import DiarizeOutput
+            if isinstance(diarization, DiarizeOutput):
+                annotation = diarization.speaker_diarization
+            else:
+                # Legacy mode / future-proofing: if already an Annotation, use as-is
+                annotation = diarization
+
             # Build a list of (start, end, speaker) turns from Pyannote output
             turns: list[tuple[float, float, str]] = []
-            for turn, _, speaker in diarization.itertracks(yield_label=True):
+            for turn, _, speaker in annotation.itertracks(yield_label=True):
                 # Adjust times to absolute session time
                 turns.append((
                     turn.start + chunk_time_offset,
@@ -143,13 +171,20 @@ class SpeakerDiarizer:
             diarized: list[DiarizedSegment] = []
             for seg in segments:
                 speaker = self._find_speaker(seg.start, seg.end, turns)
-                diarized.append(DiarizedSegment(**seg.__dict__, speaker=speaker))
+                diarized.append(DiarizedSegment(
+                    start=seg.start,
+                    end=seg.end,
+                    text=seg.text,
+                    speaker=speaker,
+                    language=seg.language,
+                    avg_logprob=seg.avg_logprob,
+                ))
 
             return diarized
 
         except Exception as exc:
             logger.error(f"Diarizer: Pyannote inference error — {exc}. Falling back.")
-            return self._diarize_heuristic(segments)
+            return self._diarize_heuristic(segments, fallback_speaker)
 
     @staticmethod
     def _find_speaker(
@@ -174,6 +209,7 @@ class SpeakerDiarizer:
     @staticmethod
     def _diarize_heuristic(
         segments: list[TranscriptSegment],
+        fallback_speaker: str = "Speaker 1",
     ) -> list[DiarizedSegment]:
         """
         Assign speakers based on silence gaps between segments.
@@ -181,20 +217,27 @@ class SpeakerDiarizer:
         Logic: If gap between previous segment end and current segment start
         exceeds SILENCE_TURN_THRESHOLD, toggle the speaker label.
         """
-        speakers = ["Speaker 1", "Speaker 2"]
-        current_speaker_idx = 0
-
+        current_speaker = fallback_speaker
         diarized: list[DiarizedSegment] = []
         prev_end = 0.0
 
         for seg in segments:
             gap = seg.start - prev_end
             if gap > SILENCE_TURN_THRESHOLD and diarized:
-                # Switch speaker on long silence
-                current_speaker_idx = 1 - current_speaker_idx
+                # Switch speaker on long silence. We just flip the number if possible.
+                if current_speaker == "Speaker 1":
+                    current_speaker = "Speaker 2"
+                elif current_speaker == "Speaker 2":
+                    current_speaker = "Speaker 1"
 
-            speaker = speakers[current_speaker_idx]
-            diarized.append(DiarizedSegment(**seg.__dict__, speaker=speaker))
+            diarized.append(DiarizedSegment(
+                start=seg.start,
+                end=seg.end,
+                text=seg.text,
+                speaker=current_speaker,
+                language=seg.language,
+                avg_logprob=seg.avg_logprob,
+            ))
             prev_end = seg.end
 
         return diarized

@@ -146,3 +146,37 @@ export async function healthCheck() {
         throw new Error('Backend is not available');
     }
 }
+
+/**
+ * Create a new session with the backend
+ * @param {string} mode - Session mode ('meeting' or 'sales')
+ * @returns {Promise<Object>} Session creation result containing session_id
+ */
+export async function createSession(mode = 'meeting') {
+    const response = await fetch(`${API_BASE_URL}/sessions?mode=${mode}`, {
+        method: 'POST',
+    });
+
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: 'Failed to create session' }));
+        throw new Error(error.detail || 'Failed to create session');
+    }
+
+    return response.json();
+}
+
+/**
+ * Get session details to validate existence
+ * @param {string} sessionId - ID of the session to validate
+ * @returns {Promise<Object>} Session details
+ */
+export async function getSession(sessionId) {
+    const response = await fetch(`${API_BASE_URL}/sessions/${sessionId}`);
+
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: 'Session not found' }));
+        throw new Error(error.detail || 'Session not found');
+    }
+
+    return response.json();
+}

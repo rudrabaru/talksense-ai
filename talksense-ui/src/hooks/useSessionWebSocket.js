@@ -415,11 +415,6 @@ export function useSessionWebSocket(sessionId) {
       // --- onclose: distinguish intentional from unexpected -----------------
       ws.onclose = (event) => {
         if (!isMountedRef.current) return;
-        const intentional = isClosingRef.current;
-        console.log(
-          `[useSessionWebSocket] Channel "${channel}" closed ` +
-          `(code: ${event.code}, intentional: ${intentional}).`
-        );
 
         // Detach handlers so the dead socket cannot fire further callbacks.
         ws.onopen    = null;
@@ -427,10 +422,21 @@ export function useSessionWebSocket(sessionId) {
         ws.onerror   = null;
         ws.onmessage = null;
 
-        // Clear the ref slot only if it still points to this socket.
-        if (socketsRef.current[channel] === ws) {
-          socketsRef.current[channel] = null;
+        // If this socket is no longer the active one in the ref, it means
+        // a new connection attempt has already taken over (e.g. StrictMode
+        // remount). Ignore this close event to prevent rogue reconnect loops.
+        if (socketsRef.current[channel] !== ws) {
+          console.log(`[useSessionWebSocket] Stale socket closed for "${channel}", ignoring.`);
+          return;
         }
+
+        const intentional = isClosingRef.current;
+        console.log(
+          `[useSessionWebSocket] Channel "${channel}" closed ` +
+          `(code: ${event.code}, intentional: ${intentional}).`
+        );
+
+        socketsRef.current[channel] = null;
 
         if (intentional) {
           channelStatusRef.current[channel] = CONNECTION_STATES.IDLE;

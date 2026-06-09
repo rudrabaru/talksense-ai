@@ -182,10 +182,21 @@ def health_check():
 
 
 # ── Session REST endpoints ────────────────────────────────────────────────────
+from fastapi import Depends, Body
+from db.database import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel
+
+class SessionCreateRequest(BaseModel):
+    mode: str = "meeting"
+    client_id: str | None = None
+
 @app.post("/sessions", tags=["Sessions"])
 async def create_session(
-    mode: str = "meeting",
+    body: SessionCreateRequest = Body(default=None),
+    mode: str | None = None,
     client_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Create a new session.
@@ -193,9 +204,38 @@ async def create_session(
     Returns the session_id needed to connect the WebSocket channels.
     """
     from ws.session_manager import get_session_manager
+    from db import crud
+
+    # Determine mode and client_id, prioritizing request body
+    req_mode = "meeting"
+    req_client_id = None
+
+    if body is not None:
+        req_mode = body.mode
+        req_client_id = body.client_id
+        
+        # If body uses defaults, but query parameters specify custom values, use the query parameters
+        if req_mode == "meeting" and mode is not None:
+            req_mode = mode
+        if req_client_id is None and client_id is not None:
+            req_client_id = client_id
+    else:
+        # Fallback to query parameters
+        req_mode = mode if mode is not None else "meeting"
+        req_client_id = client_id
 
     manager = get_session_manager()
-    session = manager.create(mode=mode, client_id=client_id)
+    session = manager.create(mode=req_mode, client_id=req_client_id)
+
+    # Persist the session to PostgreSQL immediately
+    db_session = await crud.create_session(
+        db,
+        session_id=session.session_id,
+        mode=session.mode,
+        client_id=req_client_id,
+    )
+    await db.commit()
+    await db.refresh(db_session)
 
     return {
         "session_id": session.session_id,
@@ -242,36 +282,121 @@ async def end_session(session_id: str):
 
 
 # ── Dashboard snapshot ────────────────────────────────────────────────────────
+from fastapi import Depends
+from db.database import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime
+
 @app.get("/dashboard/{session_id}", tags=["Dashboard"])
-async def get_dashboard_snapshot(session_id: str):
+async def get_dashboard_snapshot(
+    session_id: str,
+    db: AsyncSession = Depends(get_db),
+):
     """
     Get the current full conversation state for a session.
     Used on reconnect to restore dashboard state.
     """
     from ws.session_manager import get_session_manager
+    from db import crud
 
     manager = get_session_manager()
     session = manager.get(session_id)
-    if session is None:
+    if session is not None:
+        conv = session.conversation
+        return {
+            "session_id": session_id,
+            "mode": session.mode,
+            "status": session.status,
+            "elapsed_seconds": round(session.elapsed_seconds, 1),
+            "health_score": conv.health_score,
+            "sentiment": conv.sentiment,
+            "sentiment_score": conv.sentiment_score,
+            "speaking_ratio": conv.speaking_ratio,
+            "participation": conv.participation,
+            "filler_count": conv.filler_count,
+            "objections": conv.objections,
+            "buying_signals": conv.buying_signals,
+            "active_alerts": conv.active_alerts,
+            "transcript_segments": conv.transcript_segments[-50:],  # last 50 segments
+        }
+
+    # DB Fallback
+    db_session = await crud.get_session(db, session_id)
+    if db_session is None:
         return JSONResponse(status_code=404, content={"error": "Session not found"})
 
-    conv = session.conversation
+    # Fetch related telemetry
+    segments = await crud.get_transcript_segments(db, session_id, limit=50)
+    metrics_list = await crud.get_latest_session_metrics(db, session_id)
+    alerts = await crud.get_alerts(db, session_id, limit=50)
+
+    # Reconstruct metrics dictionary
+    metrics = {
+        "health_score": 50,
+        "sentiment": "neutral",
+        "sentiment_score": 0.0,
+        "speaking_ratio": {},
+        "participation": {},
+        "filler_count": 0,
+        "objections": [],
+        "buying_signals": [],
+    }
+
+    for m in metrics_list:
+        name = m.metric_name
+        val = m.metric_value
+        if name in metrics:
+            metrics[name] = val
+
+    # Determine elapsed seconds
+    elapsed = 0.0
+    if db_session.duration is not None:
+        elapsed = round(db_session.duration, 1)
+    elif db_session.ended_at and db_session.started_at:
+        diff = (db_session.ended_at - db_session.started_at).total_seconds()
+        elapsed = round(max(0.0, diff), 1)
+    else:
+        diff = (datetime.now(tz=db_session.started_at.tzinfo) - db_session.started_at).total_seconds()
+        elapsed = round(max(0.0, diff), 1)
+
+    # Map transcript segments: speaker_id -> speaker, start_time -> start, end_time -> end
+    mapped_segments = []
+    for s in segments:
+        mapped_segments.append({
+            "speaker": s.speaker_id or "Unknown",
+            "text": s.text,
+            "start": round(s.start_time, 2),
+            "end": round(s.end_time, 2),
+            "sentiment": s.sentiment,
+            "sentiment_label": s.sentiment_label,
+        })
+
+    # Map alerts: severity -> level, timestamp to Unix epoch
+    mapped_alerts = []
+    for a in alerts:
+        mapped_alerts.append({
+            "level": a.severity,
+            "message": a.message,
+            "timestamp": a.timestamp.timestamp(),
+        })
+
     return {
         "session_id": session_id,
-        "mode": session.mode,
-        "status": session.status,
-        "elapsed_seconds": round(session.elapsed_seconds, 1),
-        "health_score": conv.health_score,
-        "sentiment": conv.sentiment,
-        "sentiment_score": conv.sentiment_score,
-        "speaking_ratio": conv.speaking_ratio,
-        "participation": conv.participation,
-        "filler_count": conv.filler_count,
-        "objections": conv.objections,
-        "buying_signals": conv.buying_signals,
-        "active_alerts": conv.active_alerts,
-        "transcript_segments": conv.transcript_segments[-50:],  # last 50 segments
+        "mode": db_session.mode,
+        "status": db_session.status,
+        "elapsed_seconds": elapsed,
+        "health_score": metrics["health_score"],
+        "sentiment": metrics["sentiment"],
+        "sentiment_score": metrics["sentiment_score"],
+        "speaking_ratio": metrics["speaking_ratio"],
+        "participation": metrics["participation"],
+        "filler_count": metrics["filler_count"],
+        "objections": metrics["objections"],
+        "buying_signals": metrics["buying_signals"],
+        "active_alerts": mapped_alerts,
+        "transcript_segments": mapped_segments,
     }
+
 
 
 # ── Client REST endpoints ─────────────────────────────────────────────────────

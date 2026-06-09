@@ -74,6 +74,9 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
         while True:
             message = await websocket.receive()
 
+            if message["type"] == "websocket.disconnect":
+                raise WebSocketDisconnect(code=message.get("code", 1000))
+
             # Text control message
             if message.get("text"):
                 text = message["text"].strip().lower()
@@ -155,10 +158,15 @@ async def _process_chunk(
         return
 
     # 5. Speaker diarization (GPU, sequential after Whisper)
+    prev_speaker = "Speaker 1"
+    async with session.lock:
+        if session.conversation.transcript_segments:
+            prev_speaker = session.conversation.transcript_segments[-1].get("speaker", "Speaker 1")
+
     loop = asyncio.get_running_loop()
     diarized = await loop.run_in_executor(
         None,
-        lambda: diarizer.assign_speakers(raw_segments, flushed, max(0.0, time_offset)),
+        lambda: diarizer.assign_speakers(raw_segments, flushed, max(0.0, time_offset), prev_speaker),
     )
 
     # 6. NLP enrichment (sentiment per segment)
