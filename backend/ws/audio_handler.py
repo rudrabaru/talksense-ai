@@ -28,6 +28,7 @@ from audio.buffer import AudioBuffer
 from audio.diarizer import get_diarizer
 from audio.transcriber import get_transcriber
 from audio.vad import get_vad
+from services.nlp_engine import get_nlp_engine
 from ws.broadcast import broadcast_all, broadcast_status, broadcast_transcript
 from ws.session_manager import SessionStatus, get_session_manager
 
@@ -170,9 +171,7 @@ async def _process_chunk(
     )
 
     # 6. NLP enrichment (sentiment per segment)
-    #    Import here to avoid circular imports; NLPEngine is a singleton
-    from services.nlp_engine import NLPEngine
-    nlp = NLPEngine()
+    nlp = get_nlp_engine()  # returns the module-level singleton; no model reload
 
     raw_dicts = [{"text": s.text, "start": s.start, "end": s.end} for s in diarized]
     enriched = await loop.run_in_executor(None, nlp.enrich_transcript, raw_dicts)

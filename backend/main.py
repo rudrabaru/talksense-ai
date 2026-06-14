@@ -109,8 +109,8 @@ async def lifespan(app: FastAPI):
 
         # 4. Sentiment model (CPU/GPU — Transformers)
         logger.info("Loading sentiment model …")
-        from services.nlp_engine import NLPEngine
-        NLPEngine()  # loads and warms up transformers pipeline
+        from services.nlp_engine import get_nlp_engine
+        get_nlp_engine()  # loads and caches the singleton; reused by audio_handler
 
         # 5. Start background flusher loop
         logger.info("Flusher — starting background flusher scheduler …")
@@ -520,7 +520,7 @@ async def analyze_audio(
     """
     import shutil
 
-    from services.nlp_engine import NLPEngine
+    from services.nlp_engine import get_nlp_engine
     from services.context_analyzer import analyze_meeting, analyze_sales
 
     if not file.filename:
@@ -547,7 +547,7 @@ async def analyze_audio(
         if not isinstance(raw_segments, list):
             raw_segments = []
 
-        nlp = NLPEngine()
+        nlp = get_nlp_engine()
         enriched_segments = await run_in_threadpool(nlp.enrich_transcript, raw_segments)
 
         final_transcript = {
