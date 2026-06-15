@@ -608,6 +608,7 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
 
 async def _flush_session(session: SessionState) -> None:
     """
+
     Periodic flush wrapper — acquires the throttle semaphore then delegates
     to _do_flush().  Launched as a fire-and-forget task by _flush_loop().
 
@@ -615,8 +616,10 @@ async def _flush_session(session: SessionState) -> None:
     automatically via a done-callback, allowing stop_flusher() to drain all
     in-flight workers before allowing DB pool disposal.
     """
-    async with _FLUSH_SEMAPHORE:
-        await _do_flush(session, is_final=False)
+    semaphore = _FLUSH_SEMAPHORE
+    if semaphore is not None:
+        async with semaphore:
+            await _do_flush(session, is_final=False)
 
 
 async def _flush_session_final(session: SessionState) -> None:
@@ -631,8 +634,12 @@ async def _flush_session_final(session: SessionState) -> None:
     This coroutine is awaited inline (not fire-and-forget), so the caller
     blocks until the DB commit completes or fails.
     """
-    async with _FLUSH_SEMAPHORE:
-        await _do_flush(session, is_final=True)
+    semaphore = _FLUSH_SEMAPHORE
+    if semaphore is not None:
+        async with semaphore:
+            await _do_flush(session, is_final=True)
+
+
 
 
 def _register_flush_worker(task: asyncio.Task) -> None:

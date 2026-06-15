@@ -56,6 +56,10 @@ class SpeakerDiarizer:
             logger.info("Diarizer: No HF_TOKEN provided — using heuristic fallback.")
             return
 
+        import os
+        os.environ["HF_TOKEN"] = hf_token
+
+
         try:
             import warnings
             with warnings.catch_warnings():

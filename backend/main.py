@@ -47,6 +47,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from core.config import get_settings
 
 settings = get_settings()
+if settings.hf_token:
+    os.environ["HF_TOKEN"] = settings.hf_token
+
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -331,7 +334,8 @@ async def get_dashboard_snapshot(
     alerts = await crud.get_alerts(db, session_id, limit=50)
 
     # Reconstruct metrics dictionary
-    metrics = {
+    from typing import Any
+    metrics: dict[str, Any] = {
         "health_score": 50,
         "sentiment": "neutral",
         "sentiment_score": 0.0,
@@ -341,6 +345,7 @@ async def get_dashboard_snapshot(
         "objections": [],
         "buying_signals": [],
     }
+
 
     for m in metrics_list:
         name = m.metric_name
