@@ -89,32 +89,7 @@ const TranscriptPanelComponent = ({ transcript }) => {
   );
 };
 
-const areEqual = (prevProps, nextProps) => {
-  const prevTranscript = prevProps.transcript;
-  const nextTranscript = nextProps.transcript;
-
-  if (prevTranscript === nextTranscript) return true;
-  if (!prevTranscript || !nextTranscript) return prevTranscript === nextTranscript;
-  if (prevTranscript.length !== nextTranscript.length) return false;
-
-  // Since lengths are equal, check the last element for O(1) update validation
-  if (prevTranscript.length === 0) return true;
-
-  const prevLast = prevTranscript[prevTranscript.length - 1];
-  const nextLast = nextTranscript[nextTranscript.length - 1];
-
-  if (!prevLast || !nextLast) return prevLast === nextLast;
-
-  return (
-    prevLast.id === nextLast.id &&
-    prevLast.text === nextLast.text &&
-    prevLast.speaker === nextLast.speaker &&
-    prevLast.start === nextLast.start &&
-    prevLast.end === nextLast.end
-  );
-};
-
-const TranscriptPanel = memo(TranscriptPanelComponent, areEqual);
+const TranscriptPanel = memo(TranscriptPanelComponent);
 TranscriptPanel.displayName = "TranscriptPanel";
 
 export default TranscriptPanel;

@@ -1,0 +1,105 @@
+{
+  "audio_file": "D:\\Code world\\Python\\SCET Hackathon\\talksense-ai\\sample_audio\\meeting_short.mp3",
+  "ground_truth": "D:\\Code world\\Python\\SCET Hackathon\\talksense-ai\\backend\\ground_truth\\meeting_short_gt.json",
+  "live_chunked": {
+    "segments_matched": 8,
+    "total_annotated": 8,
+    "accuracy": 75.0,
+    "correct": 6,
+    "total_matched": 8,
+    "macro_f1": 0.429,
+    "scdr": 0.0,
+    "scdr_detected": 0,
+    "scdr_total": 6,
+    "per_speaker": {
+      "A": {
+        "precision": 0.75,
+        "recall": 1.0,
+        "f1": 0.8571,
+        "tp": 6,
+        "fp": 2,
+        "fn": 0
+      },
+      "B": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 2
+      }
+    },
+    "label_map": {
+      "Speaker 1": "A"
+    },
+    "failures": [
+      {
+        "start": 5.0,
+        "end": 9.76,
+        "predicted_raw": "Speaker 1",
+        "predicted_mapped": "A",
+        "expected": "B",
+        "text": "integration is working, but performance is slower than expec"
+      },
+      {
+        "start": 12.88,
+        "end": 14.88,
+        "predicted_raw": "Speaker 1",
+        "predicted_mapped": "A",
+        "expected": "B",
+        "text": "We might need to optimize later."
+      }
+    ]
+  },
+  "post_session": {
+    "segments_matched": 8,
+    "total_annotated": 8,
+    "accuracy": 75.0,
+    "correct": 6,
+    "total_matched": 8,
+    "macro_f1": 0.667,
+    "scdr": 33.3,
+    "scdr_detected": 2,
+    "scdr_total": 6,
+    "per_speaker": {
+      "A": {
+        "precision": 0.7143,
+        "recall": 1.0,
+        "f1": 0.8333,
+        "tp": 5,
+        "fp": 2,
+        "fn": 0
+      },
+      "B": {
+        "precision": 1.0,
+        "recall": 0.3333,
+        "f1": 0.5,
+        "tp": 1,
+        "fp": 0,
+        "fn": 2
+      }
+    },
+    "label_map": {
+      "Speaker 2": "A",
+      "Speaker 1": "B"
+    },
+    "failures": [
+      {
+        "start": 12.72,
+        "end": 14.96,
+        "predicted_raw": "Speaker 2",
+        "predicted_mapped": "A",
+        "expected": "B",
+        "text": "We might need to optimize later."
+      },
+      {
+        "start": 26.56,
+        "end": 28.36,
+        "predicted_raw": "Speaker 2",
+        "predicted_mapped": "A",
+        "expected": "B",
+        "text": "Yes, I will keep an eye on it."
+      }
+    ]
+  }
+}

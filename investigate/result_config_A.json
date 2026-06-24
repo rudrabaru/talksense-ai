@@ -1,0 +1,32 @@
+{
+  "config": "A) Unconstrained",
+  "kwargs": "{}",
+  "elapsed_s": 1.0,
+  "speakers_detected": 3,
+  "speaker_labels": [
+    "Speaker 3",
+    "Speaker 1",
+    "Speaker 2"
+  ],
+  "turns": 8,
+  "accuracy": 31.8,
+  "correct": 7,
+  "total": 22,
+  "macro_f1": 0.328,
+  "scdr": 16.7,
+  "scdr_det": 1,
+  "scdr_tot": 6,
+  "coverage": 63.6,
+  "per_speaker": {
+    "B": {
+      "precision": 0.125,
+      "recall": 0.143,
+      "f1": 0.133
+    },
+    "A": {
+      "precision": 0.75,
+      "recall": 0.4,
+      "f1": 0.522
+    }
+  }
+}

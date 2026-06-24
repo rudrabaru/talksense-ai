@@ -1,0 +1,20 @@
+{
+  "attribution": {
+    "accuracy": 75.0,
+    "macro_f1": 0.42855,
+    "scdr": 0.0
+  },
+  "nlp": {
+    "health_score": 50,
+    "sentiment": "neutral",
+    "sentiment_score": 0.031,
+    "speaking_ratio": {
+      "Speaker 1": 100.0
+    },
+    "objections": [],
+    "buying_signals": [],
+    "participation": {
+      "Speaker 1": 63
+    }
+  }
+}

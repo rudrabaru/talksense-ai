@@ -1,0 +1,56 @@
+{
+  "recording": "meeting_short.mp3",
+  "description": "Short 32-second business meeting. Chair (A) leads discussion about API integration. Developer (B) provides status update. 2 distinct speakers. Annotations derived from Whisper transcript (beam_size=5) and audio content analysis.",
+  "expected_speakers": 2,
+  "annotation_method": "whisper_transcript_assisted",
+  "segments": [
+    {
+      "start": 0.00,
+      "end": 4.80,
+      "speaker": "A",
+      "text": "This will be a quick one. Any updates on the API integration?"
+    },
+    {
+      "start": 4.80,
+      "end": 9.92,
+      "speaker": "B",
+      "text": "Integration is working, but performance is slower than expected."
+    },
+    {
+      "start": 9.92,
+      "end": 12.72,
+      "speaker": "A",
+      "text": "Is that a blocker for release?"
+    },
+    {
+      "start": 12.72,
+      "end": 14.96,
+      "speaker": "B",
+      "text": "We might need to optimize later."
+    },
+    {
+      "start": 14.96,
+      "end": 20.56,
+      "speaker": "A",
+      "text": "Okay. Let's not delay the release for now."
+    },
+    {
+      "start": 20.56,
+      "end": 26.56,
+      "speaker": "A",
+      "text": "Speaker 2, can you monitor performance post release?"
+    },
+    {
+      "start": 26.56,
+      "end": 28.36,
+      "speaker": "B",
+      "text": "Yes, I will keep an eye on it."
+    },
+    {
+      "start": 28.36,
+      "end": 31.96,
+      "speaker": "A",
+      "text": "Cool. That is all for today."
+    }
+  ]
+}

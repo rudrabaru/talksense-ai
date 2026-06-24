@@ -179,6 +179,18 @@ class Session(Base):
         String(50), nullable=False, default="created"
     )
 
+    # ── Post-session speaker attribution ──────────────────────────────────────
+    # Lifecycle: None (not started) → pending → processing → completed / failed
+    # NULL means the pipeline has not been triggered (e.g. non-COMPLETED sessions).
+    speaker_attribution_status: Mapped[str | None] = mapped_column(
+        String(50), nullable=True, default=None
+    )
+    # Absolute path to the WAV file written during the live session.
+    # NULL until the first speech chunk is received; set by AudioBuffer.
+    audio_file_path: Mapped[str | None] = mapped_column(
+        String(1024), nullable=True, default=None
+    )
+
     # ── Relationships ─────────────────────────────────────────────────────────
     user: Mapped["User | None"] = relationship(
         "User",

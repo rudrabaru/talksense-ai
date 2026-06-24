@@ -137,6 +137,41 @@
 - [ ] Pyannote HF token: must be set in `.env` and model license accepted on HuggingFace before diarization works
 - [ ] DB not yet connected: all session state is currently in-memory only (lost on restart)
 - [ ] `App.jsx` routes are still the old prototype routes — needs update in Phase 4
+- [x] `evaluate_analytics.py` mock speaker attribution values — REPLACED with real computation (2026-06-23)
+- [x] `latest_metrics.json` stale mock data — CLEARED (2026-06-23)
+
+---
+
+## Post-Session Speaker Attribution Metrics (Recovery Sprint 2026-06-23)
+
+- **Status**: NOT Production Ready
+- **Mock Data**: ELIMINATED. `evaluate_analytics.py` now uses real computation. `latest_metrics.json` cleared.
+- **Best Config**: `num_speakers=2` (tested 17 configurations via parameter sweep)
+- **WAV Truncation Bug**: Fixed. `AudioBuffer` timeline now perfectly synced.
+- **Phantom Speaker Bug**: Fixed via `num_speakers=2` constraint.
+- **Evaluation Harness**: `speaker_recovery_harness.py` (single-command reproducible evaluation)
+- **Live Diarization**: BROKEN (F1=0.429, SCDR=0.0%, 1 speaker detected out of 2)
+- **Post-Session Diarization**: Best measured: F1=0.667, SCDR=33.3%, Accuracy=75.0%
+- **Clustering Threshold**: Has ZERO effect with `num_speakers=2` (tested 0.3-0.9, all identical)
+- **Failure Pattern**: 2 short Speaker B utterances (2.2s, 1.8s) consistently misattributed to A
+- **Gap to Threshold**: F1 gap = 0.083, SCDR gap = 36.7pp
+- **Path Forward**: Test with longer audio (real meetings are 2-30+ min, not 32s), or add post-processing turn-taking heuristic
+
+---
+
+## Benchmark Suite (2026-06-24, v2 — human-reviewed GT)
+
+- **Dataset**: 10 samples across 4 categories (2_speaker, 3_speaker, noisy, long_form)
+- **Total Audio**: 16.1 minutes (32s to 349s per sample)
+- **Human-Reviewed**: 8/10 samples, 19 segment corrections applied
+- **Contamination**: ELIMINATED for 8/10 samples (2 remaining: business_meeting, pitch_competition_long)
+- **Honest Metrics**: Avg F1=0.832, Avg Accuracy=86.1%, Avg SCDR=68.0%
+- **Verdict**: NOT PRODUCTION READY — SCDR fails by 2.0pp (68.0% vs 70.0% threshold)
+- **Contamination Impact**: Previous metrics were inflated by 14-21% (F1: 0.952→0.832, SCDR: 82.3%→68.0%)
+- **Passing**: 5/10 samples (sales_good, meeting_clear, business_meeting, business_english_long, pitch_competition_long)
+- **Failing**: 5/10 samples (meeting_short, sales_meeting, sales_ambiguous, meeting_messy, sales_bad)
+- **Key Finding**: Long audio (>2 min) consistently passes. Short noisy audio (<45s) consistently fails.
+- **Commands**: `python backend/run_full_benchmark.py` (benchmark), `python annotate_ground_truth.py --status` (review status)
 
 ---
 
@@ -153,5 +188,37 @@ cd talksense-ui
 npm run dev
 ```
 
-Visit `http://localhost:5173/live` for the prototype live transcript view.  
+Visit `http://localhost:5173/live` for the prototype live transcript view.
 Visit `http://localhost:8000/docs` for the FastAPI Swagger UI.
+
+---
+
+## Objection Handling Quality Analysis (Implementation Complete)
+
+**Implementation Summary**:
+- Implemented `backend/services/objection_handler.py` with the 4-tier scoring logic (IGNORED, ACKNOWLEDGED, ADDRESSED, RESOLVED).
+- Integrated `analyze_objection_handling` into `post_session_diarizer.py` to run sequentially after `classify_roles`.
+
+**Final Status**:
+- **COMPLETED**. Pipeline calculates objection handling scores and persists them. However, accuracy depends on speaker attribution quality which is currently below threshold.
+
+---
+
+## Analytics Accuracy Audit (Completed)
+
+**Component Accuracy Ranking**:
+1. **Speaker Attribution** — Live: F1=0.429 (BROKEN), Post-session: F1=0.667 (below threshold)
+2. **Buying Signals** (~40% - Keyword-based, high false positives)
+3. **Objections** (~30% - Keyword-based, easily triggered by Sales Rep)
+4. **Role Classification** (~25% - Extremely brittle static keywords)
+5. **Objection Handling** (~10% - Cascading failures due to dependence on all of the above)
+
+---
+
+## Current Goal
+
+SCDR misses by 2.0pp (68.0% vs 70.0%). To pass:
+1. Implement post-processing turn-taking heuristic (if segment < 3s between same-speaker segments, reassign)
+2. Review remaining 2 unreviewed GT samples (business_meeting, pitch_competition_long)
+3. Test with more audio > 2 min (where Pyannote consistently achieves F1=1.000)
+4. Only proceed to Week 4 features after honest benchmark passes all thresholds

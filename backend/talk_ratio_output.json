@@ -1,0 +1,40 @@
+{
+  "talk_ratio_summary": {
+    "summary": {
+      "monologue_risk": "LOW",
+      "dominance_percent": 80.3,
+      "interruption_count": 0,
+      "conversation_balance": "POOR",
+      "speaker_switch_count": 2,
+      "total_duration_seconds": 22.1,
+      "silence_duration_seconds": 0.0,
+      "longest_monologue_seconds": 11.8,
+      "longest_monologue_speaker": "Speaker 2",
+      "average_turn_length_seconds": 6.4
+    },
+    "overall_participation": {
+      "Speaker 1": 19.7,
+      "Speaker 2": 80.3
+    }
+  },
+  "talk_timeline": {
+    "timeline": [
+      {
+        "speakers": {
+          "Speaker 1": {
+            "dominance": 19.7,
+            "talk_time": 3.8,
+            "participation": 19.7
+          },
+          "Speaker 2": {
+            "dominance": 80.3,
+            "talk_time": 15.3,
+            "participation": 80.3
+          }
+        },
+        "window_end": 30.0,
+        "window_start": 0.0
+      }
+    ]
+  }
+}

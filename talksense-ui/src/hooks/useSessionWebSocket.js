@@ -92,13 +92,19 @@ export function useSessionWebSocket(sessionId) {
   const isClosingRef = useRef(false);
 
   // needsReconciliationRef: set true on unexpected closure or manual reconnect to trigger REST sync on next connect.
-  const needsReconciliationRef = useRef(false);
+  const needsReconciliationRef = useRef(true);
 
   // connectRef: holds reference to connect function to avoid TDZ circular warning in closures.
   const connectRef = useRef(null);
 
   // sessionIdRef: mirrors the sessionId prop in a ref to prevent stale closures.
   const sessionIdRef = useRef(sessionId);
+
+  // sessionStatusRef: mirrors the sessionStatus state to prevent stale closures in WS callback.
+  const sessionStatusRef = useRef(sessionStatus);
+  useEffect(() => {
+    sessionStatusRef.current = sessionStatus;
+  }, [sessionStatus]);
 
   // channelStatusRef: tracking per-channel statuses for unified connectionState computation.
   const channelStatusRef = useRef(createChannelMap(CONNECTION_STATES.IDLE));
@@ -271,14 +277,22 @@ export function useSessionWebSocket(sessionId) {
 
         // Merge transcripts
         safeSetState(setTranscript, (prev) => {
-          const existingKeys = new Set(
-            prev.map((s) => `${s.speaker}|${s.start}|${s.end}|${s.text}`)
-          );
-          const newSegments = (data.transcript_segments || []).filter(
-            (seg) => !existingKeys.has(`${seg.speaker}|${seg.start}|${seg.end}|${seg.text}`)
-          );
-          if (newSegments.length === 0) return prev;
-          return [...prev, ...newSegments].sort((a, b) => a.start - b.start);
+          const incomingMap = new Map();
+          (data.transcript_segments || []).forEach((seg) => {
+            incomingMap.set(seg.start, seg);
+          });
+
+          const updatedPrev = prev.map((s) => {
+            if (incomingMap.has(s.start)) {
+              const incomingSeg = incomingMap.get(s.start);
+              incomingMap.delete(s.start);
+              return incomingSeg;
+            }
+            return s;
+          });
+
+          const brandNew = Array.from(incomingMap.values());
+          return [...updatedPrev, ...brandNew].sort((a, b) => a.start - b.start);
         });
 
         // Replace metrics
@@ -289,7 +303,16 @@ export function useSessionWebSocket(sessionId) {
             speaking_ratio: data.speaking_ratio,
             participation: data.participation,
             filler_count: data.filler_count,
+            objections: data.objections || [],
+            buying_signals: data.buying_signals || [],
             duration_seconds: data.elapsed_seconds ?? data.duration_seconds,
+            speakerAttributionStatus: data.speaker_attribution_status ?? null,
+            speakerAttribution: data.speaker_attribution ?? null,
+            speakerRoles: data.speaker_roles ?? null,
+            objectionHandling: data.objection_handling ?? [],
+            talkRatioSummary: data.talk_ratio_summary ?? null,
+            talkTimeline: data.talk_timeline ?? null,
+            analyticsHealth: data.analytics_health ?? null,
           };
           safeSetState(setMetrics, restMetrics);
         }
@@ -438,7 +461,7 @@ export function useSessionWebSocket(sessionId) {
 
         socketsRef.current[channel] = null;
 
-        if (intentional) {
+        if (intentional || _isTerminalStatus(sessionStatusRef.current)) {
           channelStatusRef.current[channel] = CONNECTION_STATES.IDLE;
         } else {
           needsReconciliationRef.current = true;
@@ -542,8 +565,50 @@ export function useSessionWebSocket(sessionId) {
               };
             }
 
-            // Full replace -- never accumulate intermediate frames.
-            safeSetState(setMetrics, payload);
+            // Full replace -- never accumulate intermediate frames, but preserve
+            // speakerAttributionStatus and speakerAttribution (diagnostics only
+            // arrive via REST polling, never via the live metrics WebSocket).
+            safeSetState(setMetrics, (prev) => {
+              const incoming = payload;
+              const speakerAttributionStatus =
+                incoming.speaker_attribution_status ??
+                incoming.speakerAttributionStatus ??
+                prev?.speakerAttributionStatus ??
+                null;
+              const speakerAttribution =
+                incoming.speakerAttribution ??
+                prev?.speakerAttribution ??
+                null;
+              const speakerRoles =
+                incoming.speakerRoles ??
+                incoming.speaker_roles ??
+                prev?.speakerRoles ??
+                null;
+              const talkRatioSummary =
+                incoming.talkRatioSummary ??
+                incoming.talk_ratio_summary ??
+                prev?.talkRatioSummary ??
+                null;
+              const talkTimeline =
+                incoming.talkTimeline ??
+                incoming.talk_timeline ??
+                prev?.talkTimeline ??
+                null;
+              const analyticsHealth =
+                incoming.analyticsHealth ??
+                incoming.analytics_health ??
+                prev?.analyticsHealth ??
+                null;
+              return {
+                ...incoming,
+                speakerAttributionStatus,
+                speakerAttribution,
+                speakerRoles,
+                talkRatioSummary,
+                talkTimeline,
+                analyticsHealth,
+              };
+            });
           };
           break;
 
@@ -715,12 +780,40 @@ export function useSessionWebSocket(sessionId) {
   useEffect(() => {
     if (!sessionId) return;
     sessionIdRef.current = sessionId;
+    needsReconciliationRef.current = true;
+    reconcileState(sessionId);
     connect();
     return () => {
       cleanup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId]);
+  }, [sessionId, reconcileState]);
+
+  // --- Auto-Refresh Polling for Speaker Attribution ----------------------------
+  useEffect(() => {
+    const shouldPoll =
+      sessionStatus === "completed" &&
+      (
+        metrics?.speakerAttributionStatus == null ||
+        metrics?.speakerAttributionStatus === "pending" ||
+        metrics?.speakerAttributionStatus === "processing"
+      );
+
+    if (!shouldPoll) return;
+
+    console.log(`[useSessionWebSocket] Speaker attribution in progress or pending. Starting auto-refresh polling.`);
+
+    const intervalId = setInterval(() => {
+      const sid = sessionIdRef.current;
+      if (!sid) return;
+      reconcileState(sid);
+    }, 5000);
+
+    return () => {
+      console.log("[useSessionWebSocket] Stopping auto-refresh polling.");
+      clearInterval(intervalId);
+    };
+  }, [sessionStatus, metrics?.speakerAttributionStatus, reconcileState]);
 
   // --- Exposed API ------------------------------------------------------------
   return {

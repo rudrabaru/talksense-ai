@@ -1,0 +1,13 @@
+{
+  "recording": "0001_Business_English_Conversations_ESL_Business_Meeting_Conversation.m4a",
+  "category": "long_form",
+  "sample_name": "business_english_long",
+  "duration_seconds": 204.9,
+  "expected_speakers": 2,
+  "description": "205s ESL business meeting conversation. 3 speakers. Long-form diarization test.",
+  "annotation_method": "human_reviewed",
+  "whisper_segments": 19,
+  "pyannote_turns": 56,
+  "pyannote_speakers_detected": 3,
+  "review_date": "2026-06-24"
+}

@@ -169,13 +169,27 @@ class ConversationEngine:
             ]
 
             # Detect objections
+            # OBJECTION_KEYWORDS is a dict: {"Pricing": ["price", "cost", ...], "Timeline": [...], ...}
+            # Flatten all keyword lists for matching
             objections = []
             for seg in seg_dicts:
                 text = seg.get("text", "").lower()
-                for kw in OBJECTION_KEYWORDS:
-                    if kw in text and text not in [o.get("text", "") for o in objections]:
-                        objections.append({"text": seg.get("text", ""), "keyword": kw})
+                if isinstance(OBJECTION_KEYWORDS, dict):
+                    # Nested dict: {category: [kw1, kw2, ...]}
+                    for category, kw_list in OBJECTION_KEYWORDS.items():
+                        for kw in (kw_list if isinstance(kw_list, list) else []):
+                            if kw in text and text not in [o.get("text", "") for o in objections]:
+                                objections.append({"text": seg.get("text", ""), "keyword": kw, "category": category})
+                                break
+                        else:
+                            continue
                         break
+                else:
+                    # Flat list (fallback)
+                    for kw in OBJECTION_KEYWORDS:
+                        if kw in text and text not in [o.get("text", "") for o in objections]:
+                            objections.append({"text": seg.get("text", ""), "keyword": kw})
+                            break
             state.objections = objections
 
             # Detect buying signals via sales assessment

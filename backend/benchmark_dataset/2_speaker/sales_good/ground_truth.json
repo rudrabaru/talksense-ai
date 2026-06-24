@@ -1,0 +1,195 @@
+{
+  "recording": "sales_good.mp3",
+  "description": "78s sales call with positive engagement. Sales rep (A) and customer (B). Human-reviewed.",
+  "expected_speakers": 2,
+  "annotation_method": "human_reviewed",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 4.08,
+      "speaker": "A",
+      "text": "Good afternoon, thanks for taking the time today."
+    },
+    {
+      "start": 4.08,
+      "end": 6.32,
+      "speaker": "A",
+      "text": "Just to confirm, you wanted to understand"
+    },
+    {
+      "start": 6.32,
+      "end": 8.62,
+      "speaker": "A",
+      "text": "how our platform could help streamline"
+    },
+    {
+      "start": 8.62,
+      "end": 10.52,
+      "speaker": "A",
+      "text": "your reporting workflow, right?"
+    },
+    {
+      "start": 10.52,
+      "end": 12.32,
+      "speaker": "B",
+      "text": "Yes, exactly."
+    },
+    {
+      "start": 12.32,
+      "end": 15.12,
+      "speaker": "B",
+      "text": "We're spending a lot of manual time consolidating data"
+    },
+    {
+      "start": 15.12,
+      "end": 18.4,
+      "speaker": "B",
+      "text": "from different teams and it's becoming a bottleneck."
+    },
+    {
+      "start": 18.4,
+      "end": 20.16,
+      "speaker": "A",
+      "text": "That makes sense."
+    },
+    {
+      "start": 20.16,
+      "end": 23.36,
+      "speaker": "A",
+      "text": "What most of our customers do is centralize"
+    },
+    {
+      "start": 23.36,
+      "end": 26.12,
+      "speaker": "A",
+      "text": "those inputs into one dashboard."
+    },
+    {
+      "start": 26.12,
+      "end": 28.12,
+      "speaker": "A",
+      "text": "So instead of chasing updates,"
+    },
+    {
+      "start": 28.12,
+      "end": 30.88,
+      "speaker": "A",
+      "text": "everything is visible in real time."
+    },
+    {
+      "start": 30.88,
+      "end": 32.52,
+      "speaker": "B",
+      "text": "That sounds useful."
+    },
+    {
+      "start": 32.52,
+      "end": 34.68,
+      "speaker": "B",
+      "text": "How long does the setup usually take?"
+    },
+    {
+      "start": 34.68,
+      "end": 38.04,
+      "speaker": "A",
+      "text": "Typically around one week for an issue of setup"
+    },
+    {
+      "start": 38.04,
+      "end": 40.52,
+      "speaker": "A",
+      "text": "and another week for team onboarding."
+    },
+    {
+      "start": 40.52,
+      "end": 42.96,
+      "speaker": "A",
+      "text": "No heavy technical work from your side."
+    },
+    {
+      "start": 42.96,
+      "end": 46.32,
+      "speaker": "B",
+      "text": "Okay, and pricing-wise, how does it work?"
+    },
+    {
+      "start": 46.32,
+      "end": 50.64,
+      "speaker": "A",
+      "text": "It's a subscription model based on the number of users."
+    },
+    {
+      "start": 50.64,
+      "end": 52.52,
+      "speaker": "A",
+      "text": "For a team of your size,"
+    },
+    {
+      "start": 52.52,
+      "end": 56.36,
+      "speaker": "A",
+      "text": "it would be around 35,000 rupees per month."
+    },
+    {
+      "start": 56.36,
+      "end": 57.92,
+      "speaker": "B",
+      "text": "That's within our budget."
+    },
+    {
+      "start": 57.92,
+      "end": 61.16,
+      "speaker": "B",
+      "text": "I'll need to check internally, but it seems reasonable."
+    },
+    {
+      "start": 61.16,
+      "end": 62.24,
+      "speaker": "A",
+      "text": "Great."
+    },
+    {
+      "start": 62.24,
+      "end": 64.92,
+      "speaker": "A",
+      "text": "What I can do is send you a proposal"
+    },
+    {
+      "start": 64.92,
+      "end": 67.56,
+      "speaker": "A",
+      "text": "and a short demo recording today."
+    },
+    {
+      "start": 67.56,
+      "end": 70.88,
+      "speaker": "A",
+      "text": "If it looks good, we can aim to start next week."
+    },
+    {
+      "start": 70.88,
+      "end": 72.08,
+      "speaker": "B",
+      "text": "Yes, please do that."
+    },
+    {
+      "start": 72.08,
+      "end": 73.4,
+      "speaker": "B",
+      "text": "I'll review it by Friday."
+    },
+    {
+      "start": 73.4,
+      "end": 74.96,
+      "speaker": "A",
+      "text": "Perfect."
+    },
+    {
+      "start": 74.96,
+      "end": 77.72,
+      "speaker": "A",
+      "text": "I'll follow up on Friday afternoon then."
+    }
+  ],
+  "review_date": "2026-06-24"
+}

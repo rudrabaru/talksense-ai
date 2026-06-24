@@ -54,6 +54,7 @@ async def transcript_ws(websocket: WebSocket, session_id: str) -> None:
     manager = get_session_manager()
     session = manager.get(session_id)
     if session is None:
+        await websocket.accept()
         await websocket.close(code=4004, reason="Session not found")
         return
 
@@ -93,6 +94,7 @@ async def metrics_ws(websocket: WebSocket, session_id: str) -> None:
     manager = get_session_manager()
     session = manager.get(session_id)
     if session is None:
+        await websocket.accept()
         await websocket.close(code=4004, reason="Session not found")
         return
 
@@ -131,6 +133,7 @@ async def alerts_ws(websocket: WebSocket, session_id: str) -> None:
     manager = get_session_manager()
     session = manager.get(session_id)
     if session is None:
+        await websocket.accept()
         await websocket.close(code=4004, reason="Session not found")
         return
 
@@ -169,6 +172,7 @@ async def status_ws(websocket: WebSocket, session_id: str) -> None:
     manager = get_session_manager()
     session = manager.get(session_id)
     if session is None:
+        await websocket.accept()
         await websocket.close(code=4004, reason="Session not found")
         return
 
