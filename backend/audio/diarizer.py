@@ -56,6 +56,10 @@ class SpeakerDiarizer:
             logger.info("Diarizer: No HF_TOKEN provided — using heuristic fallback.")
             return
 
+        import os
+        os.environ["HF_TOKEN"] = hf_token
+
+
         try:
             import warnings
             with warnings.catch_warnings():
@@ -160,17 +164,25 @@ class SpeakerDiarizer:
             # Build a list of (start, end, speaker) turns from Pyannote output
             turns: list[tuple[float, float, str]] = []
             for turn, _, speaker in annotation.itertracks(yield_label=True):
+                # Map pyannote raw label "SPEAKER_XX" to user-friendly "Speaker X"
+                mapped_speaker = speaker
+                if speaker.startswith("SPEAKER_"):
+                    try:
+                        num = int(speaker.split("_")[-1])
+                        mapped_speaker = f"Speaker {num + 1}"
+                    except (ValueError, IndexError):
+                        pass
                 # Adjust times to absolute session time
                 turns.append((
                     turn.start + chunk_time_offset,
                     turn.end + chunk_time_offset,
-                    speaker,
+                    mapped_speaker,
                 ))
 
             # Assign speaker to each Whisper segment by overlap
             diarized: list[DiarizedSegment] = []
             for seg in segments:
-                speaker = self._find_speaker(seg.start, seg.end, turns)
+                speaker = self._find_speaker(seg.start, seg.end, turns, fallback_speaker)
                 diarized.append(DiarizedSegment(
                     start=seg.start,
                     end=seg.end,
@@ -191,9 +203,10 @@ class SpeakerDiarizer:
         seg_start: float,
         seg_end: float,
         turns: list[tuple[float, float, str]],
+        fallback_speaker: str = "Speaker 1",
     ) -> str:
         """Return the speaker with the most overlap with the given segment."""
-        best_speaker = "Speaker 1"
+        best_speaker = fallback_speaker
         best_overlap = 0.0
 
         for turn_start, turn_end, speaker in turns:

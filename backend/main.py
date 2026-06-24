@@ -47,6 +47,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from core.config import get_settings
 
 settings = get_settings()
+if settings.hf_token:
+    os.environ["HF_TOKEN"] = settings.hf_token
+
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -109,8 +112,8 @@ async def lifespan(app: FastAPI):
 
         # 4. Sentiment model (CPU/GPU — Transformers)
         logger.info("Loading sentiment model …")
-        from services.nlp_engine import NLPEngine
-        NLPEngine()  # loads and warms up transformers pipeline
+        from services.nlp_engine import get_nlp_engine
+        get_nlp_engine()  # loads and caches the singleton; reused by audio_handler
 
         # 5. Start background flusher loop
         logger.info("Flusher — starting background flusher scheduler …")
@@ -252,22 +255,56 @@ async def create_session(
 
 
 @app.get("/sessions/{session_id}", tags=["Sessions"])
-async def get_session(session_id: str):
-    """Get current state of an active session."""
+async def get_session(
+    session_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Get current state of an active or terminal/persisted session."""
     from ws.session_manager import get_session_manager
+    from db import crud
 
     manager = get_session_manager()
     session = manager.get(session_id)
-    if session is None:
+    if session is not None:
+        return {
+            "session_id": session.session_id,
+            "mode": session.mode,
+            "status": session.status,
+            "elapsed_seconds": round(session.elapsed_seconds, 1),
+            "health_score": session.conversation.health_score,
+            "sentiment": session.conversation.sentiment,
+        }
+
+    # DB Fallback for inactive/terminal sessions
+    db_session = await crud.get_session(db, session_id)
+    if db_session is None:
         return JSONResponse(status_code=404, content={"error": "Session not found"})
 
+    # Fetch latest metrics to populate contract fields
+    metrics_list = await crud.get_latest_session_metrics(db, session_id)
+    health_score = 50
+    sentiment = "neutral"
+    for m in metrics_list:
+        if m.metric_name == "health_score" and isinstance(m.metric_value, (int, float)):
+            health_score = m.metric_value
+        elif m.metric_name == "sentiment" and isinstance(m.metric_value, str):
+            sentiment = m.metric_value
+
+    # Compute elapsed seconds
+    elapsed = 0.0
+    if db_session.duration is not None:
+        elapsed = round(db_session.duration, 1)
+    elif db_session.ended_at and db_session.started_at:
+        diff = (db_session.ended_at - db_session.started_at).total_seconds()
+        elapsed = round(max(0.0, diff), 1)
+
     return {
-        "session_id": session.session_id,
-        "mode": session.mode,
-        "status": session.status,
-        "elapsed_seconds": round(session.elapsed_seconds, 1),
-        "health_score": session.conversation.health_score,
-        "sentiment": session.conversation.sentiment,
+        "session_id": str(db_session.id),
+        "mode": db_session.mode,
+        "status": db_session.status,
+        "elapsed_seconds": elapsed,
+        "health_score": health_score,
+        "sentiment": sentiment,
     }
 
 
@@ -303,10 +340,22 @@ async def get_dashboard_snapshot(
     session = manager.get(session_id)
     if session is not None:
         conv = session.conversation
+        attr_status = session.speaker_attribution_status
         return {
             "session_id": session_id,
             "mode": session.mode,
             "status": session.status,
+            "speaker_attribution_status": attr_status,
+            "speaker_attribution": {
+                "status":            attr_status,
+                "speakers_detected": None,
+                "speaker_turns":     None,
+                "segments_updated":  None,
+                "total_segments":    None,
+                "coverage":          None,
+            },
+            "speaker_roles": None,
+            "objection_handling": [],
             "elapsed_seconds": round(session.elapsed_seconds, 1),
             "health_score": conv.health_score,
             "sentiment": conv.sentiment,
@@ -316,6 +365,8 @@ async def get_dashboard_snapshot(
             "filler_count": conv.filler_count,
             "objections": conv.objections,
             "buying_signals": conv.buying_signals,
+            "talk_ratio_summary": None,
+            "talk_timeline": None,
             "active_alerts": conv.active_alerts,
             "transcript_segments": conv.transcript_segments[-50:],  # last 50 segments
         }
@@ -331,7 +382,8 @@ async def get_dashboard_snapshot(
     alerts = await crud.get_alerts(db, session_id, limit=50)
 
     # Reconstruct metrics dictionary
-    metrics = {
+    from typing import Any
+    metrics: dict[str, Any] = {
         "health_score": 50,
         "sentiment": "neutral",
         "sentiment_score": 0.0,
@@ -340,13 +392,40 @@ async def get_dashboard_snapshot(
         "filler_count": 0,
         "objections": [],
         "buying_signals": [],
+        # Populated by _persist_attribution_diagnostics after post-session diarization
+        "speaker_attribution": None,
+        "speaker_roles": None,
+        "objection_handling": [],
+        "talk_ratio_summary": None,
+        "talk_timeline": None,
     }
+
 
     for m in metrics_list:
         name = m.metric_name
         val = m.metric_value
         if name in metrics:
             metrics[name] = val
+
+    # For completed/terminal sessions, recalculate speaking metrics from the full set of DB segments
+    # to ensure they reflect the post-session Pyannote speaker labels.
+    if db_session.status in ["completed", "failed", "interrupted", "expired"]:
+        db_segments = await crud.get_all_transcript_segments(db, session_id)
+        if db_segments:
+            participation = {}
+            for seg in db_segments:
+                speaker = seg.speaker_id or "Speaker 1"
+                text = seg.text or ""
+                word_count = len(text.split())
+                participation[speaker] = participation.get(speaker, 0) + word_count
+            
+            total_words = sum(participation.values()) or 1
+            speaking_ratio = {
+                sp: round((wc / total_words) * 100, 1)
+                for sp, wc in participation.items()
+            }
+            metrics["participation"] = participation
+            metrics["speaking_ratio"] = speaking_ratio
 
     # Determine elapsed seconds
     elapsed = 0.0
@@ -380,10 +459,51 @@ async def get_dashboard_snapshot(
             "timestamp": a.timestamp.timestamp(),
         })
 
+    # Build speaker_attribution nested payload from session_metrics JSONB row
+    raw_attribution = metrics.get("speaker_attribution") or {}
+    speaker_attribution_payload = {
+        "status":            db_session.speaker_attribution_status,
+        "speakers_detected": raw_attribution.get("speakers_detected"),
+        "speaker_turns":     raw_attribution.get("speaker_turns"),
+        "segments_updated":  raw_attribution.get("segments_updated"),
+        "total_segments":    raw_attribution.get("total_segments"),
+        "coverage":          raw_attribution.get("coverage_percent"),
+    }
+
+    # Load global benchmark health
+    import json
+    import os
+    try:
+        from evaluation.thresholds import evaluate_thresholds
+        metrics_path = os.path.join(os.path.dirname(__file__), "evaluation", "reports", "latest_metrics.json")
+        if os.path.exists(metrics_path):
+            with open(metrics_path, "r", encoding="utf-8") as f:
+                benchmark_metrics = json.load(f)
+            analytics_health = evaluate_thresholds(benchmark_metrics)
+        else:
+            analytics_health = {
+                "speaker_attribution": "FAIL",
+                "role_classification": "FAIL",
+                "buying_signals": "FAIL",
+                "objections": "FAIL",
+                "objection_handling": "FAIL"
+            }
+    except Exception:
+        analytics_health = {
+            "speaker_attribution": "FAIL",
+            "role_classification": "FAIL",
+            "buying_signals": "FAIL",
+            "objections": "FAIL",
+            "objection_handling": "FAIL"
+        }
+
     return {
         "session_id": session_id,
         "mode": db_session.mode,
         "status": db_session.status,
+        "speaker_attribution_status": db_session.speaker_attribution_status,
+        "speaker_attribution": speaker_attribution_payload,
+        "speaker_roles": metrics["speaker_roles"],
         "elapsed_seconds": elapsed,
         "health_score": metrics["health_score"],
         "sentiment": metrics["sentiment"],
@@ -393,6 +513,9 @@ async def get_dashboard_snapshot(
         "filler_count": metrics["filler_count"],
         "objections": metrics["objections"],
         "buying_signals": metrics["buying_signals"],
+        "talk_ratio_summary": metrics["talk_ratio_summary"],
+        "talk_timeline": metrics["talk_timeline"],
+        "analytics_health": analytics_health,
         "active_alerts": mapped_alerts,
         "transcript_segments": mapped_segments,
     }
@@ -520,7 +643,7 @@ async def analyze_audio(
     """
     import shutil
 
-    from services.nlp_engine import NLPEngine
+    from services.nlp_engine import get_nlp_engine
     from services.context_analyzer import analyze_meeting, analyze_sales
 
     if not file.filename:
@@ -547,7 +670,7 @@ async def analyze_audio(
         if not isinstance(raw_segments, list):
             raw_segments = []
 
-        nlp = NLPEngine()
+        nlp = get_nlp_engine()
         enriched_segments = await run_in_threadpool(nlp.enrich_transcript, raw_segments)
 
         final_transcript = {

@@ -1,0 +1,29 @@
+{
+  "session_id": "test-uuid-123",
+  "ground_truth": {
+    "speaker_attribution": {
+      "segments": [
+        {"start": 0.0, "end": 2.5, "speaker": "Speaker 1"},
+        {"start": 2.6, "end": 5.0, "speaker": "Speaker 2"}
+      ]
+    },
+    "role_classification": {
+      "speaker_roles": {
+        "Speaker 1": "sales_rep",
+        "Speaker 2": "customer"
+      }
+    },
+    "buying_signals": {
+      "signals": ["interested", "sounds_good"]
+    },
+    "objections": {
+      "objections": ["pricing", "security"]
+    },
+    "objection_handling": {
+      "handling_status": {
+        "pricing": "resolved",
+        "security": "addressed"
+      }
+    }
+  }
+}

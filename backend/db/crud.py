@@ -52,6 +52,7 @@ from typing import cast
 from sqlalchemy import select, update, CursorResult
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from db.models import Session as _DBSession
 
 from db.models import Alert as DBAlert
 from db.models import AnalysisResult as DBAnalysisResult
@@ -685,4 +686,147 @@ async def get_alerts(
     )
     result = await db.execute(stmt)
     return list(result.scalars().all())
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Post-session speaker attribution helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+async def update_session_audio_path(
+    db: AsyncSession,
+    session_id: str,
+    audio_file_path: str,
+) -> None:
+    """
+    Persist the WAV file path written during the live session.
+
+    Called once at session end after AudioBuffer.flush_remaining() has
+    finalised the file.  Does NOT commit — the caller owns the transaction.
+
+    Args:
+        db:              Open AsyncSession.
+        session_id:      UUID string of the owning session.
+        audio_file_path: Absolute path to the finalised WAV file.
+    """
+    stmt = (
+        update(_DBSession)
+        .where(_DBSession.id == uuid.UUID(session_id))
+        .values(audio_file_path=audio_file_path)
+        .execution_options(synchronize_session=False)
+    )
+    await db.execute(stmt)
+    logger.debug(
+        "DB — audio_file_path staged for session %s [path=%s]",
+        session_id[:8], audio_file_path,
+    )
+
+
+async def update_session_speaker_attribution_status(
+    db: AsyncSession,
+    session_id: str,
+    status: str,
+) -> None:
+    """
+    Update the speaker_attribution_status field on the session row.
+
+    Valid status values: "pending" | "processing" | "completed" | "failed"
+
+    Does NOT commit — the caller owns the transaction.  The post-session
+    diarizer opens its own AsyncSessionLocal() and commits after each
+    status transition so that failures are observable.
+
+    Args:
+        db:         Open AsyncSession.
+        session_id: UUID string of the owning session.
+        status:     New attribution lifecycle status string.
+    """
+    stmt = (
+        update(_DBSession)
+        .where(_DBSession.id == uuid.UUID(session_id))
+        .values(speaker_attribution_status=status)
+        .execution_options(synchronize_session=False)
+    )
+    await db.execute(stmt)
+    logger.debug(
+        "DB — speaker_attribution_status staged → %s for session %s",
+        status, session_id[:8],
+    )
+
+
+async def get_all_transcript_segments(
+    db: AsyncSession,
+    session_id: str,
+) -> list[DBTranscriptSegment]:
+    """
+    Fetch ALL transcript segments for a session ordered by start_time.
+
+    Used by the post-session diarizer which needs the complete segment
+    list to assign speaker labels globally.  Unlike get_transcript_segments()
+    there is no LIMIT applied.
+
+    Args:
+        db:         Open AsyncSession.
+        session_id: UUID string of the owning session.
+
+    Returns:
+        List of DBTranscriptSegment rows ordered by start_time ascending.
+    """
+    sid = uuid.UUID(session_id)
+    stmt = (
+        select(DBTranscriptSegment)
+        .where(DBTranscriptSegment.session_id == sid)
+        .order_by(DBTranscriptSegment.start_time)
+    )
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def update_segment_speakers(
+    db: AsyncSession,
+    session_id: str,
+    speaker_updates: list[dict],
+) -> int:
+    """
+    Batch-update the speaker_id field of existing transcript_segment rows.
+
+    Only modifies speaker_id — text, start_time, end_time, and sentiment
+    fields are never touched.
+
+    All updates are staged within the same db session so that the caller
+    can commit them atomically in a single round-trip.
+
+    Does NOT commit — the caller owns the transaction.
+
+    Args:
+        db:              Open AsyncSession.
+        session_id:      UUID string of the owning session (used for logging).
+        speaker_updates: List of dicts, each with keys:
+                           segment_id (int)  — primary key of the row
+                           speaker     (str) — new speaker label
+
+    Returns:
+        Number of rows updated.
+    """
+    if not speaker_updates:
+        return 0
+
+    count = 0
+    for item in speaker_updates:
+        seg_id  = item["segment_id"]
+        speaker = item["speaker"]
+        stmt = (
+            update(DBTranscriptSegment)
+            .where(DBTranscriptSegment.id == seg_id)
+            .values(speaker_id=speaker)
+            .execution_options(synchronize_session=False)
+        )
+        await db.execute(stmt)
+        count += 1
+
+    logger.debug(
+        "DB — %d segment speaker_id update(s) staged for session %s",
+        count, session_id[:8],
+    )
+    return count
 

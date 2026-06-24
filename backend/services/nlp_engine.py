@@ -19,13 +19,20 @@ CONTINUATION_STARTERS = [
 ]
 
 class NLPEngine:
+    # Instance-level guard so a direct NLPEngine() call never reloads weights
+    _initialized: bool = False
+
     def __init__(self):
+        if self._initialized:
+            logger.debug("NLP Engine: reusing cached instance (model already loaded).")
+            return
         try:
             self.sentiment_pipeline = pipeline(
                 "sentiment-analysis",
                 model="tabularisai/multilingual-sentiment-analysis"
             )
             logger.info("NLP Engine: Sentiment model loaded successfully.")
+            NLPEngine._initialized = True
         except Exception as e:
             logger.error(f"NLP Engine: Failed to load sentiment model (Offline?). Error: {e}")
             self.sentiment_pipeline = None
@@ -145,3 +152,23 @@ class NLPEngine:
                 logger.error(f"Batch sentiment inference failed: {e}")
 
         return enriched_segments
+
+
+# ── Module-level singleton ────────────────────────────────────────────────────
+_nlp_engine_instance: "NLPEngine | None" = None
+
+
+def get_nlp_engine() -> "NLPEngine":
+    """Return the module-level NLPEngine singleton.
+
+    Loads and warms up the sentiment model on the first call;
+    every subsequent call returns the already-resident instance
+    without touching the filesystem or GPU/CPU weight allocation.
+    """
+    global _nlp_engine_instance
+    if _nlp_engine_instance is None:
+        logger.info("NLP Engine: initialising singleton — loading sentiment model …")
+        _nlp_engine_instance = NLPEngine()
+    else:
+        logger.debug("NLP Engine: returning cached singleton (model resident in memory).")
+    return _nlp_engine_instance

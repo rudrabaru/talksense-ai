@@ -1,0 +1,325 @@
+{
+  "audio": "D:\\Code world\\Python\\SCET Hackathon\\talksense-ai\\sample_audio\\meeting_short.mp3",
+  "ground_truth": "D:\\Code world\\Python\\SCET Hackathon\\talksense-ai\\backend\\ground_truth\\meeting_short_gt.json",
+  "timestamp": "2026-06-23T18:07:44",
+  "configs": [
+    {
+      "segments_matched": 8,
+      "total_annotated": 8,
+      "accuracy": 62.5,
+      "correct": 5,
+      "total_matched": 8,
+      "macro_f1": 0.6,
+      "scdr": 50.0,
+      "scdr_detected": 3,
+      "scdr_total": 6,
+      "per_speaker": {
+        "B": {
+          "precision": 0.5,
+          "recall": 0.3333,
+          "f1": 0.4,
+          "tp": 1,
+          "fp": 1,
+          "fn": 2
+        },
+        "A": {
+          "precision": 0.8,
+          "recall": 0.8,
+          "f1": 0.8,
+          "tp": 4,
+          "fp": 1,
+          "fn": 1
+        }
+      },
+      "label_map": {
+        "Speaker 3": "A",
+        "Speaker 2": "B",
+        "Speaker 1": "_unmapped_Speaker 1"
+      },
+      "failures": [
+        {
+          "start": 4.8,
+          "end": 9.92,
+          "predicted_raw": "Speaker 1",
+          "predicted_mapped": "_unmapped_Speaker 1",
+          "expected": "B",
+          "text": "Integration is working, but performance is slower than expec"
+        },
+        {
+          "start": 9.92,
+          "end": 12.72,
+          "predicted_raw": "Speaker 2",
+          "predicted_mapped": "B",
+          "expected": "A",
+          "text": "Is that a blocker for release?"
+        },
+        {
+          "start": 26.56,
+          "end": 28.36,
+          "predicted_raw": "Speaker 3",
+          "predicted_mapped": "A",
+          "expected": "B",
+          "text": "Yes, I will keep an eye on it."
+        }
+      ],
+      "speakers_detected": 3,
+      "config": "A: default (no hints)",
+      "params": {},
+      "pyannote_time_s": 2.24,
+      "turns_detected": 15
+    },
+    {
+      "segments_matched": 8,
+      "total_annotated": 8,
+      "accuracy": 75.0,
+      "correct": 6,
+      "total_matched": 8,
+      "macro_f1": 0.6666,
+      "scdr": 33.3,
+      "scdr_detected": 2,
+      "scdr_total": 6,
+      "per_speaker": {
+        "B": {
+          "precision": 1.0,
+          "recall": 0.3333,
+          "f1": 0.5,
+          "tp": 1,
+          "fp": 0,
+          "fn": 2
+        },
+        "A": {
+          "precision": 0.7143,
+          "recall": 1.0,
+          "f1": 0.8333,
+          "tp": 5,
+          "fp": 2,
+          "fn": 0
+        }
+      },
+      "label_map": {
+        "Speaker 2": "A",
+        "Speaker 1": "B"
+      },
+      "failures": [
+        {
+          "start": 12.72,
+          "end": 14.96,
+          "predicted_raw": "Speaker 2",
+          "predicted_mapped": "A",
+          "expected": "B",
+          "text": "We might need to optimize later."
+        },
+        {
+          "start": 26.56,
+          "end": 28.36,
+          "predicted_raw": "Speaker 2",
+          "predicted_mapped": "A",
+          "expected": "B",
+          "text": "Yes, I will keep an eye on it."
+        }
+      ],
+      "speakers_detected": 2,
+      "config": "B: num_speakers=2",
+      "params": {
+        "num_speakers": "2"
+      },
+      "pyannote_time_s": 0.78,
+      "turns_detected": 15
+    },
+    {
+      "segments_matched": 8,
+      "total_annotated": 8,
+      "accuracy": 75.0,
+      "correct": 6,
+      "total_matched": 8,
+      "macro_f1": 0.6666,
+      "scdr": 33.3,
+      "scdr_detected": 2,
+      "scdr_total": 6,
+      "per_speaker": {
+        "B": {
+          "precision": 1.0,
+          "recall": 0.3333,
+          "f1": 0.5,
+          "tp": 1,
+          "fp": 0,
+          "fn": 2
+        },
+        "A": {
+          "precision": 0.7143,
+          "recall": 1.0,
+          "f1": 0.8333,
+          "tp": 5,
+          "fp": 2,
+          "fn": 0
+        }
+      },
+      "label_map": {
+        "Speaker 2": "A",
+        "Speaker 1": "B"
+      },
+      "failures": [
+        {
+          "start": 12.72,
+          "end": 14.96,
+          "predicted_raw": "Speaker 2",
+          "predicted_mapped": "A",
+          "expected": "B",
+          "text": "We might need to optimize later."
+        },
+        {
+          "start": 26.56,
+          "end": 28.36,
+          "predicted_raw": "Speaker 2",
+          "predicted_mapped": "A",
+          "expected": "B",
+          "text": "Yes, I will keep an eye on it."
+        }
+      ],
+      "speakers_detected": 2,
+      "config": "C: min_speakers=2, max_speakers=2",
+      "params": {
+        "min_speakers": "2",
+        "max_speakers": "2"
+      },
+      "pyannote_time_s": 0.76,
+      "turns_detected": 15
+    },
+    {
+      "segments_matched": 8,
+      "total_annotated": 8,
+      "accuracy": 62.5,
+      "correct": 5,
+      "total_matched": 8,
+      "macro_f1": 0.6,
+      "scdr": 50.0,
+      "scdr_detected": 3,
+      "scdr_total": 6,
+      "per_speaker": {
+        "B": {
+          "precision": 0.5,
+          "recall": 0.3333,
+          "f1": 0.4,
+          "tp": 1,
+          "fp": 1,
+          "fn": 2
+        },
+        "A": {
+          "precision": 0.8,
+          "recall": 0.8,
+          "f1": 0.8,
+          "tp": 4,
+          "fp": 1,
+          "fn": 1
+        }
+      },
+      "label_map": {
+        "Speaker 3": "A",
+        "Speaker 2": "B",
+        "Speaker 1": "_unmapped_Speaker 1"
+      },
+      "failures": [
+        {
+          "start": 4.8,
+          "end": 9.92,
+          "predicted_raw": "Speaker 1",
+          "predicted_mapped": "_unmapped_Speaker 1",
+          "expected": "B",
+          "text": "Integration is working, but performance is slower than expec"
+        },
+        {
+          "start": 9.92,
+          "end": 12.72,
+          "predicted_raw": "Speaker 2",
+          "predicted_mapped": "B",
+          "expected": "A",
+          "text": "Is that a blocker for release?"
+        },
+        {
+          "start": 26.56,
+          "end": 28.36,
+          "predicted_raw": "Speaker 3",
+          "predicted_mapped": "A",
+          "expected": "B",
+          "text": "Yes, I will keep an eye on it."
+        }
+      ],
+      "speakers_detected": 3,
+      "config": "D: min_speakers=2, max_speakers=3",
+      "params": {
+        "min_speakers": "2",
+        "max_speakers": "3"
+      },
+      "pyannote_time_s": 0.76,
+      "turns_detected": 15
+    },
+    {
+      "segments_matched": 8,
+      "total_annotated": 8,
+      "accuracy": 62.5,
+      "correct": 5,
+      "total_matched": 8,
+      "macro_f1": 0.6,
+      "scdr": 50.0,
+      "scdr_detected": 3,
+      "scdr_total": 6,
+      "per_speaker": {
+        "B": {
+          "precision": 0.5,
+          "recall": 0.3333,
+          "f1": 0.4,
+          "tp": 1,
+          "fp": 1,
+          "fn": 2
+        },
+        "A": {
+          "precision": 0.8,
+          "recall": 0.8,
+          "f1": 0.8,
+          "tp": 4,
+          "fp": 1,
+          "fn": 1
+        }
+      },
+      "label_map": {
+        "Speaker 3": "A",
+        "Speaker 2": "B",
+        "Speaker 1": "_unmapped_Speaker 1"
+      },
+      "failures": [
+        {
+          "start": 4.8,
+          "end": 9.92,
+          "predicted_raw": "Speaker 1",
+          "predicted_mapped": "_unmapped_Speaker 1",
+          "expected": "B",
+          "text": "Integration is working, but performance is slower than expec"
+        },
+        {
+          "start": 9.92,
+          "end": 12.72,
+          "predicted_raw": "Speaker 2",
+          "predicted_mapped": "B",
+          "expected": "A",
+          "text": "Is that a blocker for release?"
+        },
+        {
+          "start": 26.56,
+          "end": 28.36,
+          "predicted_raw": "Speaker 3",
+          "predicted_mapped": "A",
+          "expected": "B",
+          "text": "Yes, I will keep an eye on it."
+        }
+      ],
+      "speakers_detected": 3,
+      "config": "E: num_speakers=3",
+      "params": {
+        "num_speakers": "3"
+      },
+      "pyannote_time_s": 0.75,
+      "turns_detected": 15
+    }
+  ],
+  "best_config": "A: default (no hints)"
+}

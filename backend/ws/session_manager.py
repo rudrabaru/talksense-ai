@@ -180,6 +180,7 @@ class SessionState:
     client_id: str | None
     user_id: int | None
     status: SessionStatus = SessionStatus.CREATED
+    speaker_attribution_status: str | None = None
 
     audio_buffer: AudioBuffer = field(default_factory=AudioBuffer)
     conversation: ConversationState = field(default_factory=ConversationState)
@@ -235,6 +236,11 @@ class SessionState:
     # Checked on re-entry: if not done, end() reuses the existing task
     # rather than creating a second one (deduplication guard).
     _final_flush_task: "asyncio.Task | None" = field(default=None, repr=False)
+
+    # Path to the on-disk WAV file written by AudioBuffer during the session.
+    # Populated in SessionManager.end() after flush_remaining() finalises the file.
+    # None for sessions where no speech audio was received.
+    audio_file_path: str | None = None
 
     # asyncio.Event for zero-overhead flush-idle signalling.
     # Contract:
@@ -296,6 +302,8 @@ class SessionManager:
             client_id=client_id,
             status=SessionStatus.CREATED,
         )
+        # Bind the session ID to the buffer so it can name its WAV file.
+        session.audio_buffer._session_id = session_id
         self._sessions[session_id] = session
         logger.info(f"Session {session_id[:8]}…: created [mode={mode}]")
         return session
@@ -367,6 +375,8 @@ class SessionManager:
         if _FLUSH_SEMAPHORE is None:
             return
 
+        logger.info("Session %s…: final flush started", session_id[:8])
+
         # Deduplication guard: if a concurrent/previous end() call already
         # created a final-flush task for this session and it is still running,
         # reuse it instead of launching a second one.  This prevents duplicate
@@ -396,6 +406,54 @@ class SessionManager:
             asyncio.shield(final_task),
             timeout=END_TIMEOUT_SECONDS,
         )
+        
+        logger.info("Session %s…: final flush completed", session_id[:8])
+
+        # ── Step 4: persist session status, duration, WAV path, and trigger post-session diarization ─────
+        try:
+            from db.database import AsyncSessionLocal
+            from db import crud
+            async with AsyncSessionLocal() as db:
+                await crud.update_session_status(
+                    db,
+                    session_id,
+                    status.value,
+                    duration=session.elapsed_seconds,
+                )
+                if status == SessionStatus.COMPLETED:
+                    wav_path = session.audio_buffer.get_audio_file_path()
+                    if wav_path:
+                        session.audio_file_path = wav_path
+                        await crud.update_session_audio_path(db, session_id, wav_path)
+                await db.commit()
+        except Exception:  # noqa: BLE001
+            logger.exception(
+                "Session %s…: failed to persist session terminal status/duration/audio_file_path",
+                session_id[:8],
+            )
+
+        if status == SessionStatus.COMPLETED:
+            session.speaker_attribution_status = "pending"
+            wav_path = session.audio_buffer.get_audio_file_path()
+            if wav_path:
+                # Spawn diarization as a tracked fire-and-forget task.
+                diarize_task = asyncio.create_task(
+                    _run_post_session_diarization(session_id, wav_path),
+                    name=f"post-diarize-{session_id[:8]}",
+                )
+                _register_flush_worker(diarize_task)
+                logger.info(
+                    "Session %s…: post-session diarization queued",
+                    session_id[:8],
+                )
+            else:
+                logger.info(
+                    "Session %s…: no WAV file — post-session diarization skipped.",
+                    session_id[:8],
+                )
+                self.remove(session_id)
+        else:
+            self.remove(session_id)
 
     def remove(self, session_id: str) -> None:
         """Remove session from memory (call after DB flush)."""
@@ -608,6 +666,7 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
 
 async def _flush_session(session: SessionState) -> None:
     """
+
     Periodic flush wrapper — acquires the throttle semaphore then delegates
     to _do_flush().  Launched as a fire-and-forget task by _flush_loop().
 
@@ -615,8 +674,10 @@ async def _flush_session(session: SessionState) -> None:
     automatically via a done-callback, allowing stop_flusher() to drain all
     in-flight workers before allowing DB pool disposal.
     """
-    async with _FLUSH_SEMAPHORE:
-        await _do_flush(session, is_final=False)
+    semaphore = _FLUSH_SEMAPHORE
+    if semaphore is not None:
+        async with semaphore:
+            await _do_flush(session, is_final=False)
 
 
 async def _flush_session_final(session: SessionState) -> None:
@@ -631,14 +692,50 @@ async def _flush_session_final(session: SessionState) -> None:
     This coroutine is awaited inline (not fire-and-forget), so the caller
     blocks until the DB commit completes or fails.
     """
-    async with _FLUSH_SEMAPHORE:
-        await _do_flush(session, is_final=True)
+    semaphore = _FLUSH_SEMAPHORE
+    if semaphore is not None:
+        async with semaphore:
+            await _do_flush(session, is_final=True)
+
+
 
 
 def _register_flush_worker(task: asyncio.Task) -> None:
     """Add a flush task to the global tracking set and register auto-removal."""
     _flush_workers.add(task)
     task.add_done_callback(_flush_workers.discard)
+
+
+async def _run_post_session_diarization(
+    session_id: str,
+    wav_path: str,
+) -> None:
+    """
+    Fire-and-forget wrapper for the post-session diarization pipeline.
+
+    Launched as an asyncio.Task from SessionManager.end() after the final
+    flush completes.  Registered in _flush_workers so stop_flusher() can
+    drain it before DB pool disposal.
+
+    Exceptions from the inner service are already caught and logged there;
+    this wrapper adds a second safety net to ensure no uncaught exception
+    can propagate and cancel the task unexpectedly.
+    """
+    try:
+        from services.post_session_diarizer import run_post_session_diarization
+        await run_post_session_diarization(session_id, wav_path)
+    except Exception:  # noqa: BLE001
+        logger.exception(
+            "Session %s…: post-session diarization wrapper caught unexpected error.",
+            session_id[:8],
+        )
+    finally:
+        manager = get_session_manager()
+        manager.remove(session_id)
+        logger.info(
+            "Session %s…: removed from memory registry after post-session diarization",
+            session_id[:8],
+        )
 
 
 async def _flush_loop() -> None:

@@ -1,0 +1,145 @@
+{
+  "recording": "SalesMeeting.mp3",
+  "duration_seconds": 53.7,
+  "speakers_detected": 2,
+  "speaker_labels": [
+    "Speaker 1",
+    "Speaker 2"
+  ],
+  "whisper_time_s": 2.7,
+  "pyannote_time_s": 1.8,
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 3.2,
+      "speaker": "Speaker 1",
+      "text": "Okay, let's start the meeting. Good morning everyone."
+    },
+    {
+      "start": 3.52,
+      "end": 9.44,
+      "speaker": "Speaker 1",
+      "text": "So the purpose of today's call is to quickly discuss the product and see if it makes sense for your team."
+    },
+    {
+      "start": 9.44,
+      "end": 11.88,
+      "speaker": "Speaker 1",
+      "text": "Can you explain what exactly this product does?"
+    },
+    {
+      "start": 11.88,
+      "end": 16.04,
+      "speaker": "Speaker 1",
+      "text": "Yeah, so it's basically a platform that helps manage workflows and reduce manual work."
+    },
+    {
+      "start": 16.04,
+      "end": 19.08,
+      "speaker": "Speaker 2",
+      "text": "Is this something that can integrate with our existing systems?"
+    },
+    {
+      "start": 19.08,
+      "end": 23.92,
+      "speaker": "Speaker 1",
+      "text": "It should integrate with most systems. Yes, although some setup might be required."
+    },
+    {
+      "start": 23.92,
+      "end": 28.2,
+      "speaker": "Speaker 2",
+      "text": "I want to understand the pricing. It feels a bit expensive compared to alternatives."
+    },
+    {
+      "start": 28.28,
+      "end": 32.52,
+      "speaker": "Speaker 1",
+      "text": "Pricing is fixed, but many customers find value in the long run."
+    },
+    {
+      "start": 32.52,
+      "end": 35.24,
+      "speaker": "Speaker 1",
+      "text": "What kind of support do you provide once we buy it?"
+    },
+    {
+      "start": 35.24,
+      "end": 39.72,
+      "speaker": "Speaker 1",
+      "text": "SupoV is mainly through tickets, and onboarding is provided initially."
+    },
+    {
+      "start": 39.72,
+      "end": 42.04,
+      "speaker": "Speaker 2",
+      "text": "How long does implementation usually take?"
+    },
+    {
+      "start": 42.04,
+      "end": 44.44,
+      "speaker": "Speaker 1",
+      "text": "Usually a few days, depending on complexity."
+    },
+    {
+      "start": 44.44,
+      "end": 47.16,
+      "speaker": "Speaker 1",
+      "text": "Alright, what would be the next steps from here?"
+    },
+    {
+      "start": 47.16,
+      "end": 51.56,
+      "speaker": "Speaker 1",
+      "text": "I'll share the proposal and pricing details, and then you can review and get back to us."
+    },
+    {
+      "start": 52.2,
+      "end": 53.56,
+      "speaker": "Speaker 1",
+      "text": "Thanks everyone for joining."
+    }
+  ],
+  "pyannote_turns": [
+    {
+      "start": 0.03,
+      "end": 16.25,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 16.25,
+      "end": 19.3,
+      "speaker": "Speaker 2"
+    },
+    {
+      "start": 19.3,
+      "end": 24.11,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 24.11,
+      "end": 28.4,
+      "speaker": "Speaker 2"
+    },
+    {
+      "start": 28.4,
+      "end": 39.86,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 39.86,
+      "end": 42.07,
+      "speaker": "Speaker 2"
+    },
+    {
+      "start": 42.15,
+      "end": 47.04,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 47.21,
+      "end": 53.86,
+      "speaker": "Speaker 1"
+    }
+  ]
+}

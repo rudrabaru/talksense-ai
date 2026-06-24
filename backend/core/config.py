@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     pyannote_enabled: bool = True
     pyannote_device: str = "cuda"
 
+    # ── Gemini (LLM Role Classification) ──────────────────
+    gemini_api_key: str = ""
+
     # ── App ───────────────────────────────────────────────
     env: str = "development"
     cors_origins: str = "http://localhost:5173"

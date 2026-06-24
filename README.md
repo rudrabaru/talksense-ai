@@ -38,6 +38,15 @@ Designed for **internal team discussions** and **project meetings**:
 - **Decisions Detected**: Extracts directional commitments and locked-in decisions
 - **Action Items**: Identifies tasks with ownership and timeline extraction
 - **Tension Points**: Flags unresolved blockers, risks, and dependencies
+- ## Speaker Attribution Evaluation
+
+A new script `backend/evaluate_speaker_attribution.py` provides a command‑line tool to generate a markdown report for a session. It extracts speaker attribution diagnostics from `session_metrics` and computes speaker distribution and change statistics.
+
+```bash
+python -m backend.evaluate_speaker_attribution <session_id>
+```
+
+The report includes coverage, speaker counts, and speaker change rate.
 - **Sentiment Analysis**: Per-segment sentiment tracking with confidence scores
 - **Key Insights**: Highlights critical moments requiring attention
 

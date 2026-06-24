@@ -13,7 +13,27 @@ Each endpoint:
   1. Validates session exists
   2. Registers the WebSocket on the SessionState
   3. Waits (keeps connection open)
-  4. Cleans up on disconnect
+  4. Cleans up on disconnect — ONLY if the closing WebSocket is still
+     the currently registered one.  Stale closes from a previously
+     superseded connection are ignored to prevent the orphan-subscriber
+     race condition described below.
+
+Race condition fixed (2026-06-11):
+  When React StrictMode double-mounts (or the user rapidly reconnects):
+    t0: ws1 connects → session.ws_<ch> = ws1
+    t1: ws2 connects → session.ws_<ch> = ws2   (ws1 is superseded)
+    t2: ws1's async close event fires
+    t3: without the guard, finally block runs → session.ws_<ch> = None
+        ws2 is now orphaned; broadcasts stop; dashboard freezes.
+
+  Fix: in every finally block, compare the closing websocket instance to
+  the currently registered reference.  Clear only on identity match:
+
+    if session.ws_<ch> is websocket:
+        session.ws_<ch> = None
+        logger.info("…: reference cleared")
+    else:
+        logger.info("…: stale close ignored — active reference preserved")
 
 The actual push is done by broadcast.py, triggered by audio_handler.py.
 """
@@ -34,6 +54,7 @@ async def transcript_ws(websocket: WebSocket, session_id: str) -> None:
     manager = get_session_manager()
     session = manager.get(session_id)
     if session is None:
+        await websocket.accept()
         await websocket.close(code=4004, reason="Session not found")
         return
 
@@ -41,7 +62,10 @@ async def transcript_ws(websocket: WebSocket, session_id: str) -> None:
     async with session.lock:
         session.ws_transcript = websocket
 
-    logger.info(f"Session {session_id[:8]}…: /transcript subscriber connected")
+    logger.info(
+        f"Session {session_id[:8]}…: /transcript subscriber accepted "
+        f"(ws_id={id(websocket)})"
+    )
     try:
         while True:
             # Keep-alive: accept and discard any incoming messages
@@ -50,8 +74,18 @@ async def transcript_ws(websocket: WebSocket, session_id: str) -> None:
         pass
     finally:
         async with session.lock:
-            session.ws_transcript = None
-        logger.info(f"Session {session_id[:8]}…: /transcript subscriber disconnected")
+            if session.ws_transcript is websocket:
+                session.ws_transcript = None
+                logger.info(
+                    f"Session {session_id[:8]}…: /transcript subscriber closed "
+                    f"(ws_id={id(websocket)}) — reference cleared"
+                )
+            else:
+                logger.info(
+                    f"Session {session_id[:8]}…: /transcript subscriber closed "
+                    f"(ws_id={id(websocket)}) — stale close, active reference preserved "
+                    f"(active_ws_id={id(session.ws_transcript)})"
+                )
 
 
 @router.websocket("/ws/metrics/{session_id}")
@@ -60,6 +94,7 @@ async def metrics_ws(websocket: WebSocket, session_id: str) -> None:
     manager = get_session_manager()
     session = manager.get(session_id)
     if session is None:
+        await websocket.accept()
         await websocket.close(code=4004, reason="Session not found")
         return
 
@@ -67,7 +102,10 @@ async def metrics_ws(websocket: WebSocket, session_id: str) -> None:
     async with session.lock:
         session.ws_metrics = websocket
 
-    logger.info(f"Session {session_id[:8]}…: /metrics subscriber connected")
+    logger.info(
+        f"Session {session_id[:8]}…: /metrics subscriber accepted "
+        f"(ws_id={id(websocket)})"
+    )
     try:
         while True:
             await websocket.receive_text()
@@ -75,8 +113,18 @@ async def metrics_ws(websocket: WebSocket, session_id: str) -> None:
         pass
     finally:
         async with session.lock:
-            session.ws_metrics = None
-        logger.info(f"Session {session_id[:8]}…: /metrics subscriber disconnected")
+            if session.ws_metrics is websocket:
+                session.ws_metrics = None
+                logger.info(
+                    f"Session {session_id[:8]}…: /metrics subscriber closed "
+                    f"(ws_id={id(websocket)}) — reference cleared"
+                )
+            else:
+                logger.info(
+                    f"Session {session_id[:8]}…: /metrics subscriber closed "
+                    f"(ws_id={id(websocket)}) — stale close, active reference preserved "
+                    f"(active_ws_id={id(session.ws_metrics)})"
+                )
 
 
 @router.websocket("/ws/alerts/{session_id}")
@@ -85,6 +133,7 @@ async def alerts_ws(websocket: WebSocket, session_id: str) -> None:
     manager = get_session_manager()
     session = manager.get(session_id)
     if session is None:
+        await websocket.accept()
         await websocket.close(code=4004, reason="Session not found")
         return
 
@@ -92,7 +141,10 @@ async def alerts_ws(websocket: WebSocket, session_id: str) -> None:
     async with session.lock:
         session.ws_alerts = websocket
 
-    logger.info(f"Session {session_id[:8]}…: /alerts subscriber connected")
+    logger.info(
+        f"Session {session_id[:8]}…: /alerts subscriber accepted "
+        f"(ws_id={id(websocket)})"
+    )
     try:
         while True:
             await websocket.receive_text()
@@ -100,8 +152,18 @@ async def alerts_ws(websocket: WebSocket, session_id: str) -> None:
         pass
     finally:
         async with session.lock:
-            session.ws_alerts = None
-        logger.info(f"Session {session_id[:8]}…: /alerts subscriber disconnected")
+            if session.ws_alerts is websocket:
+                session.ws_alerts = None
+                logger.info(
+                    f"Session {session_id[:8]}…: /alerts subscriber closed "
+                    f"(ws_id={id(websocket)}) — reference cleared"
+                )
+            else:
+                logger.info(
+                    f"Session {session_id[:8]}…: /alerts subscriber closed "
+                    f"(ws_id={id(websocket)}) — stale close, active reference preserved "
+                    f"(active_ws_id={id(session.ws_alerts)})"
+                )
 
 
 @router.websocket("/ws/status/{session_id}")
@@ -110,6 +172,7 @@ async def status_ws(websocket: WebSocket, session_id: str) -> None:
     manager = get_session_manager()
     session = manager.get(session_id)
     if session is None:
+        await websocket.accept()
         await websocket.close(code=4004, reason="Session not found")
         return
 
@@ -117,7 +180,10 @@ async def status_ws(websocket: WebSocket, session_id: str) -> None:
     async with session.lock:
         session.ws_status = websocket
 
-    logger.info(f"Session {session_id[:8]}…: /status subscriber connected")
+    logger.info(
+        f"Session {session_id[:8]}…: /status subscriber accepted "
+        f"(ws_id={id(websocket)})"
+    )
     try:
         while True:
             await websocket.receive_text()
@@ -125,5 +191,15 @@ async def status_ws(websocket: WebSocket, session_id: str) -> None:
         pass
     finally:
         async with session.lock:
-            session.ws_status = None
-        logger.info(f"Session {session_id[:8]}…: /status subscriber disconnected")
+            if session.ws_status is websocket:
+                session.ws_status = None
+                logger.info(
+                    f"Session {session_id[:8]}…: /status subscriber closed "
+                    f"(ws_id={id(websocket)}) — reference cleared"
+                )
+            else:
+                logger.info(
+                    f"Session {session_id[:8]}…: /status subscriber closed "
+                    f"(ws_id={id(websocket)}) — stale close, active reference preserved "
+                    f"(active_ws_id={id(session.ws_status)})"
+                )

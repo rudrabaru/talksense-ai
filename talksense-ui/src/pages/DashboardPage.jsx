@@ -50,7 +50,7 @@ export default function DashboardPage() {
       try {
         if (!sessionId) {
           // No session ID in URL: create a new one
-          const data = await createSession("meeting");
+          const data = await createSession("sales");
           if (data && data.session_id) {
             navigate(`/dashboard/${data.session_id}`, { replace: true });
           } else {
@@ -65,7 +65,7 @@ export default function DashboardPage() {
           } catch (err) {
             console.warn(`[DashboardPage] Session ${sessionId} invalid/expired. Creating new session.`, err);
             // Session is stale (e.g. backend restarted). Auto-create a new one.
-            const data = await createSession("meeting");
+            const data = await createSession("sales");
             if (data && data.session_id) {
               navigate(`/dashboard/${data.session_id}`, { replace: true });
             } else {
@@ -110,34 +110,44 @@ export default function DashboardPage() {
     const ws = new WebSocket(`${WS_BASE_URL}/ws/audio/${validatedSessionId}`);
     audioWsRef.current = ws;
 
-    ws.onopen = () => {
+    ws.onopen = async () => {
       console.log("[DashboardPage] Audio WebSocket connected.");
       setAudioStatus("streaming");
 
-      startCapture({
-        onAudioChunk: (buffer) => {
-          // Guard: only send if the socket is still open.
-          if (audioWsRef.current && audioWsRef.current.readyState === WebSocket.OPEN) {
-            audioWsRef.current.send(buffer);
-          }
-        },
-      });
+      try {
+        await startCapture({
+          onAudioChunk: (buffer) => {
+            // Guard: only send if the socket is still open.
+            if (audioWsRef.current && audioWsRef.current.readyState === WebSocket.OPEN) {
+              audioWsRef.current.send(buffer);
+            }
+          },
+        });
+      } catch (err) {
+        console.error("[DashboardPage] startCapture failed:", err);
+        setAudioStatus("error");
+      }
     };
 
     ws.onclose = (event) => {
       console.log(`[DashboardPage] Audio WebSocket closed (code: ${event.code}).`);
       audioWsRef.current = null;
-      // If the mic is still capturing when the socket closes, stop it.
-      // This prevents PCM chunks from being generated with nowhere to go.
       stopCapture();
       setAudioStatus("idle");
+
+      // 4009 = backend rejected because session is terminal.
+      // Navigate to /dashboard so a fresh session is auto-created.
+      if (event.code === 4009) {
+        console.warn("[DashboardPage] Session ended on backend — navigating to fresh session.");
+        navigate("/dashboard", { replace: true });
+      }
     };
 
     ws.onerror = (event) => {
       console.error("[DashboardPage] Audio WebSocket error:", event);
       setAudioStatus("error");
     };
-  }, [validatedSessionId, startCapture, stopCapture]);
+  }, [validatedSessionId, startCapture, stopCapture, navigate]);
 
   /**
    * Stops microphone capture and closes the audio WebSocket.
@@ -185,7 +195,8 @@ export default function DashboardPage() {
   }
 
   // --- Render: Loading skeleton ----------------------------------------------
-  if (connectionState === "idle" || connectionState === "connecting") {
+  const isTerminal = ["completed", "failed", "interrupted", "expired"].includes(sessionStatus);
+  if ((connectionState === "idle" || connectionState === "connecting") && !isTerminal) {
     return (
       <main
         className="dashboard-loading-skeleton"
@@ -309,7 +320,11 @@ export default function DashboardPage() {
           <TranscriptPanel transcript={transcript || []} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          <MetricsPanel metrics={metrics || null} />
+          <MetricsPanel 
+            metrics={metrics || null} 
+            sessionStatus={sessionStatus} 
+            lastSyncAt={lastSyncAt} 
+          />
           <AlertsPanel alerts={alerts || []} />
         </div>
       </div>

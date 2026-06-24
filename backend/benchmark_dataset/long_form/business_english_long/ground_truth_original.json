@@ -1,0 +1,122 @@
+{
+  "recording": "0001_Business_English_Conversations_ESL_Business_Meeting_Conversation.m4a",
+  "description": "205s ESL business meeting conversation. 3 speakers. Long-form diarization test.",
+  "expected_speakers": 2,
+  "annotation_method": "pyannote_assisted_whisper_transcript",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 17.04,
+      "speaker": "B",
+      "text": "Hello everyone! Tim and Melinda are running late, but we have a lot to get through, so"
+    },
+    {
+      "start": 17.04,
+      "end": 24.92,
+      "speaker": "B",
+      "text": "we should get started. Jason, can you please take the minutes today?"
+    },
+    {
+      "start": 24.92,
+      "end": 38.52,
+      "speaker": "B",
+      "text": "Yes, of course, Tony. No problem. Thanks. Okay, let's get the ball rolling. First on the"
+    },
+    {
+      "start": 38.52,
+      "end": 48.0,
+      "speaker": "B",
+      "text": "agenda today, Carrie, can you please give us an update on the marketing strategy for our"
+    },
+    {
+      "start": 48.0,
+      "end": 59.56,
+      "speaker": "A",
+      "text": "new beverage, ginger cola? Yes, Tony. Well, we have decided to pitch the new ginger cola as a health"
+    },
+    {
+      "start": 59.56,
+      "end": 71.16,
+      "speaker": "B",
+      "text": "and energy drink. Fantastic. I think this will be our next big hit. There is no reason that it"
+    },
+    {
+      "start": 71.16,
+      "end": 83.72,
+      "speaker": "B",
+      "text": "shouldn't be a winner. It tastes great, it's healthy, and it has very low calories. It's perfect for"
+    },
+    {
+      "start": 83.72,
+      "end": 93.56,
+      "speaker": "B",
+      "text": "working out. Let's make this the next Red Bull energy drink. Where are we with the advertising"
+    },
+    {
+      "start": 93.56,
+      "end": 103.52,
+      "speaker": "A",
+      "text": "and promotion strategy? We still have a few things to work out, but we are planning to have a power"
+    },
+    {
+      "start": 103.52,
+      "end": 111.36,
+      "speaker": "A",
+      "text": "hitter from the Japan Baseball League as a celebrity endorsement. We still have to iron"
+    },
+    {
+      "start": 111.36,
+      "end": 122.76,
+      "speaker": "A",
+      "text": "out some details, but we think he's a great fit. Great idea. Well, let's set aside more time"
+    },
+    {
+      "start": 122.8,
+      "end": 132.2,
+      "speaker": "B",
+      "text": "at the next meeting for a more in-depth look at what you have planned. Of course, that's really"
+    },
+    {
+      "start": 132.2,
+      "end": 142.8,
+      "speaker": "B",
+      "text": "important, but we have a lot to cover in today's meeting. Okay, Tony, I will be ready to present"
+    },
+    {
+      "start": 142.8,
+      "end": 151.6,
+      "speaker": "B",
+      "text": "to everyone then. Let's move on to the next topic. I have sent around an action list for"
+    },
+    {
+      "start": 151.6,
+      "end": 160.84,
+      "speaker": "B",
+      "text": "each of you to take a look at. It includes a look at the following calls to action that we need"
+    },
+    {
+      "start": 160.84,
+      "end": 171.24,
+      "speaker": "B",
+      "text": "to address for the upcoming charity Walkathon. Let's take a few moments and go over everyone's"
+    },
+    {
+      "start": 171.24,
+      "end": 179.56,
+      "speaker": "B",
+      "text": "role. This is extremely important for us. We need to give back to the community."
+    },
+    {
+      "start": 180.52,
+      "end": 190.44,
+      "speaker": "A",
+      "text": "I couldn't agree more. This has been at the top of all our agendas and we have come up with some"
+    },
+    {
+      "start": 190.44,
+      "end": 198.36,
+      "speaker": "A",
+      "text": "pretty innovative ideas. Let me start things off. If that's okay with everyone else."
+    }
+  ]
+}
