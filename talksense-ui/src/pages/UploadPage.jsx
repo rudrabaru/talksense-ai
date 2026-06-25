@@ -1,6 +1,7 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { analyzeAudio, loadDemoData } from "../services/api"
+import { analyzeAudio, loadDemoData, listClients, getClientBriefing, createClient } from "../services/api"
+import ClientBriefingCard from "../components/ClientBriefingCard"
 import logoImage from "../assets/logo/logo.png"
 
 export default function UploadPage() {
@@ -11,6 +12,77 @@ export default function UploadPage() {
     const [error, setError] = useState(null)
     const [progress, setProgress] = useState("")
     const [success, setSuccess] = useState(false)
+
+    // Client memory states
+    const [clients, setClients] = useState([])
+    const [selectedClientId, setSelectedClientId] = useState("")
+    const [clientBriefing, setClientBriefing] = useState(null)
+    const [briefingLoading, setBriefingLoading] = useState(false)
+    const [isCreatingClient, setIsCreatingClient] = useState(false)
+    const [newClientName, setNewClientName] = useState("")
+    const [newClientIndustry, setNewClientIndustry] = useState("")
+    const [clientCreateError, setClientCreateError] = useState(null)
+
+    // Fetch clients on mount
+    useEffect(() => {
+        const fetchClients = async () => {
+            try {
+                const data = await listClients()
+                setClients(data)
+                if (data.length > 0 && !selectedClientId) {
+                    setSelectedClientId(data[0].id)
+                }
+            } catch (err) {
+                console.error("Failed to load clients list:", err)
+            }
+        }
+        fetchClients()
+    }, [])
+
+    // Fetch briefing details when selection changes
+    useEffect(() => {
+        const fetchBriefing = async () => {
+            if (!selectedClientId) {
+                setClientBriefing(null)
+                return
+            }
+            setBriefingLoading(true)
+            try {
+                const data = await getClientBriefing(selectedClientId)
+                setClientBriefing(data)
+            } catch (err) {
+                console.error("Failed to load client briefing:", err)
+            } finally {
+                setBriefingLoading(false)
+            }
+        }
+        if (mode === "sales") {
+            fetchBriefing()
+        }
+    }, [selectedClientId, mode])
+
+    // Create a new client profile
+    const handleCreateClient = async (e) => {
+        e.preventDefault()
+        if (!newClientName.trim()) {
+            setClientCreateError("Client name is required")
+            return
+        }
+        try {
+            setClientCreateError(null)
+            const newClient = await createClient({
+                name: newClientName.trim(),
+                industry: newClientIndustry.trim() || null
+            })
+            setClients(prev => [...prev, newClient])
+            setSelectedClientId(newClient.id)
+            setNewClientName("")
+            setNewClientIndustry("")
+            setIsCreatingClient(false)
+        } catch (err) {
+            setClientCreateError("Failed to create client. Please try again.")
+        }
+    }
 
     const handleFileChange = (e) => {
         if (e.target.files && e.target.files[0]) {
@@ -46,7 +118,7 @@ export default function UploadPage() {
             setTimeout(() => setProgress("Analyzing sentiment..."), 2000)
             setTimeout(() => setProgress("Extracting insights..."), 3500)
 
-            const result = await analyzeAudio(file, mode)
+            const result = await analyzeAudio(file, mode, mode === "sales" ? selectedClientId : null)
 
             setProgress("Complete!")
             setSuccess(true)
@@ -114,12 +186,20 @@ export default function UploadPage() {
                             <span style={{ color: '#14B8A6' }}> AI</span>
                         </span>
                     </button>
-                    <button
-                        onClick={() => navigate('/')}
-                        className="text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors"
-                    >
-                        ← Back to Home
-                    </button>
+                    <div className="flex gap-6 items-center">
+                        <button
+                            onClick={() => navigate('/sessions')}
+                            className="text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors"
+                        >
+                            History
+                        </button>
+                        <button
+                            onClick={() => navigate('/')}
+                            className="text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors"
+                        >
+                            ← Back to Home
+                        </button>
+                    </div>
                 </div>
             </nav>
 
@@ -259,6 +339,84 @@ export default function UploadPage() {
                                 </button>
                             </div>
                         </div>
+
+                        {/* Client Selector (Sales Mode Only) */}
+                        {mode === "sales" && (
+                            <div className="mb-8 border border-gray-100 bg-gray-50/50 rounded-2xl p-5 animate-slide-down">
+                                <div className="flex justify-between items-center mb-3">
+                                    <label className="text-sm font-semibold text-gray-900">
+                                        Client Relationship
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsCreatingClient(!isCreatingClient)}
+                                        className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                                    >
+                                        {isCreatingClient ? "← Select Client" : "+ New Client"}
+                                    </button>
+                                </div>
+
+                                {isCreatingClient ? (
+                                    <form onSubmit={handleCreateClient} className="space-y-3 bg-white p-4 rounded-xl border border-gray-150 shadow-sm animate-scale-in">
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Company / Client Name</label>
+                                            <input
+                                                type="text"
+                                                required
+                                                value={newClientName}
+                                                onChange={e => setNewClientName(e.target.value)}
+                                                placeholder="e.g. Acme Corp"
+                                                className="w-full px-3 py-2 border border-gray-305 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Industry (Optional)</label>
+                                            <input
+                                                type="text"
+                                                value={newClientIndustry}
+                                                onChange={e => setNewClientIndustry(e.target.value)}
+                                                placeholder="e.g. Technology, Healthcare"
+                                                className="w-full px-3 py-2 border border-gray-305 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            />
+                                        </div>
+                                        {clientCreateError && (
+                                            <p className="text-xs text-rose-600 mt-1 flex items-center gap-1">
+                                                <span>⚠️</span> {clientCreateError}
+                                            </p>
+                                        )}
+                                        <button
+                                            type="submit"
+                                            className="w-full bg-indigo-600 text-white font-semibold py-2 rounded-lg text-sm hover:bg-indigo-700 transition-colors shadow-sm active:scale-98"
+                                        >
+                                            Save Client
+                                        </button>
+                                    </form>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <select
+                                            value={selectedClientId}
+                                            onChange={(e) => setSelectedClientId(e.target.value)}
+                                            disabled={loading}
+                                            className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent font-medium text-gray-700"
+                                        >
+                                            <option value="" disabled>Select a client...</option>
+                                            {clients.map((c) => (
+                                                <option key={c.id} value={c.id}>
+                                                    {c.name} {c.industry ? `(${c.industry})` : ''}
+                                                </option>
+                                            ))}
+                                        </select>
+
+                                        {selectedClientId && (
+                                            <ClientBriefingCard
+                                                client={clientBriefing}
+                                                loading={briefingLoading}
+                                            />
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Action Buttons */}
                         <div className="space-y-3">

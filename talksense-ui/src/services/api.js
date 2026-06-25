@@ -8,10 +8,13 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
  * @param {string} mode - Analysis mode ('meeting' or 'sales')
  * @returns {Promise<Object>} Analysis results
  */
-export async function analyzeAudio(file, mode = 'meeting') {
+export async function analyzeAudio(file, mode = 'meeting', clientId = null) {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('mode', mode);
+    if (clientId) {
+        formData.append('client_id', clientId);
+    }
 
     const response = await fetch(`${API_BASE_URL}/analyze`, {
         method: 'POST',
@@ -150,10 +153,15 @@ export async function healthCheck() {
 /**
  * Create a new session with the backend
  * @param {string} mode - Session mode ('meeting' or 'sales')
+ * @param {string|null} clientId - Optional client ID to link
  * @returns {Promise<Object>} Session creation result containing session_id
  */
-export async function createSession(mode = 'meeting') {
-    const response = await fetch(`${API_BASE_URL}/sessions?mode=${mode}`, {
+export async function createSession(mode = 'meeting', clientId = null) {
+    let url = `${API_BASE_URL}/sessions?mode=${mode}`;
+    if (clientId) {
+        url += `&client_id=${clientId}`;
+    }
+    const response = await fetch(url, {
         method: 'POST',
     });
 
@@ -176,6 +184,92 @@ export async function getSession(sessionId) {
     if (!response.ok) {
         const error = await response.json().catch(() => ({ detail: 'Session not found' }));
         throw new Error(error.detail || 'Session not found');
+    }
+
+    return response.json();
+}
+
+/**
+ * Get paginated list of sessions with filters and search
+ * @param {Object} params - Query parameters (page, limit, mode, status, client_id, search, sort_by, sort_order)
+ * @returns {Promise<Object>} Paginated sessions response
+ */
+export async function listSessions(params = {}) {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, val]) => {
+        if (val !== undefined && val !== null && val !== '') {
+            query.append(key, val);
+        }
+    });
+
+    const response = await fetch(`${API_BASE_URL}/sessions?${query.toString()}`);
+
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: 'Failed to fetch sessions' }));
+        throw new Error(error.detail || 'Failed to fetch sessions');
+    }
+
+    return response.json();
+}
+
+/**
+ * List all clients from backend
+ * @returns {Promise<Array>} List of clients
+ */
+export async function listClients() {
+    const response = await fetch(`${API_BASE_URL}/clients`);
+    if (!response.ok) {
+        throw new Error('Failed to fetch clients');
+    }
+    return response.json();
+}
+
+/**
+ * Get client briefing card details by ID
+ * @param {string} clientId - The ID of the client
+ * @returns {Promise<Object>} Client briefing card data
+ */
+export async function getClientBriefing(clientId) {
+    const response = await fetch(`${API_BASE_URL}/clients/${clientId}`);
+    if (!response.ok) {
+        throw new Error('Failed to fetch client briefing');
+    }
+    return response.json();
+}
+
+/**
+ * Create a new client profile
+ * @param {Object} clientData - Client data { name, industry }
+ * @returns {Promise<Object>} Created client profile
+ */
+export async function createClient(clientData) {
+    const response = await fetch(`${API_BASE_URL}/clients`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(clientData),
+    });
+    if (!response.ok) {
+        throw new Error('Failed to create client');
+    }
+    return response.json();
+}
+
+/**
+ * Compare two completed sessions and return a ComparisonResult.
+ * @param {string} id1 - UUID of the first session
+ * @param {string} id2 - UUID of the second session
+ * @returns {Promise<Object>} ComparisonResult with delta, shared/unique lists, action items
+ */
+export async function compareSessions(id1, id2) {
+    const response = await fetch(
+        `${API_BASE_URL}/sessions/compare?id1=${encodeURIComponent(id1)}&id2=${encodeURIComponent(id2)}`
+    );
+
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: 'Comparison failed' }));
+        throw new Error(error.detail || 'Failed to compare sessions');
     }
 
     return response.json();

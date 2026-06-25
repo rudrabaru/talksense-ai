@@ -187,15 +187,9 @@ def run_post_session(pcm_data: bytes, transcriber, diarizer) -> list[EvalSegment
     elapsed = time.monotonic() - t0
     print(f"  Pyannote finished in {elapsed:.1f}s")
 
-    # Unwrap DiarizeOutput if needed
-    try:
-        from pyannote.audio.pipelines.speaker_diarization import DiarizeOutput
-        if isinstance(diarization, DiarizeOutput):
-            annotation = diarization.speaker_diarization
-        else:
-            annotation = diarization
-    except ImportError:
-        annotation = diarization
+    # Unwrap DiarizeOutput wrapper if present (pyannote-audio 4.x) using duck-typing
+    # to bypass class-identity mismatches under Uvicorn reload environments.
+    annotation = getattr(diarization, "speaker_diarization", diarization)
 
     # Build turn timeline
     turns = []

@@ -1,6 +1,6 @@
 {
-  "audio_file": "D:\\Code world\\Python\\SCET Hackathon\\talksense-ai\\sample_audio\\meeting_short.mp3",
-  "ground_truth": "D:\\Code world\\Python\\SCET Hackathon\\talksense-ai\\backend\\ground_truth\\meeting_short_gt.json",
+  "audio_file": "E:\\Work\\SCET Hackathon\\talksense-ai\\sample_audio\\meeting_short.mp3",
+  "ground_truth": "E:\\Work\\SCET Hackathon\\talksense-ai\\backend\\ground_truth\\meeting_short_gt.json",
   "live_chunked": {
     "segments_matched": 8,
     "total_annotated": 8,
@@ -85,7 +85,7 @@
     },
     "failures": [
       {
-        "start": 12.72,
+        "start": 12.76,
         "end": 14.96,
         "predicted_raw": "Speaker 2",
         "predicted_mapped": "A",
@@ -93,7 +93,7 @@
         "text": "We might need to optimize later."
       },
       {
-        "start": 26.56,
+        "start": 26.6,
         "end": 28.36,
         "predicted_raw": "Speaker 2",
         "predicted_mapped": "A",

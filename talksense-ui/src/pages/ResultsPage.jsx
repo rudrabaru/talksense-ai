@@ -349,12 +349,20 @@ export default function ResultsPage() {
                             <span style={{ color: '#14B8A6' }}> AI</span>
                         </span>
                     </button>
-                    <button
-                        onClick={() => navigate('/upload')}
-                        className="text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors"
-                    >
-                        New Analysis →
-                    </button>
+                    <div className="flex gap-6 items-center">
+                        <button
+                            onClick={() => navigate('/sessions')}
+                            className="text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors"
+                        >
+                            History
+                        </button>
+                        <button
+                            onClick={() => navigate('/upload')}
+                            className="text-sm font-medium text-gray-500 hover:text-indigo-600 transition-colors"
+                        >
+                            New Analysis →
+                        </button>
+                    </div>
                 </div>
             </div>
 

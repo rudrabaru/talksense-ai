@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     whisper_model: str = "small"
     whisper_compute_type: str = "int8"
     whisper_device: str = "cuda"
+    whisper_language: str = ""   # e.g. "en"; empty = auto-detect (multilingual)
 
     # ── Pyannote ──────────────────────────────────────────
     pyannote_enabled: bool = True

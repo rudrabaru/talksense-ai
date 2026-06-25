@@ -30,7 +30,7 @@ class VADProcessor:
             # send to Whisper
     """
 
-    def __init__(self, threshold: float = 0.5, sample_rate: int = 16000):
+    def __init__(self, threshold: float = 0.60, sample_rate: int = 16000):
         self.threshold = threshold
         self.sample_rate = sample_rate
         self._chunk_size = _CHUNK_SIZES[sample_rate]

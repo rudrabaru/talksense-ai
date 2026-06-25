@@ -92,15 +92,9 @@ def run_sample(pipeline, transcriber, sample_dir, audio_dir):
     diarization = pipeline(waveform, num_speakers=expected_speakers)
     pyannote_time = time.monotonic() - t0
 
-    # Unwrap
-    try:
-        from pyannote.audio.pipelines.speaker_diarization import DiarizeOutput
-        if isinstance(diarization, DiarizeOutput):
-            annotation = diarization.speaker_diarization
-        else:
-            annotation = diarization
-    except ImportError:
-        annotation = diarization
+    # Unwrap DiarizeOutput wrapper if present (pyannote-audio 4.x) using duck-typing
+    # to bypass class-identity mismatches under Uvicorn reload environments.
+    annotation = getattr(diarization, "speaker_diarization", diarization)
 
     # Build turns
     turns = []

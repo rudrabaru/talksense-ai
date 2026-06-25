@@ -31,9 +31,9 @@ SAMPLE_RATE = 16_000          # Hz
 BYTES_PER_SAMPLE = 2          # int16
 SAMPLES_PER_MS = SAMPLE_RATE // 1000  # 16 samples per ms
 
-TARGET_DURATION_MS = 1_000    # Flush after 1s of speech audio
-SILENCE_GAP_MS = 800          # Flush after 800ms of silence following speech
-MIN_FLUSH_MS = 300            # Don't flush tiny chunks < 300ms
+TARGET_DURATION_MS = 2_000    # Flush after 2.0s — Whisper accuracy peaks with longer chunks
+SILENCE_GAP_MS = 600          # Flush faster after speaker stops (was 800ms)
+MIN_FLUSH_MS = 800            # Reject chunks < 800ms — avoids Whisper hallucination on tiny fragments
 
 # Directory for session WAV files (relative to backend working directory)
 SESSION_AUDIO_DIR = "session_audio"

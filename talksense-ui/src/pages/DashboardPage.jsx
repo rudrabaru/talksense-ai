@@ -2,11 +2,13 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSessionWebSocket } from "../hooks/useSessionWebSocket";
 import { useAudioCapture } from "../hooks/useAudioCapture";
-import { createSession, getSession } from "../services/api";
+import { createSession, getSession, listClients, getClientBriefing, createClient } from "../services/api";
+import ClientBriefingCard from "../components/ClientBriefingCard";
 import SessionStatusBar from "../components/dashboard/SessionStatusBar";
 import TranscriptPanel from "../components/dashboard/TranscriptPanel";
 import MetricsPanel from "../components/dashboard/MetricsPanel";
 import AlertsPanel from "../components/dashboard/AlertsPanel";
+import logoImage from "../assets/logo/logo.png";
 
 // --- Constants ---------------------------------------------------------------
 const WS_BASE_URL = import.meta.env.VITE_WS_URL || "ws://localhost:8000";
@@ -44,42 +46,116 @@ export default function DashboardPage() {
     reconnect,
   } = useSessionWebSocket(validatedSessionId);
 
-  // --- Session validation and creation ---------------------------------------
+  // --- Client memory / Launcher states ---------------------------------------
+  const [launcherMode, setLauncherMode] = useState("sales"); // "meeting" | "sales"
+  const [clients, setClients] = useState([]);
+  const [selectedClientId, setSelectedClientId] = useState("");
+  const [clientBriefing, setClientBriefing] = useState(null);
+  const [briefingLoading, setBriefingLoading] = useState(false);
+  const [isCreatingClient, setIsCreatingClient] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
+  const [newClientIndustry, setNewClientIndustry] = useState("");
+  const [clientCreateError, setClientCreateError] = useState(null);
+  const [launchLoading, setLaunchLoading] = useState(false);
+
+  // Fetch clients on mount if no session present
+  useEffect(() => {
+    if (!sessionId) {
+      const fetchClients = async () => {
+        try {
+          const data = await listClients();
+          setClients(data);
+          if (data.length > 0) {
+            setSelectedClientId(data[0].id);
+          }
+        } catch (err) {
+          console.error("Failed to load clients list:", err);
+        }
+      };
+      fetchClients();
+    }
+  }, [sessionId]);
+
+  // Fetch briefing card details when client changes
+  useEffect(() => {
+    if (!sessionId && selectedClientId && launcherMode === "sales") {
+      const fetchBriefing = async () => {
+        setBriefingLoading(true);
+        try {
+          const data = await getClientBriefing(selectedClientId);
+          setClientBriefing(data);
+        } catch (err) {
+          console.error("Failed to load client briefing:", err);
+        } finally {
+          setBriefingLoading(false);
+        }
+      };
+      fetchBriefing();
+    } else {
+      setClientBriefing(null);
+    }
+  }, [selectedClientId, launcherMode, sessionId]);
+
+  // Create a new client profile
+  const handleCreateClient = async (e) => {
+    e.preventDefault();
+    if (!newClientName.trim()) {
+      setClientCreateError("Client name is required");
+      return;
+    }
+    try {
+      setClientCreateError(null);
+      const newClient = await createClient({
+        name: newClientName.trim(),
+        industry: newClientIndustry.trim() || null
+      });
+      setClients(prev => [...prev, newClient]);
+      setSelectedClientId(newClient.id);
+      setNewClientName("");
+      setNewClientIndustry("");
+      setIsCreatingClient(false);
+    } catch (err) {
+      setClientCreateError("Failed to create client.");
+    }
+  };
+
+  // Launch live session
+  const handleLaunchSession = async () => {
+    setLaunchLoading(true);
+    setInitError(null);
+    try {
+      const data = await createSession(
+        launcherMode, 
+        launcherMode === "sales" && selectedClientId ? selectedClientId : null
+      );
+      if (data && data.session_id) {
+        navigate(`/dashboard/${data.session_id}`);
+      } else {
+        setInitError("Failed to start session: No session_id returned.");
+      }
+    } catch (err) {
+      setInitError(err.message || "Failed to launch session.");
+    } finally {
+      setLaunchLoading(false);
+    }
+  };
+
+  // --- Session validation -----------------------------------------------------
   useEffect(() => {
     const initializeSession = async () => {
+      if (!sessionId) return;
       try {
-        if (!sessionId) {
-          // No session ID in URL: create a new one
-          const data = await createSession("sales");
-          if (data && data.session_id) {
-            navigate(`/dashboard/${data.session_id}`, { replace: true });
-          } else {
-            setInitError("Failed to initialize session: No session_id returned.");
-          }
-        } else {
-          // Session ID in URL: validate it exists on the backend
-          try {
-            await getSession(sessionId);
-            // If it succeeds, mark it as validated so WebSockets can connect
-            setValidatedSessionId(sessionId);
-          } catch (err) {
-            console.warn(`[DashboardPage] Session ${sessionId} invalid/expired. Creating new session.`, err);
-            // Session is stale (e.g. backend restarted). Auto-create a new one.
-            const data = await createSession("sales");
-            if (data && data.session_id) {
-              navigate(`/dashboard/${data.session_id}`, { replace: true });
-            } else {
-              setInitError("Failed to initialize session: No session_id returned.");
-            }
-          }
-        }
+        await getSession(sessionId);
+        setValidatedSessionId(sessionId);
       } catch (err) {
-        setInitError(err.message || "Failed to initialize live session.");
+        console.warn(`[DashboardPage] Session ${sessionId} invalid/expired.`, err);
+        setInitError("Session not found or invalid. Please return to home or launch a new session.");
       }
     };
 
     initializeSession();
-  }, [sessionId, navigate]);
+  }, [sessionId]);
+
 
   // --- Cleanup audio capture on unmount --------------------------------------
   useEffect(() => {
@@ -194,7 +270,203 @@ export default function DashboardPage() {
     );
   }
 
+  // --- Render: Launcher dashboard when no sessionId is active ────────────────
+  if (!sessionId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        {/* Navbar */}
+        <nav className="border-b border-gray-200 bg-white sticky top-0 z-50 shadow-sm">
+          <div className="mx-auto px-6 lg:px-12 xl:px-16 h-16 flex items-center justify-between">
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center gap-3 hover:opacity-85 transition-all"
+            >
+              <div className="relative w-9 h-9">
+                <img src={logoImage} alt="TalkSense AI Logo" className="w-full h-full object-contain" />
+              </div>
+              <span className="font-bold text-xl tracking-tight">
+                <span style={{ color: '#4F46E5' }}>TalkSense</span>
+                <span style={{ color: '#14B8A6' }}> AI</span>
+              </span>
+            </button>
+            <div className="flex gap-6 items-center text-sm font-medium">
+              <button
+                onClick={() => navigate('/')}
+                className="text-gray-500 hover:text-indigo-600 transition-colors"
+              >
+                Home
+              </button>
+              <button
+                onClick={() => navigate('/upload')}
+                className="text-gray-500 hover:text-indigo-600 transition-colors"
+              >
+                Analyze
+              </button>
+              <button
+                onClick={() => navigate('/sessions')}
+                className="text-gray-500 hover:text-indigo-600 transition-colors"
+              >
+                History
+              </button>
+            </div>
+          </div>
+        </nav>
+
+        <main className="max-w-4xl mx-auto px-6 py-12 lg:py-16 w-full flex-1 flex flex-col justify-center">
+          <div className="bg-white rounded-3xl border border-gray-200 shadow-xl p-8 lg:p-10 animate-fade-in">
+            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight text-center mb-2">
+              Launch Live Intelligence Session
+            </h1>
+            <p className="text-gray-500 text-center mb-8">
+              Configure your workspace and review client memory before starting the live session.
+            </p>
+
+            <div className="grid md:grid-cols-2 gap-8 mb-8 items-start">
+              {/* Left Column: Config */}
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-3">
+                    Conversation Mode
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setLauncherMode("meeting")}
+                      className={`py-3 px-4 rounded-xl border-2 text-center font-semibold transition-smooth ${
+                        launcherMode === "meeting"
+                          ? "border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm"
+                          : "border-gray-200 bg-white hover:border-gray-300 text-gray-700"
+                      }`}
+                    >
+                      Meeting
+                    </button>
+                    <button
+                      onClick={() => setLauncherMode("sales")}
+                      className={`py-3 px-4 rounded-xl border-2 text-center font-semibold transition-smooth ${
+                        launcherMode === "sales"
+                          ? "border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm"
+                          : "border-gray-200 bg-white hover:border-gray-300 text-gray-700"
+                      }`}
+                    >
+                      Sales Call
+                    </button>
+                  </div>
+                </div>
+
+                {launcherMode === "sales" && (
+                  <div className="bg-gray-50 border border-gray-150 rounded-2xl p-4 space-y-4">
+                    <div className="flex justify-between items-center">
+                      <label className="text-sm font-semibold text-gray-900">
+                        Select Client
+                      </label>
+                      <button
+                        onClick={() => setIsCreatingClient(!isCreatingClient)}
+                        className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                      >
+                        {isCreatingClient ? "← Choose Client" : "+ Create Client"}
+                      </button>
+                    </div>
+
+                    {isCreatingClient ? (
+                      <form onSubmit={handleCreateClient} className="space-y-3 bg-white p-4 rounded-xl border border-gray-200 shadow-sm animate-scale-in">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Company / Name</label>
+                          <input
+                            type="text"
+                            required
+                            value={newClientName}
+                            onChange={e => setNewClientName(e.target.value)}
+                            placeholder="e.g. Acme Corporation"
+                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Industry (Optional)</label>
+                          <input
+                            type="text"
+                            value={newClientIndustry}
+                            onChange={e => setNewClientIndustry(e.target.value)}
+                            placeholder="e.g. Software"
+                            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          />
+                        </div>
+                        {clientCreateError && (
+                          <p className="text-[10px] text-rose-600 mt-1">⚠️ {clientCreateError}</p>
+                        )}
+                        <button
+                          type="submit"
+                          className="w-full bg-indigo-600 text-white font-semibold py-2 rounded-lg text-xs hover:bg-indigo-700 transition-colors shadow-sm active:scale-95"
+                        >
+                          Save New Client
+                        </button>
+                      </form>
+                    ) : (
+                      <select
+                        value={selectedClientId}
+                        onChange={(e) => setSelectedClientId(e.target.value)}
+                        className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-gray-700"
+                      >
+                        <option value="" disabled>Select client...</option>
+                        {clients.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name} {c.industry ? `(${c.industry})` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column: Briefing Card */}
+              <div>
+                <label className="block text-sm font-bold text-gray-900 mb-3">
+                  Client Briefing & Memory
+                </label>
+                {launcherMode === "sales" ? (
+                  selectedClientId ? (
+                    <ClientBriefingCard client={clientBriefing} loading={briefingLoading} />
+                  ) : (
+                    <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center text-gray-400">
+                      Select a client to load relationship memory profile.
+                    </div>
+                  )
+                ) : (
+                  <div className="bg-slate-50 border border-slate-150 rounded-2xl p-6 text-center text-slate-500">
+                    <span className="block font-semibold mb-1 text-gray-800">Meeting Mode selected</span>
+                    Internal team meeting mode does not use client relationship briefing memory.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Launch CTA */}
+            <div className="border-t border-gray-150 pt-8 mt-6">
+              <button
+                onClick={handleLaunchSession}
+                disabled={launchLoading || (launcherMode === "sales" && !selectedClientId)}
+                className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-indigo-700 hover:shadow-xl transition-smooth disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center active:scale-95"
+              >
+                {launchLoading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Creating session...
+                  </>
+                ) : (
+                  "🚀 Launch Live Session"
+                )}
+              </button>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   // --- Render: Loading skeleton ----------------------------------------------
+
   const isTerminal = ["completed", "failed", "interrupted", "expired"].includes(sessionStatus);
   if ((connectionState === "idle" || connectionState === "connecting") && !isTerminal) {
     return (
@@ -218,7 +490,46 @@ export default function DashboardPage() {
 
   // --- Render: Main dashboard ------------------------------------------------
   return (
-    <main style={{ padding: "16px" }}>
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      {/* Navbar */}
+      <nav className="border-b border-gray-200 bg-white sticky top-0 z-50 shadow-sm">
+        <div className="mx-auto px-6 lg:px-12 xl:px-16 h-16 flex items-center justify-between">
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-3 hover:opacity-85 transition-all"
+          >
+            <div className="relative w-9 h-9">
+              <img src={logoImage} alt="TalkSense AI Logo" className="w-full h-full object-contain" />
+            </div>
+            <span className="font-bold text-xl tracking-tight">
+              <span style={{ color: '#4F46E5' }}>TalkSense</span>
+              <span style={{ color: '#14B8A6' }}> AI</span>
+            </span>
+          </button>
+          <div className="flex gap-6 items-center text-sm font-medium">
+            <button
+              onClick={() => navigate('/')}
+              className="text-gray-500 hover:text-indigo-600 transition-colors"
+            >
+              Home
+            </button>
+            <button
+              onClick={() => navigate('/upload')}
+              className="text-gray-500 hover:text-indigo-600 transition-colors"
+            >
+              Analyze
+            </button>
+            <button
+              onClick={() => navigate('/sessions')}
+              className="text-gray-500 hover:text-indigo-600 transition-colors"
+            >
+              History
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <main style={{ padding: "24px 16px", flex: 1 }} className="max-w-7xl mx-auto w-full">
       {/* --- Connection banners --- */}
       {connectionState === "reconnecting" && (
         <div
@@ -329,5 +640,6 @@ export default function DashboardPage() {
         </div>
       </div>
     </main>
+    </div>
   );
 }

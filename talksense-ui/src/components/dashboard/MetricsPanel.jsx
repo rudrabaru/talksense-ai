@@ -234,7 +234,7 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt }) => {
             <ul>
               {sortedParticipation.map(([speaker, percent]) => (
                 <li key={speaker}>
-                  {speaker}: {percent != null ? `${percent}%` : "N/A"}
+                  {speaker}: {percent != null ? `${percent} words` : "N/A"}
                 </li>
               ))}
             </ul>

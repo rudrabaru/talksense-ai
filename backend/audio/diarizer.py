@@ -151,15 +151,9 @@ class SpeakerDiarizer:
             elapsed = (time.monotonic() - t0) * 1000
             logger.debug(f"Diarizer: Pyannote finished in {elapsed:.0f}ms")
 
-            # pyannote-audio 4.x returns a DiarizeOutput dataclass, not an
-            # Annotation directly.  Unwrap it to get the pyannote.core.Annotation
-            # that actually carries the itertracks() API.
-            from pyannote.audio.pipelines.speaker_diarization import DiarizeOutput
-            if isinstance(diarization, DiarizeOutput):
-                annotation = diarization.speaker_diarization
-            else:
-                # Legacy mode / future-proofing: if already an Annotation, use as-is
-                annotation = diarization
+            # pyannote-audio 4.x returns a DiarizeOutput dataclass. Unwrap it using duck-typing
+            # to bypass class-identity mismatches under Uvicorn reload environments.
+            annotation = getattr(diarization, "speaker_diarization", diarization)
 
             # Build a list of (start, end, speaker) turns from Pyannote output
             turns: list[tuple[float, float, str]] = []

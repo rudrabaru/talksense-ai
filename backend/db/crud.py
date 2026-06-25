@@ -584,6 +584,7 @@ async def update_client_snapshot(
 async def recover_stale_sessions(db: AsyncSession) -> int:
     """
     Startup recovery: bulk-transition orphaned active sessions to INTERRUPTED.
+    Also finalizes and links any partial WAV audio files on disk.
 
     Runs once during the FastAPI lifespan startup hook (before flusher loop
     starts) to clean up sessions left in non-terminal states from a prior
@@ -605,27 +606,61 @@ async def recover_stale_sessions(db: AsyncSession) -> int:
     Returns:
         Number of session rows updated.
     """
+    import os
+    import struct
+
     _STALE_STATUSES = ("created", "connecting", "active", "processing")
 
-    stmt = (
-        update(DBSession)
-        .where(DBSession.status.in_(_STALE_STATUSES))
-        .values(
-            status="interrupted",
-            ended_at=datetime.now(tz=timezone.utc),
-        )
-        .execution_options(synchronize_session=False)
+    # Fetch stale sessions to finalize their WAV files if they exist
+    result = await db.execute(
+        select(DBSession).where(DBSession.status.in_(_STALE_STATUSES))
     )
-    result = await db.execute(stmt)
-    await db.commit()
-    affected = cast(CursorResult, result).rowcount
-    if affected:
+    stale_sessions = result.scalars().all()
+
+    affected = 0
+    for session in stale_sessions:
+        session.status = "interrupted"
+        session.ended_at = datetime.now(tz=timezone.utc)
+
+        # Formulate deterministic WAV file path
+        session_id_str = str(session.id)
+        safe_id = session_id_str.replace("-", "")[:16]
+        wav_filename = f"session_{safe_id}.wav"
+        wav_path = os.path.join("session_audio", wav_filename)
+
+        if os.path.exists(wav_path):
+            try:
+                # Finalize WAV header sizes based on file size on disk
+                file_size = os.path.getsize(wav_path)
+                if file_size >= 44:
+                    data_bytes = file_size - 44
+                    with open(wav_path, "r+b") as f:
+                        f.seek(4)
+                        f.write(struct.pack("<I", 36 + data_bytes))
+                        f.seek(40)
+                        f.write(struct.pack("<I", data_bytes))
+                    logger.info(
+                        "DB — finalized WAV header for recovered session %s [size=%d]",
+                        session_id_str[:8], file_size
+                    )
+                session.audio_file_path = os.path.abspath(wav_path)
+            except Exception as exc:
+                logger.error(
+                    "DB — failed to finalize WAV for recovered session %s: %s",
+                    session_id_str[:8], exc
+                )
+
+        affected += 1
+
+    if affected > 0:
+        await db.commit()
         logger.warning(
             "DB — startup recovery: %d stale session(s) marked as interrupted",
             affected,
         )
     else:
         logger.info("DB — startup recovery: no stale sessions found.")
+
     return affected
 
 
@@ -663,7 +698,7 @@ async def get_latest_session_metrics(
         select(DBSessionMetric)
         .distinct(DBSessionMetric.metric_name)
         .where(DBSessionMetric.session_id == sid)
-        .order_by(DBSessionMetric.metric_name, DBSessionMetric.timestamp.desc())
+        .order_by(DBSessionMetric.metric_name, DBSessionMetric.timestamp.desc(), DBSessionMetric.id.desc())
     )
     result = await db.execute(stmt)
     return list(result.scalars().all())
@@ -829,4 +864,145 @@ async def update_segment_speakers(
         count, session_id[:8],
     )
     return count
+
+
+async def list_sessions_paginated(
+    db: AsyncSession,
+    *,
+    mode: str | None = None,
+    status: str | None = None,
+    client_id: str | None = None,
+    search: str | None = None,
+    sort_by: str = "started_at",
+    sort_order: str = "desc",
+    page: int = 1,
+    limit: int = 10,
+) -> tuple[list[dict], int]:
+    """
+    List historical sessions with search, filtering, sorting, and pagination.
+    Returns a tuple of (items_list, total_count).
+    """
+    from sqlalchemy.orm import joinedload
+    from sqlalchemy import func
+
+    # 1. Base query for sessions and count
+    stmt = select(DBSession).outerjoin(DBSession.client).options(joinedload(DBSession.client))
+    count_stmt = select(func.count(DBSession.id)).outerjoin(DBSession.client)
+
+    # 2. Filters
+    filters = []
+    if status:
+        filters.append(DBSession.status == status)
+    if mode:
+        filters.append(DBSession.mode == mode)
+    if client_id:
+        try:
+            filters.append(DBSession.client_id == uuid.UUID(client_id))
+        except ValueError:
+            return [], 0
+
+    if search:
+        search_filter = (
+            DBSession.title.ilike(f"%{search}%") |
+            DBSession.mode.ilike(f"%{search}%") |
+            DBClient.name.ilike(f"%{search}%")
+        )
+        filters.append(search_filter)
+
+    if filters:
+        stmt = stmt.where(*filters)
+        count_stmt = count_stmt.where(*filters)
+
+    # 3. Get total count
+    count_result = await db.execute(count_stmt)
+    total = count_result.scalar() or 0
+
+    # 4. Sort
+    allowed_sort_fields = {
+        "started_at": DBSession.started_at,
+        "duration": DBSession.duration,
+        "title": DBSession.title,
+        "status": DBSession.status,
+        "mode": DBSession.mode,
+    }
+    sort_col = allowed_sort_fields.get(sort_by, DBSession.started_at)
+    if sort_order == "desc":
+        stmt = stmt.order_by(sort_col.desc())
+    else:
+        stmt = stmt.order_by(sort_col.asc())
+
+    # 5. Paginate
+    offset = (page - 1) * limit
+    stmt = stmt.offset(offset).limit(limit)
+
+    # 6. Execute query
+    result = await db.execute(stmt)
+    sessions = result.scalars().all()
+
+    if not sessions:
+        return [], total
+
+    # 7. Batch fetch latest metrics (health_score and sentiment)
+    session_ids = [s.id for s in sessions]
+
+    subq = (
+        select(
+            DBSessionMetric.session_id,
+            DBSessionMetric.metric_name,
+            DBSessionMetric.metric_value,
+            func.row_number().over(
+                partition_by=(DBSessionMetric.session_id, DBSessionMetric.metric_name),
+                order_by=(DBSessionMetric.timestamp.desc(), DBSessionMetric.id.desc())
+            ).label("rn")
+        )
+        .where(
+            DBSessionMetric.session_id.in_(session_ids),
+            DBSessionMetric.metric_name.in_(["health_score", "sentiment"])
+        )
+    ).subquery()
+
+    metrics_stmt = select(subq).where(subq.c.rn == 1)
+    metrics_result = await db.execute(metrics_stmt)
+    metrics_rows = metrics_result.all()
+
+    metrics_map = {}
+    for row in metrics_rows:
+        sid_str = str(row.session_id)
+        if sid_str not in metrics_map:
+            metrics_map[sid_str] = {}
+        metrics_map[sid_str][row.metric_name] = row.metric_value
+
+    # 8. Construct response summaries
+    items = []
+    for s in sessions:
+        sid_str = str(s.id)
+        session_metrics = metrics_map.get(sid_str, {})
+
+        health_score = session_metrics.get("health_score")
+        if not isinstance(health_score, int) and health_score is not None:
+            try:
+                health_score = int(health_score)
+            except (ValueError, TypeError):
+                health_score = None
+
+        sentiment = session_metrics.get("sentiment")
+        if not isinstance(sentiment, str) and sentiment is not None:
+            sentiment = str(sentiment)
+
+        items.append({
+            "session_id": sid_str,
+            "mode": s.mode,
+            "status": s.status,
+            "title": s.title,
+            "started_at": s.started_at,
+            "ended_at": s.ended_at,
+            "duration": s.duration,
+            "client_id": str(s.client_id) if s.client_id else None,
+            "client_name": s.client.name if s.client else None,
+            "health_score": health_score,
+            "sentiment": sentiment,
+        })
+
+    return items, total
+
 

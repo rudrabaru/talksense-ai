@@ -32,6 +32,7 @@ REST endpoints:
 import logging
 import os
 import sys
+from datetime import datetime
 
 from contextlib import asynccontextmanager
 
@@ -251,6 +252,113 @@ async def create_session(
             "alerts":     f"/ws/alerts/{session.session_id}",
             "status":     f"/ws/status/{session.session_id}",
         },
+    }
+
+
+class SessionSummary(BaseModel):
+    session_id: str
+    mode: str
+    status: str
+    title: str | None = None
+    started_at: datetime
+    ended_at: datetime | None = None
+    duration: float | None = None
+    client_id: str | None = None
+    client_name: str | None = None
+    health_score: int | None = None
+    sentiment: str | None = None
+
+
+class PaginatedSessionsResponse(BaseModel):
+    total: int
+    page: int
+    limit: int
+    items: list[SessionSummary]
+
+
+@app.get("/sessions/compare", tags=["Sessions"])
+async def compare_sessions(
+    id1: str,
+    id2: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Compare two completed sessions side-by-side.
+
+    Query params:
+        id1 — UUID of the first session
+        id2 — UUID of the second session
+
+    Response 200: ComparisonResult (see services/comparison.py for full schema)
+    Response 400: if id1 == id2
+    Response 404: if either session is not found in the database
+    """
+    if id1 == id2:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="id1 and id2 must be different sessions.",
+        )
+
+    from services.comparison import build_comparison
+
+    try:
+        result = await build_comparison(db, id1, id2)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        )
+    except Exception as exc:
+        logger.exception("Unexpected error in /sessions/compare: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to build session comparison.",
+        )
+
+    return JSONResponse(content=result)
+
+
+@app.get("/sessions", response_model=PaginatedSessionsResponse, tags=["Sessions"])
+async def list_historical_sessions(
+    mode: str | None = None,
+    status: str | None = None,
+    client_id: str | None = None,
+    search: str | None = None,
+    sort_by: str = "started_at",
+    sort_order: str = "desc",
+    page: int = 1,
+    limit: int = 10,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    List historical sessions with search, filters, pagination, and sorting.
+    """
+    from db import crud
+
+    # Restrict page and limit values to sensible bounds
+    if page < 1:
+        page = 1
+    if limit < 1:
+        limit = 10
+    elif limit > 100:
+        limit = 100
+
+    items, total = await crud.list_sessions_paginated(
+        db,
+        mode=mode,
+        status=status,
+        client_id=client_id,
+        search=search,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        limit=limit,
+    )
+    return {
+        "total": total,
+        "page": page,
+        "limit": limit,
+        "items": items,
     }
 
 
@@ -554,12 +662,15 @@ async def post_client(
         name=body.name,
         industry=body.industry,
     )
+    await db.commit()
+    await db.refresh(row)
     return {
         "id": str(row.id),
         "name": row.name,
         "industry": row.industry,
         "created_at": row.created_at.isoformat(),
     }
+
 
 
 @app.get("/clients", tags=["Clients"])
@@ -621,13 +732,16 @@ async def get_client(
     return {
         "client_id": str(row.id),
         "name": row.name,
+        "industry": row.industry,
         "meetings_count": snap.meetings_count if snap else 0,
         "sentiment_trend": snap.sentiment_trend if snap else None,
         "common_objections": snap.common_objections if snap else [],
         "last_meeting_date": (
             snap.last_meeting_date.isoformat() if snap and snap.last_meeting_date else None
         ),
+        "summary": snap.summary if snap else None,
     }
+
 
 
 # ── Legacy batch analysis endpoint (kept for compatibility) ───────────────────
@@ -635,6 +749,8 @@ async def get_client(
 async def analyze_audio(
     file: UploadFile = File(...),
     mode: str = Form("meeting"),
+    client_id: str | None = Form(None),
+    db: _AsyncSession = _Depends(_get_db),
 ):
     """
     Legacy batch audio analysis endpoint.
@@ -642,7 +758,9 @@ async def analyze_audio(
     For real-time analysis, use the WebSocket pipeline.
     """
     import shutil
-
+    import uuid
+    from datetime import datetime, timezone
+    from db import crud
     from services.nlp_engine import get_nlp_engine
     from services.context_analyzer import analyze_meeting, analyze_sales
 
@@ -683,6 +801,63 @@ async def analyze_audio(
         else:
             insights = await run_in_threadpool(analyze_meeting, final_transcript)
 
+        # ── Persist the session to PostgreSQL immediately ──
+        session_id = str(uuid.uuid4())
+        db_session = await crud.create_session(
+            db,
+            session_id=session_id,
+            mode=mode,
+            client_id=client_id,
+            title=file.filename or "Uploaded Session",
+        )
+        db_session.status = "completed"
+        db_session.duration = enriched_segments[-1]["end"] if enriched_segments else 0.0
+        db_session.ended_at = datetime.now(timezone.utc)
+        
+        # Save transcript segments
+        for seg in enriched_segments:
+            from db.models import TranscriptSegment as DBTranscriptSegment
+            db_seg = DBTranscriptSegment(
+                session_id=uuid.UUID(session_id),
+                speaker_id="Speaker A",
+                start_time=seg.get("start", 0.0),
+                end_time=seg.get("end", 0.0),
+                text=seg.get("text", ""),
+                sentiment=seg.get("sentiment", 0.0),
+                sentiment_label=seg.get("sentiment_label", "Neutral")
+            )
+            db.add(db_seg)
+        
+        # Save metrics
+        q_score = insights.get("quality", {}).get("score", 5) if isinstance(insights.get("quality"), dict) else 5
+        metrics_to_save = [
+            {"metric_name": "health_score", "metric_value": int(q_score * 10)},
+            {"metric_name": "sentiment_score", "metric_value": insights.get("sentiment_score", 0.0)},
+            {"metric_name": "objections", "metric_value": insights.get("objections", [])},
+            {"metric_name": "buying_signals", "metric_value": insights.get("buying_signals", []) if "buying_signals" in insights else []},
+            {"metric_name": "speaking_ratio", "metric_value": {"Speaker A": 100.0}},
+            {"metric_name": "participation", "metric_value": {"Speaker A": 100.0}}
+        ]
+        await crud.save_session_metrics_batch(db, session_id, metrics_to_save)
+        
+        # Save analysis result summary
+        from db.models import AnalysisResult as DBAnalysisResult
+        analysis_res = DBAnalysisResult(
+            session_id=uuid.UUID(session_id),
+            health_score=int(q_score * 10),
+            summary=insights.get("summary", ""),
+            report_json=insights
+        )
+        db.add(analysis_res)
+        
+        await db.commit()
+
+        # Update client memory if client_id is linked
+        if client_id:
+            from services.client_memory import update_client_memory
+            await update_client_memory(db, uuid.UUID(client_id))
+            await db.commit()
+
         return JSONResponse(content={
             "filename": file.filename,
             "mode": mode,
@@ -696,3 +871,6 @@ async def analyze_audio(
                 os.remove(file_path)
             except Exception:
                 pass
+
+
+# reload touch

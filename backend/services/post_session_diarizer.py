@@ -266,6 +266,23 @@ async def run_post_session_diarization(
                 await db.commit()
                 logger.info("post_session_diarizer — session %s: Talk ratio timeline generated.", session_id[:8])
 
+        # ── Step 13: Client Memory Profile ─────────────────────────────────────
+        try:
+            from services.client_memory import update_client_memory
+            async with AsyncSessionLocal() as db:
+                from db import crud
+                session_row = await crud.get_session(db, session_id)
+                if session_row and session_row.client_id:
+                    logger.info("post_session_diarizer — session %s: Updating client memory for client %s...", session_id[:8], session_row.client_id)
+                    await update_client_memory(db, session_row.client_id)
+                    await db.commit()
+                    logger.info("post_session_diarizer — session %s: Client memory updated.", session_id[:8])
+                else:
+                    logger.info("post_session_diarizer — session %s: No client linked, skipping memory update.", session_id[:8])
+        except Exception as e:
+            logger.error("Failed to update client memory for session %s: %s", session_id[:8], e, exc_info=True)
+
+
     except Exception:  # noqa: BLE001
         logger.exception(
             "post_session_diarizer — session %s: unhandled error",
@@ -349,15 +366,9 @@ def _run_pyannote_sync(
                 num_speakers=2,
             )
 
-        # Unwrap DiarizeOutput wrapper if present (pyannote-audio 4.x)
-        try:
-            from pyannote.audio.pipelines.speaker_diarization import DiarizeOutput
-            if isinstance(diarization, DiarizeOutput):
-                annotation = diarization.speaker_diarization
-            else:
-                annotation = diarization
-        except ImportError:
-            annotation = diarization
+        # Unwrap DiarizeOutput wrapper if present (pyannote-audio 4.x) using duck-typing
+        # to bypass class-identity mismatches under Uvicorn reload environments.
+        annotation = getattr(diarization, "speaker_diarization", diarization)
 
         turns: list[tuple[float, float, str]] = []
         for turn, _, speaker in annotation.itertracks(yield_label=True):

@@ -605,6 +605,21 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
 
         async with AsyncSessionLocal() as db:
             try:
+                # Ensure the session row exists in DB to prevent foreign key violations (e.g. if DB was reset or session was test-only)
+                db_sess = await crud.get_session(db, session.session_id)
+                if db_sess is None:
+                    logger.warning(
+                        "Flusher — session %s not found in DB. Re-creating session row to prevent foreign key violations.",
+                        session.session_id[:8]
+                    )
+                    await crud.create_session(
+                        db,
+                        session_id=session.session_id,
+                        mode=session.mode,
+                        client_id=session.client_id,
+                        user_id=session.user_id,
+                    )
+
                 if seg_delta:
                     await crud.save_transcript_segments(
                         db, session.session_id, seg_delta

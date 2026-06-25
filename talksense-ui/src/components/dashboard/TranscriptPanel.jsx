@@ -36,12 +36,14 @@ const TranscriptPanelComponent = ({ transcript }) => {
       >
         {transcript && transcript.length > 0 ? (
           <>
-            {transcript.map((seg) => {
+            {transcript.map((seg, idx) => {
               const startVal = seg.start != null ? Number(seg.start) : 0;
               const endVal = seg.end != null ? Number(seg.end) : 0;
               const normalizedStart = Math.round(startVal * 1000);
               const normalizedEnd = Math.round(endVal * 1000);
-              const stableKey = seg.id || `${seg.speaker || "unknown"}-${normalizedStart}-${normalizedEnd}`;
+              const stableKey = seg.id 
+                ? `${seg.id}-${idx}` 
+                : `${seg.speaker || "unknown"}-${normalizedStart}-${normalizedEnd}-${idx}`;
               const sentimentClass = seg.sentiment_label && typeof seg.sentiment_label === "string"
                 ? `sentiment-badge-${seg.sentiment_label.toLowerCase()}`
                 : "";

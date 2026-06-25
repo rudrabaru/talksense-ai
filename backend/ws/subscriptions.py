@@ -70,8 +70,9 @@ async def transcript_ws(websocket: WebSocket, session_id: str) -> None:
         while True:
             # Keep-alive: accept and discard any incoming messages
             await websocket.receive_text()
-    except WebSocketDisconnect:
-        pass
+    except (WebSocketDisconnect, RuntimeError) as exc:
+        if isinstance(exc, RuntimeError) and not ("Cannot call" in str(exc) and "disconnect" in str(exc)):
+            raise exc
     finally:
         async with session.lock:
             if session.ws_transcript is websocket:
@@ -109,8 +110,9 @@ async def metrics_ws(websocket: WebSocket, session_id: str) -> None:
     try:
         while True:
             await websocket.receive_text()
-    except WebSocketDisconnect:
-        pass
+    except (WebSocketDisconnect, RuntimeError) as exc:
+        if isinstance(exc, RuntimeError) and not ("Cannot call" in str(exc) and "disconnect" in str(exc)):
+            raise exc
     finally:
         async with session.lock:
             if session.ws_metrics is websocket:
@@ -148,8 +150,9 @@ async def alerts_ws(websocket: WebSocket, session_id: str) -> None:
     try:
         while True:
             await websocket.receive_text()
-    except WebSocketDisconnect:
-        pass
+    except (WebSocketDisconnect, RuntimeError) as exc:
+        if isinstance(exc, RuntimeError) and not ("Cannot call" in str(exc) and "disconnect" in str(exc)):
+            raise exc
     finally:
         async with session.lock:
             if session.ws_alerts is websocket:
@@ -187,8 +190,9 @@ async def status_ws(websocket: WebSocket, session_id: str) -> None:
     try:
         while True:
             await websocket.receive_text()
-    except WebSocketDisconnect:
-        pass
+    except (WebSocketDisconnect, RuntimeError) as exc:
+        if isinstance(exc, RuntimeError) and not ("Cannot call" in str(exc) and "disconnect" in str(exc)):
+            raise exc
     finally:
         async with session.lock:
             if session.ws_status is websocket:

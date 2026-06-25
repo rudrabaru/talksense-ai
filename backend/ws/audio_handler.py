@@ -28,6 +28,7 @@ from audio.buffer import AudioBuffer
 from audio.diarizer import get_diarizer
 from audio.transcriber import get_transcriber
 from audio.vad import get_vad
+from core.config import get_settings
 from services.nlp_engine import get_nlp_engine
 from ws.broadcast import broadcast_all, broadcast_status, broadcast_transcript
 from ws.session_manager import SessionStatus, get_session_manager
@@ -97,6 +98,8 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
                 text_lower = text.lower()
                 if text_lower == "end":
                     logger.info(f"Session {session_id[:8]}…: client sent 'end'")
+                    async with session.lock:
+                        session.status = SessionStatus.COMPLETED
                     break
                 elif text_lower == "ping":
                     await websocket.send_text("pong")
@@ -134,16 +137,21 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
                 manager=manager,
             )
 
-    except WebSocketDisconnect:
-        logger.info(f"Session {session_id[:8]}…: audio WebSocket disconnected")
-        await manager.set_status(session_id, SessionStatus.INTERRUPTED)
+    except (WebSocketDisconnect, RuntimeError) as exc:
+        if isinstance(exc, RuntimeError) and not ("Cannot call" in str(exc) and "disconnect" in str(exc)):
+            logger.error(f"Session {session_id[:8]}…: audio handler error — {exc}", exc_info=True)
+            await manager.set_status(session_id, SessionStatus.FAILED)
+        else:
+            logger.info(f"Session {session_id[:8]}…: audio WebSocket disconnected")
+            await manager.set_status(session_id, SessionStatus.INTERRUPTED)
     except Exception as exc:
         logger.error(f"Session {session_id[:8]}…: audio handler error — {exc}", exc_info=True)
         await manager.set_status(session_id, SessionStatus.FAILED)
     finally:
         # Flush any remaining buffered audio
         await _flush_final(session_id, transcriber, diarizer, manager)
-        await manager.end(session_id)
+        # Pass the current session status to preserve interrupted/failed states in DB
+        await manager.end(session_id, session.status)
         await broadcast_status(session.ws_status, "completed")
         logger.info(f"Session {session_id[:8]}…: audio handler closed")
 
@@ -201,9 +209,12 @@ async def _transcribe_and_enrich(
 ) -> None:
     """Transcribe audio bytes, perform speaker diarization, enrichment, and broadcast updates."""
     # 4. Transcribe (GPU, async via thread pool)
+    _settings = get_settings()
+    _language = _settings.whisper_language or None   # None = auto-detect (multilingual)
     raw_segments = await transcriber.transcribe_async(
         flushed,
         time_offset=max(0.0, time_offset),
+        language=_language,
     )
 
     logger.info(

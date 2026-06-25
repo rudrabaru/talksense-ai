@@ -262,6 +262,9 @@ export function useSessionWebSocket(sessionId) {
 
     fetch(`${REST_BASE_URL}/dashboard/${sid}`)
       .then((res) => {
+        if (res.status === 404) {
+          throw new Error("Session not found");
+        }
         if (!res.ok) {
           throw new Error(`Failed to fetch dashboard: ${res.statusText}`);
         }
@@ -338,6 +341,10 @@ export function useSessionWebSocket(sessionId) {
       })
       .catch((err) => {
         console.error("[useSessionWebSocket] Reconciliation fetch failed:", err);
+        if (err.message === "Session not found") {
+          safeSetState(setSessionStatus, "failed");
+          safeSetState(setError, "Session not found on backend.");
+        }
       });
   }, [_sortAlerts, safeSetState]);
 
@@ -372,8 +379,11 @@ export function useSessionWebSocket(sessionId) {
            ws.readyState === WebSocket.CONNECTING)) {
         ws.close(1000, "Client disconnecting");
       }
+      channelStatusRef.current[channel] = CONNECTION_STATES.IDLE;
     });
-  }, []);
+
+    safeSetState(setConnectionState, CONNECTION_STATES.IDLE);
+  }, [safeSetState]);
 
   // --- connect() -- INTERNAL -------------------------------------------------
   /**
@@ -423,6 +433,10 @@ export function useSessionWebSocket(sessionId) {
       // --- onopen: channel is live ------------------------------------------
       ws.onopen = () => {
         if (!isMountedRef.current) return;
+        if (socketsRef.current[channel] !== ws) {
+          console.log(`[useSessionWebSocket] Stale socket opened for "${channel}", ignoring.`);
+          return;
+        }
         console.log(`[useSessionWebSocket] Channel "${channel}" connected.`);
         retryCountRef.current[channel] = 0; // reset backoff on clean open
         channelStatusRef.current[channel] = CONNECTION_STATES.CONNECTED;
@@ -454,6 +468,8 @@ export function useSessionWebSocket(sessionId) {
         }
 
         const intentional = isClosingRef.current;
+        const isTerminalCode = event.code === 4004 || event.code === 4009;
+
         console.log(
           `[useSessionWebSocket] Channel "${channel}" closed ` +
           `(code: ${event.code}, intentional: ${intentional}).`
@@ -461,8 +477,19 @@ export function useSessionWebSocket(sessionId) {
 
         socketsRef.current[channel] = null;
 
-        if (intentional || _isTerminalStatus(sessionStatusRef.current)) {
-          channelStatusRef.current[channel] = CONNECTION_STATES.IDLE;
+        if (intentional || isTerminalCode || _isTerminalStatus(sessionStatusRef.current)) {
+          if (isTerminalCode) {
+            channelStatusRef.current[channel] = CONNECTION_STATES.FAILED;
+            if (event.code === 4004) {
+              safeSetState(setError, `Session not found on backend (4004).`);
+              safeSetState(setSessionStatus, "failed");
+            } else if (event.code === 4009) {
+              safeSetState(setError, `Session has ended (4009).`);
+              safeSetState(setSessionStatus, "completed");
+            }
+          } else {
+            channelStatusRef.current[channel] = CONNECTION_STATES.IDLE;
+          }
         } else {
           needsReconciliationRef.current = true;
           const attempt = retryCountRef.current[channel];
@@ -501,6 +528,7 @@ export function useSessionWebSocket(sessionId) {
 
       // --- onerror: log only; onclose always fires after ------------------
       ws.onerror = (event) => {
+        if (socketsRef.current[channel] !== ws) return;
         console.error(`[useSessionWebSocket] Channel "${channel}" error:`, event);
       };
 
@@ -510,6 +538,7 @@ export function useSessionWebSocket(sessionId) {
         case "transcript":
           ws.onmessage = (event) => {
             if (!isMountedRef.current) return;
+            if (socketsRef.current[channel] !== ws) return;
 
             // Step 1: Unwrap backend envelope { type, payload, ts } → payload.
             // Falls back to the raw parsed object for un-enveloped messages.
@@ -544,6 +573,7 @@ export function useSessionWebSocket(sessionId) {
         case "metrics":
           ws.onmessage = (event) => {
             if (!isMountedRef.current) return;
+            if (socketsRef.current[channel] !== ws) return;
 
             // Unwrap backend envelope { type, payload, ts } → payload.
             let payload = _unwrapEnvelope(event.data, "metrics");
@@ -616,6 +646,7 @@ export function useSessionWebSocket(sessionId) {
         case "alerts":
           ws.onmessage = (event) => {
             if (!isMountedRef.current) return;
+            if (socketsRef.current[channel] !== ws) return;
 
             // Unwrap backend envelope { type, payload, ts } → payload.
             let alert = _unwrapEnvelope(event.data, "alerts");
@@ -660,6 +691,7 @@ export function useSessionWebSocket(sessionId) {
         case "status":
           ws.onmessage = (event) => {
             if (!isMountedRef.current) return;
+            if (socketsRef.current[channel] !== ws) return;
 
             // Unwrap backend envelope { type, payload, ts } → payload.
             const payload = _unwrapEnvelope(event.data, "status");
@@ -788,6 +820,14 @@ export function useSessionWebSocket(sessionId) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, reconcileState]);
+
+  // --- Auto-disconnect when session becomes terminal --------------------------
+  useEffect(() => {
+    if (_isTerminalStatus(sessionStatus)) {
+      console.log(`[useSessionWebSocket] Session status is terminal ("${sessionStatus}"). Disconnecting.`);
+      disconnect();
+    }
+  }, [sessionStatus, _isTerminalStatus, disconnect]);
 
   // --- Auto-Refresh Polling for Speaker Attribution ----------------------------
   useEffect(() => {
