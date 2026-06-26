@@ -5,11 +5,13 @@ on:
     branches:
       - dev
       - main
+      - temp-ci-test
 
   pull_request:
     branches:
       - dev
       - main
+      - temp-ci-test
 
 jobs:
   backend-tests:
@@ -78,9 +80,16 @@ jobs:
             curl -s http://127.0.0.1:8000/health && break
             sleep 1
           done
-          pytest
+          pytest --cov=. --cov-report=term --cov-report=xml
         env:
           ENV: test
           JWT_SECRET_KEY: test_secret_key_123_test_secret_key_123_test
           HF_TOKEN: ""
-          GEMINI_API_KEY: ""
+          GEMINI_API_KEY: ""
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+
