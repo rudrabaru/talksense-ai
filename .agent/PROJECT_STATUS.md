@@ -1,6 +1,6 @@
 # TalkSense AI v4 — Project Build Status
 
-> Last updated: 2026-06-06  
+> Last updated: 2026-06-26 (Production Readiness Audit)  
 > Always update this file when completing or starting a phase.
 
 ---
@@ -9,12 +9,60 @@
 
 | Phase | Description | Status | Notes |
 |-------|-------------|--------|-------|
-| Phase 1 | Real-Time Audio Pipeline | ✅ COMPLETE | All files built and integrated |
-| Phase 2 | Conversation Engine | ✅ COMPLETE | Engine, scoring, alerts all built |
-| Phase 3 | Database & Persistence | ❌ NOT STARTED | `backend/db/` directory is empty |
-| Phase 4 | Live React Dashboard | ❌ NOT STARTED | Only old pages exist; no hooks |
-| Phase 5 | Client Memory & Reports | ❌ NOT STARTED | `memory_service.py`, `report_service.py` missing |
-| Phase 6 | Interview Mode | ❌ NOT STARTED | Conversation engine needs mode extension |
+| Phase 1 | Real-Time Audio Pipeline | ✅ COMPLETE | VAD → Buffer → Whisper → Pyannote |
+| Phase 2 | Conversation Engine | ✅ COMPLETE | Engine, scoring, alerts, meeting/sales modes |
+| Phase 3 | Database & Persistence | ✅ COMPLETE | PostgreSQL, async ORM, 8 tables, background flusher |
+| Phase 4 | Live React Dashboard | ✅ COMPLETE | 6 pages, 4 WS channels, WebSocket hook |
+| Phase 5 | Client Memory & Reports | ✅ COMPLETE | Client snapshots, session comparison, talk ratio |
+| Phase 6 | Interview Mode | ⚠️ SKELETON ONLY | Scoring profile defined, metrics hardcoded at 50 |
+
+---
+
+## Production Readiness Audit (2026-06-26)
+
+### Verdict: ⛔ NOT PRODUCTION READY
+
+**6 Critical Gaps Identified:**
+
+1. **Zero Authentication** — JWT skeleton exists, not enforced on any route
+2. **SCDR at 50.2%** — 20 points below 70% production threshold
+3. **Hardcoded `num_speakers=2`** in post-session diarizer (line 367)
+4. **Security Vulnerabilities** — `inject:` command in audio_handler, no input sanitization
+5. **Benchmark Contamination** — 8/10 samples used Pyannote-generated GT (circular)
+6. **No Monitoring** — No Prometheus, Sentry, or structured logging
+
+### Honest Benchmark Metrics (10 samples, 2026-06-25)
+
+| Metric | Value | Threshold | Status |
+|--------|-------|-----------|--------|
+| Avg Macro F1 | 0.812 | ≥ 0.75 | ✅ PASS |
+| Avg Accuracy | 84.4% | ≥ 80% | ✅ PASS |
+| Avg SCDR | 50.2% | ≥ 70% | ❌ FAIL |
+| Production Ready | `false` | all pass | ❌ FAIL |
+
+### What Works Well
+
+- **Core pipeline**: Audio → VAD → Buffer → Whisper → Pyannote chain is production-grade
+- **Session management**: Deferred-watermark flushing, event-based idle signaling, proper shutdown
+- **Post-session attribution**: Full-WAV Pyannote with two-stage overlap+proximity assignment
+- **Analytics engine**: Meeting/Sales quality scoring, objection handling, role classification (V1+V2)
+- **Frontend**: Complete WS integration with exponential backoff + REST reconciliation
+- **Database**: Proper async ORM, cascading deletes, composite indexes, JSONB metrics
+
+### What Needs Work
+
+| Priority | Item | Effort |
+|----------|------|--------|
+| P0 | Remove `inject:` command from production | 1 hour |
+| P0 | Fix `num_speakers=2` hardcoding | 2 hours |
+| P0 | Fix file upload speaker attribution (currently hardcoded to "Speaker A") | 4 hours |
+| P1 | JWT enforcement on all REST endpoints | 1-2 days |
+| P1 | Rate limiting middleware | 4 hours |
+| P1 | SCDR improvement (Pyannote tuning + post-processing) | 1-2 weeks |
+| P1 | Human-annotated benchmark (≥5 clean samples) | 3-5 days |
+| P2 | Alembic migrations | 1 day |
+| P2 | Monitoring (Prometheus + Sentry) | 2-3 days |
+| P2 | Interview mode real metrics | 1 week |
 
 ---
 
@@ -22,16 +70,19 @@
 
 **Files:**
 - `backend/audio/vad.py` — Silero VAD, singleton, CPU
-- `backend/audio/buffer.py` — audio accumulation buffer, 1000ms flush
+- `backend/audio/buffer.py` — audio accumulation buffer, 2000ms target flush, 800ms minimum
 - `backend/audio/transcriber.py` — faster-whisper, singleton, GPU/int8
-- `backend/audio/diarizer.py` — Pyannote 3.1, optional, GPU
+- `backend/audio/diarizer.py` — Pyannote 3.1, optional, GPU (heuristic fallback)
 - `backend/ws/audio_handler.py` — `/ws/audio/{session_id}` endpoint
-- `backend/ws/session_manager.py` — session state machine
+- `backend/ws/session_manager.py` — session state machine with background flusher (977 lines)
 - `backend/ws/broadcast.py` — 4-channel WebSocket broadcaster
 - `backend/ws/subscriptions.py` — `/ws/{channel}/{session_id}` subscription endpoints
-- `backend/main.py` — startup warmup + REST endpoints (fully updated)
+- `backend/main.py` — startup warmup + REST endpoints
 
-**Verification status:** NOT yet formally verified (uvicorn startup untested since last session).
+**Audio Buffer Features:**
+- Dual flush strategy (target duration + silence gap)
+- All audio written to disk WAV (speech + silence) for timeline integrity
+- WAV header finalization on session end
 
 ---
 
@@ -39,143 +90,68 @@
 
 **Files:**
 - `backend/engine/conversation_engine.py` — segments → metrics → state update
-- `backend/engine/scoring_profiles.py` — JSON-driven mode scoring weights
-- `backend/engine/alert_engine.py` — cooldown, dedup, severity, max-3 rule
+- `backend/engine/scoring_profiles.py` — mode-specific scoring weights
+- `backend/engine/alert_engine.py` — 7 alert types, cooldown, dedup, max-3 rule
 
-**Reuses from legacy:**
-- `backend/services/context_analyzer.py` → `compute_meeting_quality_v2()`, `compose_executive_summary_v2()`, `generate_key_insights_v2()` — all 3 locked, do not modify
-- `backend/services/nlp_engine.py` → sentiment pipeline adapted for per-segment streaming
-
----
-
-## Phase 3 — Database & Persistence ❌
-
-**What's needed:**
-- `backend/db/__init__.py`
-- `backend/db/models.py` — SQLAlchemy ORM for all 8 tables
-- `backend/db/database.py` — async PostgreSQL engine via asyncpg
-- `backend/db/crud.py` — CRUD functions for all models
-
-**Integration work after DB is built:**
-- Session flush every 5s (into session_manager or a background task)
-- On session end: write `analysis_results`, update `client_snapshots`
-- On crash recovery: restore session from last DB snapshot
-
-**DB target:** PostgreSQL 17.5, localhost:5432, database `talksense`  
-**ORM:** SQLAlchemy 2.x async (`asyncpg` driver)
-
----
-
-## Phase 4 — Live React Dashboard ❌
-
-**New files needed:**
-- `talksense-ui/src/pages/SessionStartPage.jsx`
-- `talksense-ui/src/pages/DashboardPage.jsx` ← MAIN PRODUCT PAGE
-- `talksense-ui/src/components/dashboard/TranscriptPanel.jsx`
-- `talksense-ui/src/components/dashboard/IntelligencePanel.jsx`
-- `talksense-ui/src/components/dashboard/AlertPanel.jsx`
-- `talksense-ui/src/hooks/useSessionWebSocket.js`
-- `talksense-ui/src/hooks/useAudioCapture.js`
-
-**Files needing update:**
-- `talksense-ui/src/App.jsx` — add new routes (currently only has old batch routes)
-
-**Current App.jsx routes (OLD):**
+**Scoring Profiles:**
 ```
-/        → TranscriptLive (prototype)
-/home    → HomePage
-/upload  → UploadPage
-/results → ResultsPage
-/live    → TranscriptLive
-```
-
-**Target App.jsx routes (NEW):**
-```
-/                  → HomePage
-/start             → SessionStartPage
-/dashboard/:id     → DashboardPage  ← main product
-/upload            → UploadPage (keep)
-/results           → ResultsPage (keep)
-/history           → SessionHistoryPage
-/clients           → ClientsPage
-/report/:id        → ReportPage
+Meeting:  participation(40%) + engagement(30%) + balance(20%) + action_items(10%)
+Sales:    objection_handling(35%) + sentiment(25%) + listening_ratio(20%) + buying_signals(20%)
+Interview: confidence(35%) + filler_penalty(25%) + response_quality(25%) + pause_penalty(15%)
 ```
 
 ---
 
-## Phase 5 — Client Memory & Reports ❌
+## Phase 3 — Database & Persistence ✅
 
-**New files needed:**
-- `backend/services/memory_service.py`
-- `backend/services/report_service.py`
-- `talksense-ui/src/pages/ReportPage.jsx`
-- `talksense-ui/src/pages/SessionHistoryPage.jsx`
-- `talksense-ui/src/pages/ClientsPage.jsx`
-- `talksense-ui/src/components/ClientBriefingCard.jsx`
+**Files:**
+- `backend/db/models.py` — 8 tables (users, clients, sessions, transcript_segments, session_metrics, analysis_results, alerts, client_snapshots)
+- `backend/db/database.py` — async PostgreSQL engine
+- `backend/db/crud.py` — full CRUD operations
 
-**Depends on:** Phase 3 (DB) must be complete first.
-
----
-
-## Phase 6 — Interview Mode ❌
-
-**What's needed:**
-- Extend `backend/engine/conversation_engine.py` with interview metrics:
-  - Confidence score (proxy via speech rate + filler words + pause duration)
-  - Filler word detection (um, uh, like, you know, basically)
-  - Pause detection (>2s within speaker turn)
-  - Response quality (length + vocabulary diversity)
-- Update `backend/engine/scoring_profiles.py` if interview weights need tuning
-
-**Depends on:** Phase 4 (Dashboard) should be working first.
+**Background Flusher:**
+- 5-second interval
+- Semaphore-throttled (max 5 concurrent)
+- Deferred watermark pattern
+- Hash-based metric dedup
+- Event-based idle signaling
 
 ---
 
-## Known Issues / Open Items
+## Phase 4 — Live React Dashboard ✅
 
-- [ ] PyTorch CUDA build: current install is `2.9.1+cpu` → needs reinstall with CUDA 12.x wheel before Whisper can use GPU
-- [ ] Pyannote HF token: must be set in `.env` and model license accepted on HuggingFace before diarization works
-- [ ] DB not yet connected: all session state is currently in-memory only (lost on restart)
-- [ ] `App.jsx` routes are still the old prototype routes — needs update in Phase 4
-- [x] `evaluate_analytics.py` mock speaker attribution values — REPLACED with real computation (2026-06-23)
-- [x] `latest_metrics.json` stale mock data — CLEARED (2026-06-23)
+**Pages:** HomePage, DashboardPage, UploadPage, ResultsPage, SessionsPage, ComparisonPage
 
----
-
-## Post-Session Speaker Attribution Metrics (Recovery Sprint 2026-06-23)
-
-- **Status**: NOT Production Ready
-- **Mock Data**: ELIMINATED. `evaluate_analytics.py` now uses real computation. `latest_metrics.json` cleared.
-- **Best Config**: `num_speakers=2` (tested 17 configurations via parameter sweep)
-- **WAV Truncation Bug**: Fixed. `AudioBuffer` timeline now perfectly synced.
-- **Phantom Speaker Bug**: Fixed via `num_speakers=2` constraint.
-- **Evaluation Harness**: `speaker_recovery_harness.py` (single-command reproducible evaluation)
-- **Live Diarization**: BROKEN (F1=0.429, SCDR=0.0%, 1 speaker detected out of 2)
-- **Post-Session Diarization**: Best measured: F1=0.667, SCDR=33.3%, Accuracy=75.0%
-- **Clustering Threshold**: Has ZERO effect with `num_speakers=2` (tested 0.3-0.9, all identical)
-- **Failure Pattern**: 2 short Speaker B utterances (2.2s, 1.8s) consistently misattributed to A
-- **Gap to Threshold**: F1 gap = 0.083, SCDR gap = 36.7pp
-- **Path Forward**: Test with longer audio (real meetings are 2-30+ min, not 32s), or add post-processing turn-taking heuristic
+**Key Components:**
+- `useSessionWebSocket.js` — 4-channel WS with exponential backoff + REST reconciliation
+- `MetricsPanel.jsx` — Speaker attribution, health score, sentiment, participation
+- `TranscriptPanel.jsx` — Live transcript with speaker labels
+- `AlertsPanel.jsx` — Real-time alert display
+- `SessionStatusBar.jsx` — Session lifecycle status
 
 ---
 
-## Benchmark Suite (2026-06-24, v2 — human-reviewed GT)
+## Phase 5 — Client Memory & Reports ✅
 
-- **Dataset**: 10 samples across 4 categories (2_speaker, 3_speaker, noisy, long_form)
-- **Total Audio**: 16.1 minutes (32s to 349s per sample)
-- **Human-Reviewed**: 8/10 samples, 19 segment corrections applied
-- **Contamination**: ELIMINATED for 8/10 samples (2 remaining: business_meeting, pitch_competition_long)
-- **Honest Metrics**: Avg F1=0.832, Avg Accuracy=86.1%, Avg SCDR=68.0%
-- **Verdict**: NOT PRODUCTION READY — SCDR fails by 2.0pp (68.0% vs 70.0% threshold)
-- **Contamination Impact**: Previous metrics were inflated by 14-21% (F1: 0.952→0.832, SCDR: 82.3%→68.0%)
-- **Passing**: 5/10 samples (sales_good, meeting_clear, business_meeting, business_english_long, pitch_competition_long)
-- **Failing**: 5/10 samples (meeting_short, sales_meeting, sales_ambiguous, meeting_messy, sales_bad)
-- **Key Finding**: Long audio (>2 min) consistently passes. Short noisy audio (<45s) consistently fails.
-- **Commands**: `python backend/run_full_benchmark.py` (benchmark), `python annotate_ground_truth.py --status` (review status)
+**Services:**
+- `backend/services/post_session_diarizer.py` — 13-step post-session pipeline
+- `backend/services/role_classifier.py` — V1 heuristic + V2 Gemini Flash
+- `backend/services/objection_handler.py` — 4-tier scoring (ignored → resolved)
+- `backend/services/talk_ratio_analyzer.py` — per-speaker participation timeline
+- `backend/services/client_memory.py` — client snapshot aggregation
 
 ---
 
-## How to Run (Current State)
+## Phase 6 — Interview Mode ⚠️ SKELETON
+
+**Status:** Scoring profile defined but metrics hardcoded at 50.0:
+- `response_quality = 50.0` (always)
+- `pause_penalty = 50.0` (always)
+- No actual pause detection or response quality analysis
+
+---
+
+## How to Run
 
 ```powershell
 # Backend
@@ -188,37 +164,20 @@ cd talksense-ui
 npm run dev
 ```
 
-Visit `http://localhost:5173/live` for the prototype live transcript view.
+Visit `http://localhost:5173` for the dashboard.
 Visit `http://localhost:8000/docs` for the FastAPI Swagger UI.
 
 ---
 
-## Objection Handling Quality Analysis (Implementation Complete)
+## Benchmark Commands
 
-**Implementation Summary**:
-- Implemented `backend/services/objection_handler.py` with the 4-tier scoring logic (IGNORED, ACKNOWLEDGED, ADDRESSED, RESOLVED).
-- Integrated `analyze_objection_handling` into `post_session_diarizer.py` to run sequentially after `classify_roles`.
+```powershell
+# Full benchmark suite (10 samples)
+python backend/run_full_benchmark.py
 
-**Final Status**:
-- **COMPLETED**. Pipeline calculates objection handling scores and persists them. However, accuracy depends on speaker attribution quality which is currently below threshold.
+# Ground truth annotation status
+python annotate_ground_truth.py --status
 
----
-
-## Analytics Accuracy Audit (Completed)
-
-**Component Accuracy Ranking**:
-1. **Speaker Attribution** — Live: F1=0.429 (BROKEN), Post-session: F1=0.667 (below threshold)
-2. **Buying Signals** (~40% - Keyword-based, high false positives)
-3. **Objections** (~30% - Keyword-based, easily triggered by Sales Rep)
-4. **Role Classification** (~25% - Extremely brittle static keywords)
-5. **Objection Handling** (~10% - Cascading failures due to dependence on all of the above)
-
----
-
-## Current Goal
-
-SCDR misses by 2.0pp (68.0% vs 70.0%). To pass:
-1. Implement post-processing turn-taking heuristic (if segment < 3s between same-speaker segments, reassign)
-2. Review remaining 2 unreviewed GT samples (business_meeting, pitch_competition_long)
-3. Test with more audio > 2 min (where Pyannote consistently achieves F1=1.000)
-4. Only proceed to Week 4 features after honest benchmark passes all thresholds
+# Dataset validation
+python backend/validate_benchmark_dataset.py
+```
