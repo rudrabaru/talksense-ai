@@ -80,8 +80,14 @@ class SpeakerDiarizer:
             )
             self._pipeline.to(torch.device(device))
 
+            logger.info("Diarizer: Running warm-up inference ...")
+            # Run a dummy 2.0s tensor to initialize CUDA kernels and PyTorch caches
+            dummy_waveform = torch.zeros(1, SAMPLE_RATE * 2, dtype=torch.float32)
+            with torch.inference_mode():
+                _ = self._pipeline({"waveform": dummy_waveform, "sample_rate": SAMPLE_RATE})
+
             elapsed = time.monotonic() - t0
-            logger.info(f"Diarizer: Ready in {elapsed:.1f}s")
+            logger.info(f"Diarizer: Ready and warmed up in {elapsed:.1f}s")
             self._loaded = True
 
         except Exception as exc:

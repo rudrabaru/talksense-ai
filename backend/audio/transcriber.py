@@ -86,6 +86,7 @@ class WhisperTranscriber:
         pcm_bytes: bytes,
         time_offset: float = 0.0,
         language: str | None = None,
+        initial_prompt: str | None = None,
     ) -> list[TranscriptSegment]:
         """
         Transcribe a PCM chunk synchronously.
@@ -98,6 +99,7 @@ class WhisperTranscriber:
             time_offset: Session-relative time of the chunk start (seconds).
                          Added to segment timestamps so they are absolute.
             language:    Force a language (None = auto-detect).
+            initial_prompt: Previous confirmed text to condition the decoder.
 
         Returns:
             List of TranscriptSegment.  Empty list on failure or silence.
@@ -122,9 +124,10 @@ class WhisperTranscriber:
                 best_of=1,                          # disable sampling — deterministic greedy only
                 patience=0.8,                       # exit beam search early on confident outputs
                 temperature=0.0,                    # explicit deterministic; no sampling fallback
-                no_speech_threshold=0.4,            # was 0.6; reject more silence/noise frames
+                no_speech_threshold=0.6,            # relaxed back to 0.6 to capture soft speech
                 compression_ratio_threshold=2.2,    # was 2.4; reject repetitive hallucinations
-                condition_on_previous_text=False,   # KEY: streaming chunks are isolated — no prior context
+                condition_on_previous_text=True,    # Use prior context across chunks
+                initial_prompt=initial_prompt,      # Pass context manually
                 vad_filter=False,                   # VAD handled externally by Silero
                 word_timestamps=False,              # not needed; reduces per-segment overhead
             )
@@ -160,6 +163,7 @@ class WhisperTranscriber:
         pcm_bytes: bytes,
         time_offset: float = 0.0,
         language: str | None = None,
+        initial_prompt: str | None = None,
     ) -> list[TranscriptSegment]:
         """
         Async wrapper — runs transcription in the thread pool.
@@ -170,7 +174,7 @@ class WhisperTranscriber:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
             self._executor,
-            lambda: self.transcribe(pcm_bytes, time_offset, language),
+            lambda: self.transcribe(pcm_bytes, time_offset, language, initial_prompt),
         )
 
 

@@ -34,6 +34,7 @@ SAMPLES_PER_MS = SAMPLE_RATE // 1000  # 16 samples per ms
 TARGET_DURATION_MS = 2_000    # Flush after 2.0s — Whisper accuracy peaks with longer chunks
 SILENCE_GAP_MS = 600          # Flush faster after speaker stops (was 800ms)
 MIN_FLUSH_MS = 800            # Reject chunks < 800ms — avoids Whisper hallucination on tiny fragments
+OVERLAP_MS = 1_000            # Retain 1.0s of overlap on partial flushes
 
 # Directory for session WAV files (relative to backend working directory)
 SESSION_AUDIO_DIR = "session_audio"
@@ -114,7 +115,7 @@ class AudioBuffer:
 
     # ── Public interface ──────────────────────────────────────────────────────
 
-    def push(self, pcm_bytes: bytes, is_speech: bool) -> tuple[bytes, float] | None:
+    def push(self, pcm_bytes: bytes, is_speech: bool) -> tuple[bytes, float, bool] | None:
         """
         Push a PCM chunk into the buffer.
 
@@ -147,21 +148,21 @@ class AudioBuffer:
 
             # Flush condition 1: target duration reached
             if self._buffered_ms >= TARGET_DURATION_MS:
-                result = self._flush()
+                result = self._flush(is_partial=True)
             else:
                 # Flush condition 2: silence gap after speech burst
                 silence_gap_ms = (now - self._last_speech_time) * 1000
                 if silence_gap_ms >= SILENCE_GAP_MS:
                     self._speech_active = False
                     if self._buffered_ms >= MIN_FLUSH_MS:
-                        result = self._flush()
+                        result = self._flush(is_partial=False)
                     else:
                         self._clear()
 
         self._total_bytes_received += len(pcm_bytes)
         return result
 
-    def flush_remaining(self) -> tuple[bytes, float] | None:
+    def flush_remaining(self) -> tuple[bytes, float, bool] | None:
         """
         Force-flush whatever is left (called on session end).
 
@@ -170,15 +171,18 @@ class AudioBuffer:
         Returns:
             Tuple of (remaining_pcm_bytes, start_time_offset_seconds), or None if buffer is empty / too small.
         """
-        result = None
-        if self._buffered_ms >= MIN_FLUSH_MS:
-            result = self._flush()
-        else:
-            self._clear()
+        from utils.profiler import profile_stage
+        with profile_stage(self._session_id, "Save WAV"):
+            result = None
+            if self._buffered_ms >= MIN_FLUSH_MS:
+                result = self._flush(is_partial=False)
+            else:
+                self._clear()
 
-        # Always finalize and close the WAV file on session end
-        self._finalize_wav()
-        return result
+            # Always finalize and close the WAV file on session end
+            self._finalize_wav()
+            return result
+
 
     def get_audio_file_path(self) -> str | None:
         """
@@ -194,13 +198,27 @@ class AudioBuffer:
 
     # ── Private helpers ───────────────────────────────────────────────────────
 
-    def _flush(self) -> tuple[bytes, float]:
-        """Concatenate all chunks, clear buffer, return bytes and time offset."""
+    def _flush(self, is_partial: bool = False) -> tuple[bytes, float, bool]:
+        """Concatenate all chunks, manage overlap, return bytes and time offset."""
         audio = b"".join(self._chunks)
         start_time_offset = self._chunk_start_bytes / (SAMPLE_RATE * BYTES_PER_SAMPLE)
-        self._clear()
-        logger.debug(f"AudioBuffer: flushed {len(audio)} bytes at offset {start_time_offset:.2f}s")
-        return audio, start_time_offset
+        
+        if is_partial:
+            overlap_bytes = int((OVERLAP_MS / 1000) * SAMPLE_RATE * BYTES_PER_SAMPLE)
+            total_bytes = len(audio)
+            drop_bytes = max(0, total_bytes - overlap_bytes)
+            
+            self._chunk_start_bytes += drop_bytes
+            self._chunks.clear()
+            
+            overlap_audio = audio[-overlap_bytes:] if overlap_bytes < total_bytes else audio
+            self._chunks.append(overlap_audio)
+            self._buffered_ms = self._bytes_to_ms(overlap_audio)
+        else:
+            self._clear()
+            
+        logger.debug(f"AudioBuffer: flushed {len(audio)} bytes at offset {start_time_offset:.2f}s (partial={is_partial})")
+        return audio, start_time_offset, is_partial
 
     def _clear(self) -> None:
         self._chunks.clear()

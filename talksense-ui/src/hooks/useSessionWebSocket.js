@@ -559,11 +559,23 @@ export function useSessionWebSocket(sessionId) {
             // (speaker, start, end) and content (text) so partial re-sends
             // from reconnect sync do not create duplicate visible lines.
             safeSetState(setTranscript, (prev) => {
+              // If segment_id is provided, try to update in place
+              if (seg.segment_id) {
+                const idx = prev.findIndex(s => s.segment_id === seg.segment_id);
+                if (idx >= 0) {
+                  const copy = [...prev];
+                  copy[idx] = { ...copy[idx], ...seg };
+                  return copy;
+                }
+              }
+
+              // Fallback / legacy deduplication
               const key = `${seg.speaker}|${seg.start}|${seg.end}|${seg.text}`;
               const isDuplicate = prev.some(
-                (s) => `${s.speaker}|${s.start}|${s.end}|${s.text}` === key
+                (s) => (`${s.speaker}|${s.start}|${s.end}|${s.text}` === key) || (seg.segment_id && s.segment_id === seg.segment_id)
               );
-              if (isDuplicate) return prev; // bail out -- no state change
+              if (isDuplicate) return prev;
+              
               return [...prev, seg];
             });
           };

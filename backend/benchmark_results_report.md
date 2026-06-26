@@ -1,6 +1,6 @@
 # TalkSense AI — Speaker Attribution Benchmark Report
 
-> Generated: 2026-06-25 23:28:18
+> Generated: 2026-06-26 09:15:29
 > Thresholds: F1 >= 0.75, Accuracy >= 80.0%, SCDR >= 70.0%
 
 ## Overall Metrics

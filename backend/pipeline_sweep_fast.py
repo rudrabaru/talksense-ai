@@ -64,7 +64,7 @@ def run_simulation(audio_path, expected_speakers, transcriber, diarizer, vad):
         flushed_data = buffer.push(chunk, is_speech)
         
         if flushed_data:
-            flushed, time_offset = flushed_data
+            flushed, time_offset, is_partial = flushed_data
             raw_segs = transcriber.transcribe(flushed, time_offset=time_offset)
             if raw_segs:
                 diarized = diarizer.assign_speakers(raw_segs, flushed, time_offset, prev_speaker)
@@ -75,7 +75,7 @@ def run_simulation(audio_path, expected_speakers, transcriber, diarizer, vad):
     # Force flush remaining
     flushed_data = buffer.flush_remaining()
     if flushed_data:
-        flushed, time_offset = flushed_data
+        flushed, time_offset, is_partial = flushed_data
         raw_segs = transcriber.transcribe(flushed, time_offset=time_offset)
         if raw_segs:
             diarized = diarizer.assign_speakers(raw_segs, flushed, time_offset, prev_speaker)

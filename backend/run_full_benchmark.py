@@ -88,8 +88,17 @@ def run_sample(pipeline, transcriber, sample_dir, audio_dir):
     audio_tensor = torch.from_numpy(audio_float32).unsqueeze(0)
     waveform = {"waveform": audio_tensor, "sample_rate": SAMPLE_RATE}
 
+    step_val = os.environ.get("PYANNOTE_STEP")
+    batch_val = os.environ.get("PYANNOTE_BATCH_SIZE")
+    
+    if step_val:
+        pipeline.segmentation_step = float(step_val)
+    if batch_val:
+        pipeline.segmentation_batch_size = int(batch_val)
+
     t0 = time.monotonic()
-    diarization = pipeline(waveform, num_speakers=expected_speakers)
+    with torch.inference_mode():
+        diarization = pipeline(waveform, num_speakers=expected_speakers)
     pyannote_time = time.monotonic() - t0
 
     # Unwrap DiarizeOutput wrapper if present (pyannote-audio 4.x) using duck-typing
