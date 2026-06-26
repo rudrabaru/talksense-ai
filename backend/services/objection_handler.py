@@ -36,6 +36,8 @@ async def analyze_objection_handling(db, session_id: str) -> None:
             if roles_metric and roles_metric.metric_value
             else {}
         )
+        if not isinstance(roles, dict):
+            roles = {}
         sales_rep_speaker = next(
             (k for k, v in roles.items() if v == "sales_rep"), None
         )
@@ -49,6 +51,8 @@ async def analyze_objection_handling(db, session_id: str) -> None:
             return
 
         objections = objections_metric.metric_value
+        if not isinstance(objections, list):
+            objections = []
         objection_handling_results = []
 
         buying_signals = (
@@ -56,6 +60,8 @@ async def analyze_objection_handling(db, session_id: str) -> None:
             if buying_signals_metric and buying_signals_metric.metric_value
             else []
         )
+        if not isinstance(buying_signals, list):
+            buying_signals = []
 
         for obj in objections:
             obj_text = obj.get("text", obj) if isinstance(obj, dict) else obj

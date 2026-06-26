@@ -4,7 +4,7 @@ import sys
 # Ensure we can import from backend
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from backend.services.context_analyzer import (
+from services.context_analyzer import (
     evaluate_meeting_health,
     generate_key_insights,
 )

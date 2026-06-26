@@ -118,7 +118,8 @@ async def evaluate_role_classification(db, session_id, gt_data):
     predicted_roles = {}
     for m in metrics_list:
         if m.metric_name == "speaker_roles":
-            predicted_roles = m.metric_value
+            if isinstance(m.metric_value, dict):
+                predicted_roles = m.metric_value
 
     gt_roles = gt_data.speaker_roles
 
@@ -151,7 +152,8 @@ async def evaluate_buying_signals(db, session_id, gt_data):
     predicted_signals = []
     for m in metrics_list:
         if m.metric_name == "buying_signals":
-            predicted_signals = m.metric_value
+            if isinstance(m.metric_value, list):
+                predicted_signals = m.metric_value
 
     gt_signals = gt_data.signals
 
@@ -176,7 +178,8 @@ async def evaluate_objections(db, session_id, gt_data):
     predicted_objections = []
     for m in metrics_list:
         if m.metric_name == "objections":
-            predicted_objections = m.metric_value
+            if isinstance(m.metric_value, list):
+                predicted_objections = m.metric_value
 
     gt_objs = gt_data.objections
 
@@ -210,13 +213,16 @@ async def evaluate_objection_handling(db, session_id, gt_data):
     if total == 0:
         return {"error": "No ground truth handling provided"}
 
-    # Convert predicted_handling list of dicts to a dict for easy lookup
-    # Assuming predicted_handling has structure [{"objection": "pricing", "status":
-    # "addressed"}]
-    pred_map = {
-        item.get("objection"): item.get("status", "ignored").lower()
-        for item in predicted_handling
-    }
+    pred_map = {}
+    if isinstance(predicted_handling, list):
+        for item in predicted_handling:
+            if isinstance(item, dict):
+                obj_val = item.get("objection")
+                status_val = item.get("status", "ignored")
+                status_str = (
+                    str(status_val).lower() if status_val is not None else "ignored"
+                )  # noqa: E501
+                pred_map[obj_val] = status_str
 
     for obj, expected_status in gt_handling.items():
         if pred_map.get(obj) == expected_status.lower():

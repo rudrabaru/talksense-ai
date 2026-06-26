@@ -36,7 +36,10 @@ class NLPEngine:
             logger.debug("NLP Engine: reusing cached instance (model already loaded).")
             return
         try:
-            self.sentiment_pipeline = pipeline(
+            from typing import Any
+
+            pipeline_any: Any = pipeline
+            self.sentiment_pipeline = pipeline_any(
                 "sentiment-analysis",
                 model="tabularisai/multilingual-sentiment-analysis",
             )

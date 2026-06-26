@@ -38,6 +38,7 @@ async def test_e2e():
     process = subprocess.Popen(
         ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
     )
+    assert process.stdout is not None
 
     ws_audio_url = f"{BACKEND_WS}/ws/audio/{session_id}"
     t_start = time.time()
@@ -68,7 +69,10 @@ async def test_e2e():
                 {"sid": session_id},
             )
             row = res.fetchone()
-            if row.speaker_attribution_status in ["completed", "failed"]:
+            if row is not None and row.speaker_attribution_status in [
+                "completed",
+                "failed",
+            ]:  # noqa: E501
                 break
         await asyncio.sleep(2)
 

@@ -64,6 +64,7 @@ def decode_audio(path):
         "-",
     ]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    assert proc.stdout is not None
     pcm = proc.stdout.read()
     proc.wait()
     return pcm
@@ -90,7 +91,7 @@ def run_simulation(audio_path, expected_speakers, transcriber, diarizer, vad):
         flushed_data = buffer.push(chunk, is_speech)
 
         if flushed_data:
-            flushed, time_offset = flushed_data
+            flushed, time_offset, _ = flushed_data
             raw_segs = transcriber.transcribe(flushed, time_offset=time_offset)
             if raw_segs:
                 diarized = diarizer.assign_speakers(
@@ -103,7 +104,7 @@ def run_simulation(audio_path, expected_speakers, transcriber, diarizer, vad):
     # Force flush remaining
     flushed_data = buffer.flush_remaining()
     if flushed_data:
-        flushed, time_offset = flushed_data
+        flushed, time_offset, _ = flushed_data
         raw_segs = transcriber.transcribe(flushed, time_offset=time_offset)
         if raw_segs:
             diarized = diarizer.assign_speakers(

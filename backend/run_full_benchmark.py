@@ -61,6 +61,7 @@ def decode_audio(path):
         "-",
     ]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    assert proc.stdout is not None
     pcm = proc.stdout.read()
     proc.wait()
     return pcm
@@ -400,6 +401,7 @@ def main():
     pipeline = Pipeline.from_pretrained(
         "pyannote/speaker-diarization-3.1", token=settings.hf_token
     )
+    assert pipeline is not None
     pipeline.to(torch.device(settings.pyannote_device))
 
     print("[3/3] Scanning dataset...")

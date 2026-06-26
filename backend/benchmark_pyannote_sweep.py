@@ -35,6 +35,8 @@ def main():
     pipeline = Pipeline.from_pretrained(
         "pyannote/speaker-diarization-3.1", token=hf_token
     )
+    if pipeline is None:
+        raise ValueError("Failed to load Pyannote pipeline.")
     pipeline.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
     print(f"Loaded in {time.monotonic() - t0:.1f}s")
 

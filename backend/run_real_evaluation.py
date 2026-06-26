@@ -64,7 +64,7 @@ async def run_pipeline():
     process = subprocess.Popen(
         ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
     )
-
+    assert process.stdout is not None
     audio_data = process.stdout.read()
     process.wait()
 

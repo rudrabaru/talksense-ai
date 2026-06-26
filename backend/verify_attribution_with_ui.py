@@ -3,11 +3,13 @@ import os
 import subprocess
 import sys
 import time
+from typing import Any
 
 import httpx
 import websockets
 
-sys.stdout.reconfigure(encoding="utf-8")
+sys_stdout: Any = sys.stdout
+sys_stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 BACKEND_HTTP = "http://localhost:8000"
@@ -63,6 +65,7 @@ async def run_ui_verification():
     t_start = time.time()
     try:
         async with websockets.connect(ws_audio_url) as ws:
+            assert process.stdout is not None
             while time.time() - t_start < stream_duration:
                 t_loop = time.time()
                 chunk = process.stdout.read(chunk_size)

@@ -104,7 +104,9 @@ async def update_client_memory(db: AsyncSession, client_id: uuid.UUID) -> None:
             res = await db.execute(stmt)
             metric = res.scalar_one_or_none()
             if metric is not None:
-                sentiment_scores.append((s.id, float(metric.metric_value)))
+                val = metric.metric_value
+                if isinstance(val, (int, float, str)):
+                    sentiment_scores.append((s.id, float(val)))
 
         # 4. Calculate sentiment trend
         # Default trend: stable
@@ -226,7 +228,11 @@ async def update_client_memory(db: AsyncSession, client_id: uuid.UUID) -> None:
                     meeting_history_text=meeting_history_text,
                 )
 
-                import google.generativeai as genai
+                from typing import Any
+
+                import google.generativeai as google_genai
+
+                genai: Any = google_genai
 
                 genai.configure(api_key=settings.gemini_api_key)
                 model = genai.GenerativeModel("gemini-2.0-flash")

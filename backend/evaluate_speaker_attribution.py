@@ -15,7 +15,9 @@ async def fetch_attribution_metrics(session_id: str) -> Dict:
         attribution = {}
         for m in metrics:
             if m.metric_name == "speaker_attribution":
-                attribution = m.metric_value or {}
+                val = m.metric_value
+                if isinstance(val, dict):
+                    attribution = val
                 break
         return attribution
 

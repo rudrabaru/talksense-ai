@@ -119,9 +119,10 @@ async def fetch_coverage(session_id: str) -> Optional[float]:
     """Fetch coverage_percent from session_metrics."""
     async with AsyncSessionLocal() as db:
         metrics = await crud.get_latest_session_metrics(db, session_id)
-    for m in metrics:
-        if m.metric_name == "speaker_attribution":
-            return (m.metric_value or {}).get("coverage_percent")
+        for m in metrics:
+            val = m.metric_value
+            if isinstance(val, dict):
+                return val.get("coverage_percent")
     return None
 
 

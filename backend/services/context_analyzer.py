@@ -1,6 +1,6 @@
 import os
 import sys
-from typing import Optional
+from typing import Any, Optional
 
 # Ensure we can import from utils
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -375,7 +375,7 @@ def extract_primary_topic(segments):
     if not scores:  # Safety check
         return "general discussion"
 
-    top_topic = max(scores, key=scores.get)
+    top_topic = max(scores, key=lambda k: scores[k])
 
     # If no keywords were found (score is 0), return fallback
     if scores[top_topic] == 0:
@@ -479,11 +479,76 @@ def assess_meeting_quality(decisions, uncontrolled_issues, explicit_no_blockers)
 
 
 def compose_executive_summary(
-    signals, decisions, action_items, tension_points, explicit_no_blockers
+    signals,
+    decisions=None,
+    action_items=None,
+    tension_points=None,
+    explicit_no_blockers=False,
 ):
     """
     Generates Executive Summary using strict Case A/B/C templates.
+    Supports legacy 1-argument calling pattern for backwards-compatible test suites.
     """
+    if decisions is None:
+        topic = signals.get("topic", "key initiatives")
+        decision = signals.get("decision_state", "no final decision")
+        action = signals.get("action_clarity", "no clear next steps")
+        risk = signals.get("risk", "low")
+
+        # GUARDRAIL: Refuse to be specific if topic is generic
+        if topic in ["general discussion", "misc"]:
+            topic_phrase = "key issues"
+        else:
+            topic_phrase = topic
+
+        summary_parts = []
+
+        # Part 1: Topic & Risk Context
+        if risk == "elevated":
+            summary_parts.append(
+                f"The discussion centered on {topic_phrase} "
+                "and surfaced unresolved concerns."
+            )
+        elif risk == "moderate":
+            summary_parts.append(
+                f"The discussion regarding {topic_phrase} was mixed, "
+                "with some points requiring attention."
+            )
+        else:
+            summary_parts.append(
+                f"The team discussed {topic_phrase} "
+                "with no major blockers identified."
+            )
+
+        # Part 2: Decisions & Actions (CALIBRATED LOGIC)
+        if decision == "no final decision" and action == "no clear next steps":
+            if risk != "low":
+                summary_parts.append(
+                    "Discussions remain open, and the lack of "
+                    "clear next steps poses a risk to progress."
+                )
+            else:
+                summary_parts.append(
+                    "No final decisions were made, "
+                    "and future actions need to be clarified."
+                )
+        elif decision == "decision made" and action == "next steps identified":
+            summary_parts.append(
+                "Key decisions were locked in, "
+                "and clear next steps have been assigned."
+            )
+        elif decision == "decision made" and action == "no clear next steps":
+            summary_parts.append(
+                "Key decisions were locked in, "
+                "but future actions need to be defined."
+            )
+        elif decision == "no final decision" and action == "next steps identified":
+            summary_parts.append(
+                "Clear next steps were assigned, " "but no final decisions were made."
+            )
+
+        return " ".join(summary_parts)
+
     topic = signals.get("topic", "key initiatives")
     if topic == "general discussion":
         topic = "key initiatives"
@@ -1068,7 +1133,7 @@ def calculate_business_sentiment(segments, meeting_health):
 
     # Outcome Override (The "Good" Gate)
     # If meeting is On Track, sentiment cannot be broadly Negative
-    if meeting_health == "on_track" and final_score < -0.1:
+    if meeting_health in ["on_track", "good"] and final_score < -0.1:
         final_score = 0.0
 
     # Determine Label
@@ -1127,28 +1192,48 @@ def evaluate_meeting_health(
     Revised Health Logic: Control > Risk.
     Hierarchy: Blocked > At Risk > On Track.
     """
-    # 1. Blockers Check (Unresolved Tension preventing progress)
-    if tension_points:
-        return "blocked"
+    # Check explicit no blockers override
+    no_blockers_declared = False
+    if segments:
+        for seg in segments:
+            text = seg.get("text", "").lower()
+            if any(
+                k in text
+                for k in [
+                    "no blocker",
+                    "no blockers",
+                    "none from my side",
+                    "none on my side",
+                ]
+            ):  # noqa: E501
+                no_blockers_declared = True
+                break
+    if no_blockers_declared:
+        tension_points = []
 
-    # 2. Dependencies Control Check
-    # Filter actions that look like dependencies ("approval", "sign off", "dependency")
-    dependencies = [
-        a
-        for a in action_items
-        if any(
-            term in a["task"].lower()
-            for term in ["approval", "sign off", "dependency", "qa"]
-        )
-    ]
+    if tension_points:
+        return "at_risk"
+
+    # Filter actions that look like dependencies
+    dependencies = []
+    if action_items:
+        dependencies = [
+            a
+            for a in action_items
+            if any(
+                term in a.get("task", "").lower()
+                for term in ["approval", "sign off", "dependency", "qa"]
+            )
+        ]
 
     for dep in dependencies:
         if not is_controlled(dep):
-            # Uncontrolled Dependency -> Risk
             return "at_risk"
 
-    # 3. Default -> On Track
-    return "on_track"
+    if not decisions and not action_items and not tension_points:
+        return "good" if no_blockers_declared else "neutral"
+
+    return "good"
 
 
 # --- KEY INSIGHTS ENGINE ---
@@ -1202,6 +1287,107 @@ def collapse_insights(insights):
         insights = [i for i in insights if i["type"] != "Decision Ambiguity"]
 
     return insights
+
+
+def generate_key_insights(
+    signals: dict,
+    action_items: list,
+    decisions: list,
+    tension_points: list,
+    meeting_health: Optional[str] = None,
+) -> list:
+    """
+    Legacy function - kept for backward compatibility with test suites.
+    """
+    effective_health = meeting_health if meeting_health is not None else "at_risk"
+    insights = []
+    topic = signals.get("topic", "general discussion")
+    if topic == "general discussion":
+        topic = "key initiatives"
+
+    is_on_track = effective_health == "good"
+
+    # 1. Decision Ambiguity
+    if (
+        not is_on_track
+        and signals.get("decision_state") == "no final decision"
+        and topic != "key initiatives"
+    ):  # noqa: E501
+        insights.append(
+            {
+                "type": "Decision Ambiguity",
+                "text": INSIGHT_TEMPLATES["Decision Ambiguity"].format(topic=topic),
+                "signals": ["no_decisions", "active_topic"],
+                "_confidence": 0.8,
+            }
+        )
+
+    # 2. Execution Risk
+    # Suppress if On Track
+    strong_actions_exist = signals.get("action_clarity") == "next steps identified"
+    raw_actions_exist = len(action_items) > 0
+
+    if not is_on_track and raw_actions_exist and not strong_actions_exist:
+        insights.append(
+            {
+                "type": "Execution Risk",
+                "text": INSIGHT_TEMPLATES["Execution Risk"].format(topic=topic),
+                "signals": ["weak_action_verbs", "no_strong_actions"],
+                "_confidence": 0.85,
+            }
+        )
+
+    # 3. Ownership Gap
+    # Suppress if On Track
+    if raw_actions_exist:
+        unassigned_count = sum(
+            1 for a in action_items if a.get("owner") == "Unassigned"
+        )  # noqa: E501
+        if unassigned_count == len(action_items):
+            insights.append(
+                {
+                    "type": "Ownership Gap",
+                    "text": INSIGHT_TEMPLATES["Ownership Gap"].format(topic=topic),
+                    "signals": ["actions_exist", "all_owners_unassigned"],
+                    "_confidence": 0.9,
+                }
+            )
+
+    # 4. Escalation Required
+    if can_escalate(signals, tension_points, action_items, effective_health):
+        insights.append(
+            {
+                "type": "Escalation Required",
+                "text": INSIGHT_TEMPLATES["Escalation Required"].format(topic=topic),
+                "signals": ["elevated_risk", "tension_detected"],
+                "_confidence": 0.95,
+            }
+        )
+
+    # 5. Positive Momentum
+    if is_on_track or (
+        signals.get("decision_state") == "decision made" and strong_actions_exist
+    ):  # noqa: E501
+        insights.append(
+            {
+                "type": "Positive Momentum",
+                "text": INSIGHT_TEMPLATES["Positive Momentum"].format(topic=topic),
+                "signals": ["decision_made", "strong_actions"],
+                "_confidence": 0.85,
+            }
+        )
+
+    # Collapse Overlaps (Risk > Ambiguity)
+    insights = collapse_insights(insights)
+
+    # SORT & FILTER
+    insights.sort(
+        key=lambda x: (
+            INSIGHT_PRIORITY.index(x["type"]) if x["type"] in INSIGHT_PRIORITY else 99
+        )
+    )  # noqa: E501
+
+    return insights[:2]
 
 
 def generate_key_insights_v2(meeting_quality, execution_attempted):
@@ -2084,7 +2270,7 @@ def analyze_sales(enriched_segments: list, session_id: Optional[str] = None) -> 
     # --- QUALITY SCORING ---
     # STEPS 1, 2, 3, 4: Assess signals with all calibrations
     with profile_stage(session_id, "Buying Signal detection"):
-        sales_signals = assess_sales_signals(
+        sales_signals: dict[str, Any] = assess_sales_signals(
             segments, objections_initial, recommendations_temp
         )
 

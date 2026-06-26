@@ -146,10 +146,11 @@ async def lifespan(app: FastAPI):
         # 5. Start background flusher loop
         logger.info("Flusher — starting background flusher scheduler …")
         import inspect
+        from typing import Any
 
         from ws.session_manager import start_flusher
 
-        res = start_flusher()
+        res: Any = start_flusher()
         if inspect.isawaitable(res):
             await res
 

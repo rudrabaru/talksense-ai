@@ -10,7 +10,7 @@ import requests
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from db.database import AsyncSessionLocal, engine
+from db.database import AsyncSessionLocal
 from db.models import Client as DBClient
 from db.models import Session as DBSession
 from db.models import SessionMetric as DBSessionMetric
@@ -181,17 +181,15 @@ async def test_all():
 
     finally:
         print("Cleaning up test data...")
+        from sqlalchemy import delete
+
         async with AsyncSessionLocal() as db:
             for sid in s_ids:
-                await db.execute(
-                    DBSession.__table__.delete().where(DBSession.id == sid)
-                )
-            await db.execute(
-                DBClient.__table__.delete().where(DBClient.id.in_([c1_id, c2_id]))
-            )
+                await db.execute(delete(DBSession).where(DBSession.id == sid))
+            await db.execute(delete(DBClient).where(DBClient.id.in_([c1_id, c2_id])))
             await db.commit()
         # Dispose engine to close all connections cleanly
-        await engine.dispose()
+        # await engine.dispose()
         print("Cleanup done.")
 
 

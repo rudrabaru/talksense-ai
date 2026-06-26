@@ -174,6 +174,7 @@ class ConversationState:
     active_alerts: list = field(default_factory=list)
     transcript_segments: list = field(default_factory=list)
     duration_seconds: float = 0.0
+    last_silence_seconds: float = 0.0
 
 
 @dataclass

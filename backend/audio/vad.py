@@ -42,13 +42,17 @@ class VADProcessor:
     def load(self) -> None:
         """Load Silero VAD model (CPU, called once at startup)."""
         try:
-            self._model, _ = torch.hub.load(
+            from typing import Any
+
+            trust_repo_val: Any = True
+            res: Any = torch.hub.load(
                 repo_or_dir="snakers4/silero-vad",
                 model="silero_vad",
                 force_reload=False,
                 onnx=False,
-                trust_repo=True,
+                trust_repo=trust_repo_val,
             )
+            self._model, _ = res
             self._model.eval()
             logger.info("VAD: Silero VAD loaded on CPU")
             self._loaded = True

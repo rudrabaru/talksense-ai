@@ -63,6 +63,7 @@ def decode_audio_to_pcm(audio_path: str) -> bytes:
         "-",
     ]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    assert proc.stdout is not None
     pcm_data = proc.stdout.read()
     proc.wait()
     return pcm_data
@@ -207,12 +208,15 @@ def run_post_session(pcm_data: bytes, transcriber, diarizer) -> list[EvalSegment
                 "pyannote/speaker-diarization-3.1",
                 token=settings.hf_token,
             )
+            assert pipeline is not None
             pipeline.to(torch.device(settings.pyannote_device))
         except Exception as e:
             print(f"  ERROR: Failed to load Pyannote directly: {e}")
             return []
     else:
         pipeline = diarizer._pipeline
+
+    assert pipeline is not None
 
     import torch
 

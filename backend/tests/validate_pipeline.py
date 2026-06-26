@@ -124,7 +124,8 @@ async def test_session_manager():
 
         # Elapsed time
         time.sleep(0.1)
-        elapsed = manager.get(sid).elapsed_seconds if manager.get(sid) else 0.0
+        session_obj = manager.get(sid)
+        elapsed = session_obj.elapsed_seconds if session_obj is not None else 0.0
         record(
             area,
             "elapsed_seconds > 0 after 100ms",
@@ -134,6 +135,7 @@ async def test_session_manager():
         )
 
         # ConversationState defaults
+        assert fetched is not None
         conv = fetched.conversation
         record(
             area,

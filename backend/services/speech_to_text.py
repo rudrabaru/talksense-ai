@@ -1,3 +1,5 @@
+from typing import Any
+
 import whisper
 
 # Load model once (important for performance)
@@ -8,7 +10,7 @@ def transcribe_audio(file_path: str) -> dict:
     """
     Transcribes audio file into text segments.
     """
-    result = model.transcribe(file_path)
+    result: Any = model.transcribe(file_path)
 
     segments = []
     for segment in result["segments"]:

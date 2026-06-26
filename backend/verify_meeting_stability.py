@@ -50,6 +50,7 @@ def decode_audio_to_pcm(path: str) -> bytes:
         "-",
     ]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    assert proc.stdout is not None
     pcm = proc.stdout.read()
     proc.wait()
     return pcm

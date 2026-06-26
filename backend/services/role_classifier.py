@@ -226,7 +226,11 @@ async def classify_roles_v2(session_id: str) -> dict | None:
         )
 
         # 4. Call Gemini Flash
-        import google.generativeai as genai
+        from typing import Any
+
+        import google.generativeai as google_genai
+
+        genai: Any = google_genai
 
         genai.configure(api_key=settings.gemini_api_key)
         model = genai.GenerativeModel("gemini-2.0-flash")

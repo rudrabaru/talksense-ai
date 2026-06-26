@@ -4,11 +4,14 @@ import subprocess
 import sys
 import time
 
+# Ensure UTF-8 output on Windows console
+from typing import Any
+
 import httpx
 import websockets
 
-# Ensure UTF-8 output on Windows console
-sys.stdout.reconfigure(encoding="utf-8")
+sys_stdout: Any = sys.stdout
+sys_stdout.reconfigure(encoding="utf-8")
 session_start_time = 0.0
 
 
@@ -94,6 +97,7 @@ async def run_latency_test():
 
         start_stream_time = time.time()
 
+        assert process.stdout is not None
         while time.time() - start_stream_time < stream_duration:
             loop_start = time.time()
 

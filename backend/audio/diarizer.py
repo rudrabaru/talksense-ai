@@ -47,7 +47,9 @@ class SpeakerDiarizer:
     """
 
     def __init__(self):
-        self._pipeline = None
+        from typing import Any
+
+        self._pipeline: Any = None
         self._loaded = False
 
     def load(self, hf_token: str, device: str) -> None:

@@ -6,11 +6,14 @@ import sys
 import time
 import wave
 
+# Ensure UTF-8 output on Windows console to prevent UnicodeEncodeError
+from typing import Any
+
 import httpx
 import websockets
 
-# Ensure UTF-8 output on Windows console to prevent UnicodeEncodeError
-sys.stdout.reconfigure(encoding="utf-8")
+sys_stdout: Any = sys.stdout
+sys_stdout.reconfigure(encoding="utf-8")
 
 # Add backend directory to Python path for DB access
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -108,6 +111,7 @@ async def run_verification():
         async with websockets.connect(ws_audio_url) as ws:
             print("    Connected. Streaming binary chunks...")
 
+            assert process.stdout is not None
             while time.time() - t_start < stream_duration:
                 t_loop = time.time()
                 chunk = process.stdout.read(chunk_size)
