@@ -131,7 +131,7 @@ class AudioBuffer:
             is_speech:  Whether VAD classified this chunk as speech.
 
         Returns:
-            Tuple of (flushed_pcm_bytes, start_time_offset_seconds)
+            Tuple of (flushed_pcm_bytes, start_time_offset_seconds, is_partial)
             if flushed, else None.
         """
         # Always write ALL incoming audio to WAV to maintain correct timeline
@@ -168,7 +168,12 @@ class AudioBuffer:
                         self._clear()
 
         self._total_bytes_received += len(pcm_bytes)
-        return result
+        
+        if result is not None:
+            flushed, time_offset, is_partial = result
+            return flushed, time_offset, is_partial
+            
+        return None
 
     def flush_remaining(self) -> tuple[bytes, float, bool] | None:
         """
@@ -177,7 +182,7 @@ class AudioBuffer:
         Also finalizes the WAV file by rewriting the RIFF/data chunk sizes.
 
         Returns:
-            Tuple of (remaining_pcm_bytes, start_time_offset_seconds),
+            Tuple of (remaining_pcm_bytes, start_time_offset_seconds, is_partial),
             or None if buffer is empty / too small.
         """
         from utils.profiler import profile_stage
@@ -191,7 +196,12 @@ class AudioBuffer:
 
             # Always finalize and close the WAV file on session end
             self._finalize_wav()
-            return result
+            
+            if result is not None:
+                flushed, time_offset, is_partial = result
+                return flushed, time_offset, is_partial
+                
+            return None
 
     def get_audio_file_path(self) -> str | None:
         """

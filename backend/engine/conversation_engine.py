@@ -71,6 +71,8 @@ class ConversationEngine:
         state: ConversationState,
         mode: str,
         session_id: str = "default",
+        host_embedding: list[float] | None = None,
+        speaker_centroids: dict | None = None,
     ) -> tuple[ConversationState, list[dict]]:
         """
         Process new segments and return updated state + new alerts.
@@ -108,7 +110,10 @@ class ConversationEngine:
         # 5. Compute health score via scoring profile
         state.health_score = self._compute_health(state, mode)
 
-        # 6. Fire alerts
+        # 6. Infer Roles (Dynamic Mode Mapping & Host Enrollment)
+        self._infer_roles(state, mode, host_embedding, speaker_centroids)
+
+        # 7. Fire alerts
         alert_engine = self.get_alert_engine(session_id)
         new_alerts = alert_engine.evaluate(state, mode, prev_health)
 
@@ -116,6 +121,67 @@ class ConversationEngine:
         state.active_alerts = alert_engine.get_active()
 
         return state, new_alerts
+
+    def _infer_roles(
+        self,
+        state: ConversationState,
+        mode: str,
+        host_embedding: list[float] | None,
+        speaker_centroids: dict | None,
+    ) -> None:
+        """Infer roles using Voice Enrollment (fallback to First-Speaker) and map to mode."""
+        if not state.participation:
+            return
+
+        host_speaker_id = None
+
+        # 1. Voice Enrollment Matching
+        if host_embedding and speaker_centroids:
+            best_match = None
+            best_score = -1.0
+            
+            import numpy as np
+            
+            host_arr = np.array(host_embedding)
+            host_norm = np.linalg.norm(host_arr)
+            
+            if host_norm > 0:
+                for spk, centroid in speaker_centroids.items():
+                    cent_arr = np.array(centroid)
+                    cent_norm = np.linalg.norm(cent_arr)
+                    if cent_norm > 0:
+                        score = np.dot(host_arr, cent_arr) / (host_norm * cent_norm)
+                        if score > best_score:
+                            best_score = score
+                            best_match = spk
+                            
+            if best_match and best_score > 0.65:  # threshold
+                host_speaker_id = best_match
+
+        # 2. First-Speaker Fallback (if no enrollment match)
+        if not host_speaker_id:
+            # Assuming Speaker 1 is the host
+            host_speaker_id = "Speaker 1"
+
+        state.host_speaker_id = host_speaker_id
+
+        # 3. Dynamic Mode Mapping
+        mode_roles = {
+            "sales": {"host": "sales_rep", "guest": "customer"},
+            "meeting": {"host": "manager", "guest": "employee"},
+            "interview": {"host": "interviewer", "guest": "candidate"},
+        }
+
+        mapping = mode_roles.get(mode, {"host": "host", "guest": "guest"})
+        
+        roles = {}
+        for spk in state.participation.keys():
+            if spk == host_speaker_id:
+                roles[spk] = mapping["host"]
+            else:
+                roles[spk] = mapping["guest"]
+                
+        state.roles = roles
 
     # ── Metric updaters ───────────────────────────────────────────────────────
 

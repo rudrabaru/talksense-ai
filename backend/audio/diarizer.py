@@ -1,18 +1,16 @@
 """
-TalkSense AI — Speaker Diarization (Pyannote)
+TalkSense AI — Speaker Diarization (Streaming Embeddings)
 
-Assigns speaker labels to TranscriptSegments by running Pyannote's
-speaker diarization pipeline on the same audio chunk.
+Extracts Speaker Embeddings from each Whisper segment and compares
+against a persistent Session Speaker Profile to prevent cross-chunk amnesia.
 
-VRAM Strategy (RTX 3050, 4GB):
-  - Whisper and Pyannote share the GPU but run SEQUENTIALLY per chunk.
-  - Whisper transcribes first → releases GPU memory → Pyannote diarizes.
-  - This keeps peak VRAM under ~2.5GB.
+VRAM Strategy:
+  - Uses pyannote/wespeaker-voxceleb-resnet34-LM (small model).
+  - Whisper and Embedding model run sequentially per chunk.
 
 Fallback:
-  If Pyannote is disabled (PYANNOTE_ENABLED=false) or fails to load,
-  speakers are assigned via a simple turn-boundary heuristic: speaker
-  alternates when > 1.5s of silence is detected between segments.
+  If Pyannote is disabled or fails to load, speakers are assigned via a 
+  simple heuristic.
 """
 
 import logging
@@ -22,6 +20,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from audio.transcriber import TranscriptSegment
+from audio.speaker_profile import SpeakerProfile
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +48,7 @@ class SpeakerDiarizer:
     def __init__(self):
         from typing import Any
 
-        self._pipeline: Any = None
+        self._model: Any = None
         self._loaded = False
 
     def load(self, hf_token: str, device: str) -> None:
@@ -74,27 +73,26 @@ class SpeakerDiarizer:
                     message=".*torchcodec is not installed correctly.*",
                     category=UserWarning,
                 )
-                from pyannote.audio import Pipeline
+                from pyannote.audio import Model
             import torch
 
             logger.info(
-                f"Diarizer: Loading pyannote/speaker-diarization-3.1 on {device} …"
+                f"Diarizer: Loading pyannote/wespeaker-voxceleb-resnet34-LM on {device} …"
             )
             t0 = time.monotonic()
 
-            self._pipeline = Pipeline.from_pretrained(
-                "pyannote/speaker-diarization-3.1",
-                token=hf_token,
+            self._model = Model.from_pretrained(
+                "pyannote/wespeaker-voxceleb-resnet34-LM",
+                use_auth_token=hf_token,
             )
-            self._pipeline.to(torch.device(device))
+            self._model.to(torch.device(device))
+            self._model.eval()
 
             logger.info("Diarizer: Running warm-up inference ...")
             # Run a dummy 2.0s tensor to initialize CUDA kernels and PyTorch caches
-            dummy_waveform = torch.zeros(1, SAMPLE_RATE * 2, dtype=torch.float32)
+            dummy_waveform = torch.zeros(1, 1, SAMPLE_RATE * 2, dtype=torch.float32).to(torch.device(device))
             with torch.inference_mode():
-                _ = self._pipeline(
-                    {"waveform": dummy_waveform, "sample_rate": SAMPLE_RATE}
-                )
+                _ = self._model(dummy_waveform)
 
             elapsed = time.monotonic() - t0
             logger.info(f"Diarizer: Ready and warmed up in {elapsed:.1f}s")
@@ -110,17 +108,17 @@ class SpeakerDiarizer:
         pcm_bytes: bytes,
         chunk_time_offset: float = 0.0,
         fallback_speaker: str = "Speaker 1",
+        speaker_profile: SpeakerProfile | None = None,
     ) -> list[DiarizedSegment]:
         """
-        Assign speaker labels to transcript segments.
-
-        Tries Pyannote first; falls back to heuristic if unavailable.
+        Assign speaker labels to transcript segments using Embeddings.
 
         Args:
             segments:          Output of WhisperTranscriber.transcribe().
-            pcm_bytes:         The same raw PCM chunk used for transcription.
+            pcm_bytes:         The raw PCM chunk (15s rolling window or flushed).
             chunk_time_offset: Absolute time of the chunk start (seconds).
             fallback_speaker:  Speaker to assign if chunk is too short.
+            speaker_profile:   Persistent session speaker profile.
 
         Returns:
             List of DiarizedSegment with speaker labels.
@@ -128,79 +126,63 @@ class SpeakerDiarizer:
         if not segments:
             return []
 
-        if self._loaded and self._pipeline is not None:
-            return self._diarize_with_pyannote(
-                segments, pcm_bytes, chunk_time_offset, fallback_speaker
+        if self._loaded and self._model is not None and speaker_profile is not None:
+            return self._diarize_with_embeddings(
+                segments, pcm_bytes, chunk_time_offset, fallback_speaker, speaker_profile
             )
         else:
             return self._diarize_heuristic(segments, fallback_speaker)
 
     # ── Pyannote diarization ──────────────────────────────────────────────────
 
-    def _diarize_with_pyannote(
+    def _diarize_with_embeddings(
         self,
         segments: list[TranscriptSegment],
         pcm_bytes: bytes,
         chunk_time_offset: float,
         fallback_speaker: str,
+        speaker_profile: SpeakerProfile,
     ) -> list[DiarizedSegment]:
-        """Run Pyannote on the audio and map turns to Whisper segments."""
+        """Extract embeddings for each segment and assign via SpeakerProfile."""
         try:
             import torch
 
             # Convert PCM → float32 tensor
             audio_int16 = np.frombuffer(pcm_bytes, dtype=np.int16)
-
-            # Guard: Pyannote clustering fails on extremely short chunks (e.g. < 0.5s)
-            # leading to divide-by-zero errors. Minimum recommended is ~1.5s.
-            duration = len(audio_int16) / SAMPLE_RATE
-            if duration < 1.5:
-                logger.warning(
-                    f"Diarizer: Chunk too short ({duration:.2f}s < 1.5s). Falling back to previous speaker."  # noqa: E501
-                )
-                return self._diarize_heuristic(segments, fallback_speaker)
-
             audio_float32 = audio_int16.astype(np.float32) / 32768.0
-            audio_tensor = torch.from_numpy(audio_float32).unsqueeze(0)  # [1, samples]
 
-            waveform = {"waveform": audio_tensor, "sample_rate": SAMPLE_RATE}
-
-            t0 = time.monotonic()
-            diarization = self._pipeline(waveform)
-            elapsed = (time.monotonic() - t0) * 1000
-            logger.debug(f"Diarizer: Pyannote finished in {elapsed:.0f}ms")
-
-            # pyannote-audio 4.x returns a DiarizeOutput dataclass. Unwrap it using
-            # duck-typing
-            # to bypass class-identity mismatches under Uvicorn reload environments.
-            annotation = getattr(diarization, "speaker_diarization", diarization)
-
-            # Build a list of (start, end, speaker) turns from Pyannote output
-            turns: list[tuple[float, float, str]] = []
-            for turn, _, speaker in annotation.itertracks(yield_label=True):
-                # Map pyannote raw label "SPEAKER_XX" to user-friendly "Speaker X"
-                mapped_speaker = speaker
-                if speaker.startswith("SPEAKER_"):
-                    try:
-                        num = int(speaker.split("_")[-1])
-                        mapped_speaker = f"Speaker {num + 1}"
-                    except (ValueError, IndexError):
-                        pass
-                # Adjust times to absolute session time
-                turns.append(
-                    (
-                        turn.start + chunk_time_offset,
-                        turn.end + chunk_time_offset,
-                        mapped_speaker,
-                    )
-                )
-
-            # Assign speaker to each Whisper segment by overlap
             diarized: list[DiarizedSegment] = []
+            current_speaker = fallback_speaker
+            device = next(self._model.parameters()).device
+
             for seg in segments:
-                speaker = self._find_speaker(
-                    seg.start, seg.end, turns, fallback_speaker
-                )
+                # Calculate sample indices relative to the provided pcm chunk
+                local_start = max(0.0, seg.start - chunk_time_offset)
+                local_end = max(0.0, seg.end - chunk_time_offset)
+                
+                start_sample = int(local_start * SAMPLE_RATE)
+                end_sample = int(local_end * SAMPLE_RATE)
+                
+                # Bounds check
+                end_sample = min(len(audio_float32), end_sample)
+                start_sample = min(end_sample, start_sample)
+                
+                seg_audio = audio_float32[start_sample:end_sample]
+                
+                # If segment is too short (< 0.5s), embedding will be noisy.
+                # Just use the previous speaker (or fallback).
+                if len(seg_audio) < SAMPLE_RATE * 0.5:
+                    speaker = current_speaker
+                else:
+                    tensor = torch.from_numpy(seg_audio).unsqueeze(0).unsqueeze(0)  # [1, 1, samples]
+                    tensor = tensor.to(device)
+                    
+                    with torch.inference_mode():
+                        emb = self._model(tensor).cpu().numpy()[0]
+                    
+                    speaker = speaker_profile.match_or_create(emb)
+                    current_speaker = speaker
+
                 diarized.append(
                     DiarizedSegment(
                         start=seg.start,
@@ -215,27 +197,8 @@ class SpeakerDiarizer:
             return diarized
 
         except Exception as exc:
-            logger.error(f"Diarizer: Pyannote inference error — {exc}. Falling back.")
+            logger.error(f"Diarizer: Embedding inference error — {exc}. Falling back.")
             return self._diarize_heuristic(segments, fallback_speaker)
-
-    @staticmethod
-    def _find_speaker(
-        seg_start: float,
-        seg_end: float,
-        turns: list[tuple[float, float, str]],
-        fallback_speaker: str = "Speaker 1",
-    ) -> str:
-        """Return the speaker with the most overlap with the given segment."""
-        best_speaker = fallback_speaker
-        best_overlap = 0.0
-
-        for turn_start, turn_end, speaker in turns:
-            overlap = min(seg_end, turn_end) - max(seg_start, turn_start)
-            if overlap > best_overlap:
-                best_overlap = overlap
-                best_speaker = speaker
-
-        return best_speaker
 
     # ── Heuristic fallback ────────────────────────────────────────────────────
 

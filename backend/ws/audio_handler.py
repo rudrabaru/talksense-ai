@@ -216,7 +216,7 @@ async def _process_chunk(
     if flushed_data is None:
         return  # buffer not ready yet
 
-    flushed, time_offset, is_partial = flushed_data
+    flushed, time_offset, is_partial, _, _ = flushed_data
 
     logger.info(
         f"Session {session_id[:8]}…: buffer flushed {len(flushed)}B → sending to Whisper (partial={is_partial})"  # noqa: E501
@@ -277,7 +277,11 @@ async def _transcribe_and_enrich(
     diarized = await loop.run_in_executor(
         None,
         lambda: diarizer.assign_speakers(
-            raw_segments, flushed, max(0.0, time_offset), prev_speaker
+            raw_segments,
+            flushed,
+            max(0.0, time_offset),
+            prev_speaker,
+            session.speaker_profile,
         ),
     )
 
@@ -341,7 +345,12 @@ async def _transcribe_and_enrich(
                 session.conversation.transcript_segments.append(seg.__dict__)
 
         updated_metrics, new_alerts = engine.process_segments(
-            diarized, session.conversation, session.mode
+            diarized, 
+            session.conversation, 
+            session.mode,
+            session_id,
+            session.host_embedding,
+            session.speaker_profile.centroids
         )
         session.conversation = updated_metrics
 
@@ -368,6 +377,7 @@ async def _transcribe_and_enrich(
         "objections": updated_metrics.objections,
         "buying_signals": updated_metrics.buying_signals,
         "duration_seconds": session.elapsed_seconds,
+        "roles": updated_metrics.roles,
     }
 
     await broadcast_all(
@@ -387,7 +397,7 @@ async def _flush_final(session_id: str, transcriber, diarizer, manager) -> None:
 
     remaining_data = session.audio_buffer.flush_remaining()
     if remaining_data:
-        flushed, time_offset, is_partial = remaining_data
+        flushed, time_offset, is_partial, _, _ = remaining_data
         logger.info(
             f"Session {session_id[:8]}…: flushing {len(flushed)}B remaining audio"
         )
@@ -436,7 +446,12 @@ async def _inject_phrase(session_id: str, speaker: str, phrase: str, manager) ->
     async with session.lock:
         session.conversation.transcript_segments.append(seg_dict)
         updated_metrics, new_alerts = engine.process_segments(
-            [seg_dict], session.conversation, session.mode
+            [seg_dict], 
+            session.conversation, 
+            session.mode,
+            session_id,
+            session.host_embedding,
+            session.speaker_profile.centroids
         )
         session.conversation = updated_metrics
 
@@ -455,6 +470,7 @@ async def _inject_phrase(session_id: str, speaker: str, phrase: str, manager) ->
         "objections": updated_metrics.objections,
         "buying_signals": updated_metrics.buying_signals,
         "duration_seconds": session.elapsed_seconds,
+        "roles": updated_metrics.roles,
     }
 
     await broadcast_all(

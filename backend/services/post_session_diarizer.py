@@ -184,87 +184,40 @@ async def run_post_session_diarization(
             diagnostics["proximity_matched"],
         )
 
-        # ── Step 10: Role Classification (V1 heuristic + V2 LLM) ─────────────
-        roles_v1 = None
-        roles_v2_result = None
+        # ── Step 10: Role Classification (Offline-First mode-aware mapping) ─────────────
+        from ws.session_manager import get_session_manager
+        
+        manager = get_session_manager()
+        session_obj = manager.get(session_id)
+        
         primary_roles = {}
-        comparison = {}
+        if session_obj and session_obj.conversation:
+            primary_roles = session_obj.conversation.roles
 
-        from services.role_classifier import classify_roles, classify_roles_v2
-
-        # Run V1 (heuristic — always runs)
-        roles_v1 = await classify_roles(session_id)
-
-        # Run V2 (Gemini Flash — may return None on failure)
-        roles_v2_result = await classify_roles_v2(session_id)
-
-        # Determine the primary roles to use for downstream (v2 if available, else v1)
-        if roles_v2_result and roles_v2_result.get("roles"):
-            primary_roles = roles_v2_result["roles"]
-        else:
-            primary_roles = roles_v1 or {}
-
-        # Persist all results
-        from db import crud
-        from db.database import AsyncSessionLocal
+        # If somehow missing (e.g. failed session before roles inferred), fallback to DB
+        if not primary_roles:
+            from db import crud
+            from db.database import AsyncSessionLocal
+            async with AsyncSessionLocal() as db:
+                metrics = await crud.get_latest_session_metrics(db, session_id)
+                role_metric = next((m for m in metrics if m.metric_name == "speaker_roles"), None)
+                if role_metric and role_metric.metric_value:
+                    primary_roles = role_metric.metric_value
 
         with profile_stage(session_id, "Database writes"):
+            from db import crud
+            from db.database import AsyncSessionLocal
+            
             async with AsyncSessionLocal() as db:
                 metrics_to_save = []
-
-                # Legacy key for backward compatibility (used by objection_handler etc.)
+                
+                # Standardized offline-first roles
                 if primary_roles:
                     metrics_to_save.append(
                         {"metric_name": "speaker_roles", "metric_value": primary_roles}
                     )
-
-                # V1 result (always)
-                if roles_v1:
-                    metrics_to_save.append(
-                        {"metric_name": "speaker_roles_v1", "metric_value": roles_v1}
-                    )
-
-                # V2 result (when available)
-                if roles_v2_result:
-                    metrics_to_save.append(
-                        {
-                            "metric_name": "speaker_roles_v2",
-                            "metric_value": roles_v2_result,
-                        }
-                    )
-
-                # Comparison metric
-                comparison = {
-                    "v1_roles": roles_v1 or {},
-                    "v2_roles": (
-                        roles_v2_result.get("roles", {}) if roles_v2_result else {}
-                    ),
-                    "v2_confidence": (
-                        roles_v2_result.get("confidence", 0.0)
-                        if roles_v2_result
-                        else None
-                    ),
-                    "v2_reasoning": (
-                        roles_v2_result.get("reasoning", {}) if roles_v2_result else {}
-                    ),
-                    "agreement": (
-                        roles_v1 == roles_v2_result.get("roles", {})
-                        if roles_v1 and roles_v2_result and roles_v2_result.get("roles")
-                        else None
-                    ),
-                    "primary_source": (
-                        "v2"
-                        if roles_v2_result and roles_v2_result.get("roles")
-                        else "v1"
-                    ),
-                }
-                metrics_to_save.append(
-                    {
-                        "metric_name": "role_classification_comparison",
-                        "metric_value": comparison,
-                    }
-                )
-
+                    
+                # Save role classification result
                 if metrics_to_save:
                     await crud.save_session_metrics_batch(
                         db, session_id, metrics_to_save
@@ -272,9 +225,8 @@ async def run_post_session_diarization(
                     await db.commit()
 
         logger.info(
-            "post_session_diarizer — session %s: roles classified (primary=%s):\n%s",
+            "post_session_diarizer — session %s: roles classified (offline):\n%s",
             session_id[:8],
-            comparison.get("primary_source", "v1"),
             (
                 "\n".join([f"{spk} -> {role}" for spk, role in primary_roles.items()])
                 if primary_roles
@@ -547,13 +499,12 @@ def _run_pyannote_sync(
     """
     try:
         import warnings
+        import os
 
-        from audio.diarizer import get_diarizer
-
-        diarizer = get_diarizer()
-        if not diarizer._loaded or diarizer._pipeline is None:
+        hf_token = os.environ.get("HF_TOKEN")
+        if not hf_token:
             logger.warning(
-                "post_session_diarizer — session %s: Pyannote not loaded, "
+                "post_session_diarizer — session %s: HF_TOKEN not set, "
                 "cannot run post-session diarization",
                 session_id[:8],
             )
@@ -604,17 +555,22 @@ def _run_pyannote_sync(
                 len(audio_int16) / framerate,
             )
 
-            logger.info(
-                "Pyannote configured speakers=%s",
-                2,
+            from pyannote.audio import Pipeline
+            
+            logger.info("post_session_diarizer — session %s: Loading offline pipeline", session_id[:8])
+            pipeline = Pipeline.from_pretrained(
+                "pyannote/speaker-diarization-3.1",
+                token=hf_token,
             )
-
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            pipeline.to(torch.device(device))
+            
             # OPTIMIZATION: Set batch size to 32 for maximum throughput.
             # Stride remains 0.1 (default) to preserve SCDR accuracy.
-            diarizer._pipeline.segmentation_batch_size = 32
+            pipeline.segmentation_batch_size = 32
 
             with torch.inference_mode():
-                diarization = diarizer._pipeline(
+                diarization = pipeline(
                     waveform,
                     num_speakers=2,
                 )

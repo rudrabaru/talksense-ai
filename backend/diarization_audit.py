@@ -137,6 +137,9 @@ def run_live_chunked(pcm_data: bytes, transcriber, diarizer) -> list[EvalSegment
     time_offset = 0.0
     prev_speaker = "Speaker 1"
 
+    from audio.speaker_profile import SpeakerProfile
+    speaker_profile = SpeakerProfile()
+
     while offset_bytes < len(pcm_data):
         chunk = pcm_data[offset_bytes : offset_bytes + CHUNK_SIZE_BYTES]
         chunk_duration = (len(chunk) / 2) / SAMPLE_RATE
@@ -145,7 +148,7 @@ def run_live_chunked(pcm_data: bytes, transcriber, diarizer) -> list[EvalSegment
 
         if raw_segments:
             diarized = diarizer.assign_speakers(
-                raw_segments, chunk, time_offset, prev_speaker
+                raw_segments, chunk, time_offset, prev_speaker, speaker_profile
             )
             if diarized:
                 prev_speaker = diarized[-1].speaker
@@ -190,33 +193,23 @@ def run_post_session(pcm_data: bytes, transcriber, diarizer) -> list[EvalSegment
         return []
 
     # Step 2: Run Pyannote on the FULL audio (like post_session_diarizer.py)
-    if not diarizer._loaded or diarizer._pipeline is None:
-        print("  WARNING: Pyannote not loaded via diarizer singleton.")
-        print("  Attempting direct pipeline load for post-session test...")
-        try:
-            import warnings
+    try:
+        import warnings
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message=".*torchcodec.*", category=UserWarning)
+            from pyannote.audio import Pipeline
+        import torch
 
-            with warnings.catch_warnings():
-                warnings.filterwarnings(
-                    "ignore", message=".*torchcodec.*", category=UserWarning
-                )
-                from pyannote.audio import Pipeline
-            import torch
-
-            settings = get_settings()
-            pipeline = Pipeline.from_pretrained(
-                "pyannote/speaker-diarization-3.1",
-                token=settings.hf_token,
-            )
-            assert pipeline is not None
-            pipeline.to(torch.device(settings.pyannote_device))
-        except Exception as e:
-            print(f"  ERROR: Failed to load Pyannote directly: {e}")
-            return []
-    else:
-        pipeline = diarizer._pipeline
-
-    assert pipeline is not None
+        settings = get_settings()
+        pipeline = Pipeline.from_pretrained(
+            "pyannote/speaker-diarization-3.1",
+            token=settings.hf_token,
+        )
+        assert pipeline is not None
+        pipeline.to(torch.device(settings.pyannote_device))
+    except Exception as e:
+        print(f"  ERROR: Failed to load Pyannote directly: {e}")
+        return []
 
     import torch
 

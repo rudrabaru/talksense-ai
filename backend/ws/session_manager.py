@@ -103,9 +103,9 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 from audio.buffer import AudioBuffer
-
-if TYPE_CHECKING:
-    from fastapi import WebSocket
+from audio.speaker_profile import SpeakerProfile
+from engine.conversation import ConversationEngine
+from fastapi import WebSocket
 
 logger = logging.getLogger(__name__)
 
@@ -175,6 +175,8 @@ class ConversationState:
     transcript_segments: list = field(default_factory=list)
     duration_seconds: float = 0.0
     last_silence_seconds: float = 0.0
+    roles: dict = field(default_factory=dict)
+    host_speaker_id: str | None = None
 
 
 @dataclass
@@ -187,9 +189,7 @@ class SessionState:
     user_id: int | None
     status: SessionStatus = SessionStatus.CREATED
     speaker_attribution_status: str | None = None
-
-    audio_buffer: AudioBuffer = field(default_factory=AudioBuffer)
-    conversation: ConversationState = field(default_factory=ConversationState)
+    host_embedding: list[float] | None = None
 
     # WebSocket connections (one per channel per session)
     ws_audio: "WebSocket | None" = None  # receives binary audio
@@ -197,7 +197,9 @@ class SessionState:
     ws_metrics: "WebSocket | None" = None
     ws_alerts: "WebSocket | None" = None
     ws_status: "WebSocket | None" = None
-
+    conversation: ConversationEngine
+    audio_buffer: AudioBuffer
+    speaker_profile: SpeakerProfile = field(default_factory=SpeakerProfile)
     started_at: float = field(default_factory=time.monotonic)
     last_persist_at: float = field(default_factory=time.monotonic)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
@@ -529,6 +531,7 @@ def _compute_metric_hash(conv: ConversationState) -> str:
         "filler_count": conv.filler_count,
         "speaking_ratio": conv.speaking_ratio,
         "participation": conv.participation,
+        "roles": conv.roles,
     }
     serialised = json.dumps(payload, sort_keys=True, default=str)
     return hashlib.md5(serialised.encode()).hexdigest()
@@ -605,6 +608,7 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
                 {"metric_name": "filler_count", "metric_value": conv.filler_count},
                 {"metric_name": "speaking_ratio", "metric_value": conv.speaking_ratio},
                 {"metric_name": "participation", "metric_value": conv.participation},
+                {"metric_name": "speaker_roles", "metric_value": conv.roles},
             ]
     # ── Lock released — DB IO begins ──────────────────────────────────────────
 
