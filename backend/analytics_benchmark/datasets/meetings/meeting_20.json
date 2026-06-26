@@ -1,0 +1,68 @@
+{
+  "id": "meeting_20",
+  "mode": "meeting",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 3.0,
+      "speaker": "Speaker 1",
+      "text": "First, I'll follow up with the design team.",
+      "sentiment_label": "Neutral",
+      "sentiment_confidence": 0.95
+    },
+    {
+      "start": 3.0,
+      "end": 6.0,
+      "speaker": "Speaker 2",
+      "text": "I can confirm the requirements with the client.",
+      "sentiment_label": "Neutral",
+      "sentiment_confidence": 0.95
+    },
+    {
+      "start": 6.0,
+      "end": 9.0,
+      "speaker": "Speaker 1",
+      "text": "Perfect. Let's go with the blue theme.",
+      "sentiment_label": "Positive",
+      "sentiment_confidence": 0.95
+    },
+    {
+      "start": 9.0,
+      "end": 12.0,
+      "speaker": "Speaker 3",
+      "text": "I will assign the tickets to the backend team.",
+      "sentiment_label": "Neutral",
+      "sentiment_confidence": 0.95
+    }
+  ],
+  "expected_action_items": [
+    {
+      "task": "follow up with the design team",
+      "owner": "Speaker 1"
+    },
+    {
+      "task": "confirm the requirements",
+      "owner": "Speaker 2"
+    },
+    {
+      "task": "assign the tickets",
+      "owner": "Speaker 3"
+    }
+  ],
+  "expected_decisions": [
+    "go with the blue theme"
+  ],
+  "expected_commitments": [
+    "I'll follow up",
+    "I can confirm",
+    "I will assign"
+  ],
+  "expected_objections": [],
+  "expected_buying_signals": [],
+  "expected_sentiment": {
+    "Positive": 1,
+    "Neutral": 3,
+    "Negative": 0
+  },
+  "expected_alerts": []
+}

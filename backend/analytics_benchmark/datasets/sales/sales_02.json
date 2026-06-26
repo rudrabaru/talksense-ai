@@ -1,0 +1,46 @@
+{
+  "id": "sales_02",
+  "mode": "sales",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 3.0,
+      "speaker": "Speaker 1",
+      "text": "Our solution integrates smoothly with your stack.",
+      "sentiment_label": "Positive",
+      "sentiment_confidence": 0.95
+    },
+    {
+      "start": 3.0,
+      "end": 6.0,
+      "speaker": "Speaker 2",
+      "text": "Makes sense. And it fits the budget.",
+      "sentiment_label": "Positive",
+      "sentiment_confidence": 0.95
+    },
+    {
+      "start": 6.0,
+      "end": 9.0,
+      "speaker": "Speaker 1",
+      "text": "Awesome. I will send the proposal by Monday.",
+      "sentiment_label": "Neutral",
+      "sentiment_confidence": 0.95
+    }
+  ],
+  "expected_action_items": [],
+  "expected_decisions": [],
+  "expected_commitments": [
+    "will send the proposal"
+  ],
+  "expected_objections": [],
+  "expected_buying_signals": [
+    "makes sense",
+    "fits the budget"
+  ],
+  "expected_sentiment": {
+    "Positive": 2,
+    "Neutral": 1,
+    "Negative": 0
+  },
+  "expected_alerts": []
+}

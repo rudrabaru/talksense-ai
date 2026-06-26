@@ -259,9 +259,13 @@ class ConversationEngine:
                 OBJECTION_KEYWORDS,
                 assess_sales_signals,
             )
+            from services.linguistic_parser import annotate_segments
+            from services.conversation_state_resolver import resolve_conversation_state
 
             # Convert to the format context_analyzer expects
             seg_dicts = [s if isinstance(s, dict) else s.__dict__ for s in all_segments]
+            annotate_segments(seg_dicts)
+            resolve_conversation_state(seg_dicts)
 
             # Detect objections
             # OBJECTION_KEYWORDS is a dict: {"Pricing": ["price", "cost", ...],
@@ -269,54 +273,50 @@ class ConversationEngine:
             # Flatten all keyword lists for matching
             objections = []
             for seg in seg_dicts:
-                text = seg.get("text", "").lower()
-                if isinstance(OBJECTION_KEYWORDS, dict):
-                    # Nested dict: {category: [kw1, kw2, ...]}
-                    for category, kw_list in OBJECTION_KEYWORDS.items():
-                        for kw in (kw_list if isinstance(kw_list, list) else []):
+                for clause in seg.get("clauses", []):
+                    if clause.get("is_conditional") or clause.get("is_abandoned"):
+                        continue
+                    text = clause.get("text", "").lower()
+                    if isinstance(OBJECTION_KEYWORDS, dict):
+                        # Nested dict: {category: [kw1, kw2, ...]}
+                        for category, kw_list in OBJECTION_KEYWORDS.items():
+                            for kw in (kw_list if isinstance(kw_list, list) else []):
+                                if kw in text and text not in [
+                                    o.get("text", "") for o in objections
+                                ]:
+                                    objections.append(
+                                        {
+                                            "text": clause.get("text", ""),
+                                            "keyword": kw,
+                                            "category": category,
+                                        }
+                                    )
+                                    break
+                            else:
+                                continue
+                            break
+                    else:
+                        # Flat list (fallback)
+                        for kw in OBJECTION_KEYWORDS:
                             if kw in text and text not in [
                                 o.get("text", "") for o in objections
                             ]:
                                 objections.append(
-                                    {
-                                        "text": seg.get("text", ""),
-                                        "keyword": kw,
-                                        "category": category,
-                                    }
+                                    {"text": clause.get("text", ""), "keyword": kw}
                                 )
                                 break
-                        else:
-                            continue
-                        break
-                else:
-                    # Flat list (fallback)
-                    for kw in OBJECTION_KEYWORDS:
-                        if kw in text and text not in [
-                            o.get("text", "") for o in objections
-                        ]:
-                            objections.append(
-                                {"text": seg.get("text", ""), "keyword": kw}
-                            )
-                            break
             state.objections = objections
 
             # Detect buying signals via sales assessment
             signals = assess_sales_signals(seg_dicts, objections, [])
             if signals.get("value_articulated"):
                 # Extract the specific text that triggered it
-                buying_texts = [
-                    s.get("text", "")
-                    for s in seg_dicts
-                    if any(
-                        kw in s.get("text", "").lower()
-                        for kw in [
-                            "interested",
-                            "this looks good",
-                            "sounds good",
-                            "makes sense",
-                        ]
-                    )
-                ]
+                buying_texts = []
+                for s in seg_dicts:
+                    for c in s.get("clauses", []):
+                        if not c.get("is_negated") and not c.get("is_conditional") and not c.get("is_abandoned"):
+                            if any(kw in c.get("text", "").lower() for kw in ["interested", "this looks good", "sounds good", "makes sense", "fits the budget"]):
+                                buying_texts.append(c.get("text", ""))
                 state.buying_signals = buying_texts[-3:]  # keep last 3
 
         except Exception as exc:

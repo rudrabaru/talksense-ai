@@ -1,0 +1,33 @@
+{
+  "id": "interview_07",
+  "mode": "interview",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 3.0,
+      "speaker": "Interviewer",
+      "text": "How do you optimize a React app?",
+      "sentiment_label": "Neutral",
+      "sentiment_confidence": 0.95
+    },
+    {
+      "start": 3.0,
+      "end": 6.0,
+      "speaker": "Candidate",
+      "text": "Um, I am not really sure. Maybe use memo?",
+      "sentiment_label": "Negative",
+      "sentiment_confidence": 0.95
+    }
+  ],
+  "expected_action_items": [],
+  "expected_decisions": [],
+  "expected_commitments": [],
+  "expected_objections": [],
+  "expected_buying_signals": [],
+  "expected_sentiment": {
+    "Positive": 0,
+    "Neutral": 1,
+    "Negative": 1
+  },
+  "expected_alerts": []
+}

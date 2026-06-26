@@ -1,0 +1,56 @@
+{
+  "id": "sales_17",
+  "mode": "sales",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 3.0,
+      "speaker": "Speaker 1",
+      "text": "Are you looking to migrate soon?",
+      "sentiment_label": "Neutral",
+      "sentiment_confidence": 0.95
+    },
+    {
+      "start": 3.0,
+      "end": 6.0,
+      "speaker": "Speaker 2",
+      "text": "Honestly, we are just exploring. Not planning to switch this quarter.",
+      "sentiment_label": "Negative",
+      "sentiment_confidence": 0.95
+    },
+    {
+      "start": 6.0,
+      "end": 9.0,
+      "speaker": "Speaker 1",
+      "text": "Understood. Should I circle back later this year?",
+      "sentiment_label": "Neutral",
+      "sentiment_confidence": 0.95
+    },
+    {
+      "start": 9.0,
+      "end": 12.0,
+      "speaker": "Speaker 2",
+      "text": "Yes please do that.",
+      "sentiment_label": "Positive",
+      "sentiment_confidence": 0.95
+    }
+  ],
+  "expected_action_items": [],
+  "expected_decisions": [],
+  "expected_commitments": [
+    "circle back",
+    "yes please do that"
+  ],
+  "expected_objections": [
+    "just exploring",
+    "not planning to switch",
+    "later this year"
+  ],
+  "expected_buying_signals": [],
+  "expected_sentiment": {
+    "Positive": 1,
+    "Neutral": 2,
+    "Negative": 1
+  },
+  "expected_alerts": []
+}

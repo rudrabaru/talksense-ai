@@ -1,0 +1,37 @@
+{
+  "id": "sales_07",
+  "mode": "sales",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 3.0,
+      "speaker": "Speaker 2",
+      "text": "I would be interested if it had more features, but right now it doesn't solve our problem.",
+      "sentiment_label": "Negative",
+      "sentiment_confidence": 0.95
+    },
+    {
+      "start": 3.0,
+      "end": 6.0,
+      "speaker": "Speaker 1",
+      "text": "We will release new features next month.",
+      "sentiment_label": "Positive",
+      "sentiment_confidence": 0.95
+    }
+  ],
+  "expected_action_items": [],
+  "expected_decisions": [],
+  "expected_commitments": [
+    "We will release"
+  ],
+  "expected_objections": [
+    "doesn't solve our problem"
+  ],
+  "expected_buying_signals": [],
+  "expected_sentiment": {
+    "Positive": 1,
+    "Neutral": 0,
+    "Negative": 1
+  },
+  "expected_alerts": []
+}

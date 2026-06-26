@@ -1,0 +1,51 @@
+{
+  "id": "meeting_05",
+  "mode": "meeting",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 3.0,
+      "speaker": "Speaker 1",
+      "text": "Let's review the sprint. We need to deploy the new auth service by Friday.",
+      "sentiment_label": "Neutral",
+      "sentiment_confidence": 0.95
+    },
+    {
+      "start": 3.0,
+      "end": 6.0,
+      "speaker": "Speaker 2",
+      "text": "I will deploy the auth service.",
+      "sentiment_label": "Positive",
+      "sentiment_confidence": 0.95
+    },
+    {
+      "start": 6.0,
+      "end": 9.0,
+      "speaker": "Speaker 1",
+      "text": "Great, let's lock the database schema changes.",
+      "sentiment_label": "Positive",
+      "sentiment_confidence": 0.95
+    }
+  ],
+  "expected_action_items": [
+    {
+      "task": "deploy the auth service by Friday",
+      "owner": "Speaker 2",
+      "deadline": "Friday"
+    }
+  ],
+  "expected_decisions": [
+    "lock the database schema changes"
+  ],
+  "expected_commitments": [
+    "I will deploy the auth service"
+  ],
+  "expected_objections": [],
+  "expected_buying_signals": [],
+  "expected_sentiment": {
+    "Positive": 2,
+    "Neutral": 1,
+    "Negative": 0
+  },
+  "expected_alerts": []
+}

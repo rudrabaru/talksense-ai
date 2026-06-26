@@ -1,0 +1,45 @@
+{
+  "id": "sales_14",
+  "mode": "sales",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 3.0,
+      "speaker": "Speaker 1",
+      "text": "How do you feel about the platform?",
+      "sentiment_label": "Neutral",
+      "sentiment_confidence": 0.95
+    },
+    {
+      "start": 3.0,
+      "end": 6.0,
+      "speaker": "Speaker 2",
+      "text": "It looks good, but I'm not the decision maker. I need to run it by colleagues.",
+      "sentiment_label": "Neutral",
+      "sentiment_confidence": 0.95
+    },
+    {
+      "start": 6.0,
+      "end": 9.0,
+      "speaker": "Speaker 2",
+      "text": "Also, it seems a bit expensive right now.",
+      "sentiment_label": "Negative",
+      "sentiment_confidence": 0.95
+    }
+  ],
+  "expected_action_items": [],
+  "expected_decisions": [],
+  "expected_commitments": [],
+  "expected_objections": [
+    "not the decision maker",
+    "expensive",
+    "run it by colleagues"
+  ],
+  "expected_buying_signals": [],
+  "expected_sentiment": {
+    "Positive": 0,
+    "Neutral": 2,
+    "Negative": 1
+  },
+  "expected_alerts": []
+}

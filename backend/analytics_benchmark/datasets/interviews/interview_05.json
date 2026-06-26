@@ -1,0 +1,43 @@
+{
+  "id": "interview_05",
+  "mode": "interview",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 3.0,
+      "speaker": "Interviewer",
+      "text": "Tell me about a time you had a conflict.",
+      "sentiment_label": "Neutral",
+      "sentiment_confidence": 0.95
+    },
+    {
+      "start": 3.0,
+      "end": 6.0,
+      "speaker": "Candidate",
+      "text": "I once had a disagreement over a system architecture.",
+      "sentiment_label": "Neutral",
+      "sentiment_confidence": 0.95
+    },
+    {
+      "start": 6.0,
+      "end": 9.0,
+      "speaker": "Candidate",
+      "text": "We decided to write a design doc, which resolved it.",
+      "sentiment_label": "Positive",
+      "sentiment_confidence": 0.95
+    }
+  ],
+  "expected_action_items": [],
+  "expected_decisions": [
+    "decided to write a design doc"
+  ],
+  "expected_commitments": [],
+  "expected_objections": [],
+  "expected_buying_signals": [],
+  "expected_sentiment": {
+    "Positive": 1,
+    "Neutral": 2,
+    "Negative": 0
+  },
+  "expected_alerts": []
+}

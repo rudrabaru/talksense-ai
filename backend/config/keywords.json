@@ -47,7 +47,12 @@
             "i'll get back",
             "i'll look into",
             "i'll coordinate",
-            "i'll schedule"
+            "i'll schedule",
+            "i can confirm",
+            "i can",
+            "circle back",
+            "yes please do that",
+            "yes please"
         ],
         "directional_decisions": [
             "decision is to",
@@ -143,6 +148,22 @@
                 "incumbent",
                 "switch",
                 "contract"
+            ],
+            "NoIntent": [
+                "just exploring",
+                "only exploring",
+                "just looking",
+                "only looking",
+                "not planning to switch",
+                "not switching",
+                "not the decision maker",
+                "not my decision",
+                "doesn't solve",
+                "doesn't address",
+                "run it by",
+                "run by my",
+                "not this quarter",
+                "later this year"
             ]
         }
     },

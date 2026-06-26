@@ -6,6 +6,9 @@ from typing import Any, Optional
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.config_loader import KEYWORDS_CONFIG
 from utils.profiler import profile_stage
+from services.linguistic_parser import annotate_segments
+from services.conversation_state_resolver import resolve_conversation_state
+from services.intent_resolver import resolve_clause_intent, ROADMAP_STATEMENT
 
 # Load Configured Keywords (or defaults)
 DECISION_KEYWORDS = KEYWORDS_CONFIG["meeting"]["decisions"]
@@ -26,7 +29,6 @@ DECISION_PATTERNS = [
     "we decided",
     "we are going to",
     "tentative release",
-    "agreed",
     "go with",
     "lock it",
 ]
@@ -149,6 +151,11 @@ COMMITMENT_KEYWORDS = [
     "sounds good let's do it",
     "let's move forward",
     "let's proceed",
+    # Phase 4 additions
+    "i can confirm",
+    "i'll confirm",
+    "i can",
+    "i'll get back",
 ]
 
 # STEP 2: Budget Alignment Keywords (Buying Signal)
@@ -213,11 +220,16 @@ def detect_ownership_committed(segments):
     Returns True if ANY speaker commits to an action.
     MANDATORY: Ownership is NOT just keywords like "owner".
     """
+    annotate_segments(segments)
+    resolve_conversation_state(segments)
     for seg in segments:
-        text = seg.get("text", "").lower()
-        # Check for commitment patterns
-        if any(pattern in text for pattern in OWNERSHIP_COMMITMENT_KEYWORDS):
-            return True
+        for clause in seg.get("clauses", []):
+            if clause.get("is_negated") or clause.get("is_conditional") or clause.get("is_abandoned"):
+                continue
+            text = clause.get("text", "").lower()
+            # Check for commitment patterns
+            if any(pattern in text for pattern in OWNERSHIP_COMMITMENT_KEYWORDS):
+                return True
     return False
 
 
@@ -227,6 +239,7 @@ def detect_decisions_made(segments):
     Returns True if any direction is set.
     NOT just looking for "decided" - includes "we will", "next step is", etc.
     """
+    resolve_conversation_state(segments)
     for seg in segments:
         text = seg.get("text", "").lower()
         # Check for directional decision patterns
@@ -248,25 +261,29 @@ def detect_signals(segments):
     ownership_detected = False
     decision_detected = False
     execution_decision_detected = False
+    
+    annotate_segments(segments)
+    resolve_conversation_state(segments)
 
     for seg in segments:
-        text = seg.get("text", "")
+        for clause in seg.get("clauses", []):
+            if clause.get("is_abandoned"):
+                continue
+            text = clause.get("text", "")
 
-        # Check for ownership patterns
-        if not ownership_detected and any(
-            p in text.lower() for p in OWNERSHIP_PATTERNS
-        ):
-            ownership_detected = True
+            # Check for ownership patterns (skip negated/conditional)
+            if not ownership_detected and not clause.get("is_negated") and not clause.get("is_conditional"):
+                if any(p in text.lower() for p in OWNERSHIP_PATTERNS):
+                    ownership_detected = True
 
-        # Check for decisions (for display purposes)
-        if not decision_detected and any(d in text.lower() for d in DECISION_PATTERNS):
-            decision_detected = True
+            # Check for decisions (for display purposes)
+            if not decision_detected and any(d in text.lower() for d in DECISION_PATTERNS):
+                decision_detected = True
 
-        # 🔒 HARD FREEZE: Check for execution decision
-        # Once TRUE, break immediately - no further evaluation
-        if not execution_decision_detected and is_valid_execution_decision(text):
-            execution_decision_detected = True
-            # FREEZE: Do NOT allow later logic to change this back
+            # 🔒 HARD FREEZE: Check for execution decision
+            if not execution_decision_detected and is_valid_execution_decision(text, clause):
+                execution_decision_detected = True
+                # FREEZE: Do NOT allow later logic to change this back
             # No re-evaluation, no confidence downgrade, no "but maybe"
 
     return {
@@ -754,7 +771,19 @@ def assess_sales_signals(segments, objections, recommendations):
     Extracts binary signals for Sales Quality.
     STEPS 1, 2, 3, 4 implemented here.
     """
+    annotate_segments(segments)
+    resolve_conversation_state(segments)
+    
+    # Base text blob (all segments) for things that rely on negations (like authority)
     text_blob = " ".join([s["text"].lower() for s in segments])
+    
+    # Filtered text blob (no conditionals/negations/abandoned) for pure buying signals
+    positive_clauses = []
+    for s in segments:
+        for c in s.get("clauses", []):
+            if not c.get("is_negated") and not c.get("is_conditional") and not c.get("is_abandoned"):
+                positive_clauses.append(c)
+    positive_blob = " ".join([c["text"].lower() for c in positive_clauses])
 
     # STEP 1: End-of-Call Commitment Override
     # Analyze last 20-25% of transcript
@@ -766,18 +795,20 @@ def assess_sales_signals(segments, objections, recommendations):
     for seg in end_segments:
         label = seg.get("sentiment_label", "Neutral")
         confidence = seg.get("sentiment_confidence", 0)
-        text = seg["text"].lower()
 
         # Check for Positive/Neutral sentiment with confidence >= 0.6
         if (label in ["Positive", "Neutral"]) and confidence >= 0.6:
-            # Check for commitment keywords
-            if any(keyword in text for keyword in COMMITMENT_KEYWORDS):
-                end_of_call_commitment = True
-                break
+            for clause in seg.get("clauses", []):
+                if clause.get("is_negated") or clause.get("is_conditional") or clause.get("is_abandoned"):
+                    continue
+                # Check for commitment keywords
+                if any(keyword in clause["text"].lower() for keyword in COMMITMENT_KEYWORDS):
+                    end_of_call_commitment = True
+                    break
 
-    # STEP 2: Budget Alignment as Buying Signal
+    # STEP 2: Budget Alignment as Buying Signal (use positive blob)
     budget_alignment = any(
-        keyword in text_blob for keyword in BUDGET_ALIGNMENT_KEYWORDS
+        keyword in positive_blob for keyword in BUDGET_ALIGNMENT_KEYWORDS
     )
 
     # STEP 3: Authority Classification
@@ -1502,6 +1533,8 @@ def extract_actions(segments):
     - MUST contain a real execution verb
     - MUST NOT be ownership-only
     """
+    annotate_segments(segments)
+    resolve_conversation_state(segments)
     actions = []
 
     OWNERSHIP_ONLY_PHRASES = [
@@ -1512,34 +1545,43 @@ def extract_actions(segments):
     ]
 
     for seg in segments:
-        text = seg.get("text", "")
-        t = text.lower()
+        for clause in seg.get("clauses", []):
+            if clause.get("is_negated") or clause.get("is_conditional") or clause.get("is_abandoned"):
+                continue
 
-        # Must be first-person future
-        if not (
-            t.startswith("i will")
-            or t.startswith("i'll")
-            or t.startswith("we will")
-            or t.startswith("we'll")
-        ):
-            continue
+            text = clause.get("text", "")
+            t = text.lower()
 
-        # Must contain an execution verb
-        if not any(v in t for v in EXECUTION_VERBS):
-            continue
+            # ── Intent Resolution: suppress ROADMAP_STATEMENTs ──────────────
+            intent_result = resolve_clause_intent(text, clause)
+            if intent_result["intent"] == ROADMAP_STATEMENT:
+                continue
 
-        # Must NOT be ownership-only
-        if any(p in t for p in OWNERSHIP_ONLY_PHRASES):
-            continue
+            # Must be first-person future
+            if not (
+                t.startswith("i will")
+                or t.startswith("i'll")
+                or t.startswith("we will")
+                or t.startswith("we'll")
+            ):
+                continue
 
-        actions.append(
-            {
-                "task": text,
-                "owner": "Unassigned",
-                "deadline": extract_deadline(text),
-                "time": seg.get("start", 0),
-            }
-        )
+            # Must contain an execution verb
+            if not any(v in t for v in EXECUTION_VERBS):
+                continue
+
+            # Must NOT be ownership-only
+            if any(p in t for p in OWNERSHIP_ONLY_PHRASES):
+                continue
+
+            actions.append(
+                {
+                    "task": text,
+                    "owner": seg.get("speaker", "Unassigned"),
+                    "deadline": extract_deadline(text),
+                    "time": seg.get("start", 0),
+                }
+            )
 
     return actions
 
@@ -1725,12 +1767,15 @@ def is_valid_decision(text: str) -> bool:
     return any(d in t for d in DECISION_KEYWORDS)
 
 
-def is_valid_execution_decision(text: str) -> bool:
+def is_valid_execution_decision(text: str, clause: dict = None) -> bool:
     """
     STRICT validation for execution decisions.
-    Rejects: Questions, Agenda, Conceptual language.
+    Rejects: Questions, Agenda, Conceptual language, Conditionals.
     Accepts: Negative-form decisions (declarative rejections).
     """
+    if clause and clause.get("is_conditional"):
+        return False
+        
     t = text.lower()
 
     if is_question(t):
@@ -1757,12 +1802,23 @@ def detect_decisions(segments):
     """
     decisions = []
 
-    for seg in segments:
-        text = seg.get("text", "")
+    annotate_segments(segments)
+    resolve_conversation_state(segments)
 
-        # Apply STRICT validation filter
-        if is_valid_execution_decision(text):
-            decisions.append({"text": text, "time": seg.get("start", 0)})
+    for seg in segments:
+        for clause in seg.get("clauses", []):
+            if clause.get("is_abandoned"):
+                continue
+            text = clause.get("text", "")
+
+            # ── Intent Resolution: suppress ROADMAP_STATEMENTs ──────────────
+            intent_result = resolve_clause_intent(text, clause)
+            if intent_result["intent"] == ROADMAP_STATEMENT:
+                continue
+
+            # Apply STRICT validation filter
+            if is_valid_execution_decision(text, clause):
+                decisions.append({"text": text, "time": seg.get("start", 0)})
 
     return decisions
 
@@ -1830,24 +1886,42 @@ def detect_objections(segments, budget_alignment=False):
     """
     STEP 2: Suppress pricing objections when budget alignment is detected.
     """
+    annotate_segments(segments)
+    resolve_conversation_state(segments)
     objections = []
 
     for seg in segments:
         label = seg.get("sentiment_label", "Neutral")
-        if label != "Negative" or seg["sentiment_confidence"] < 0.75:
-            continue
-
-        text = seg["text"].lower()
-
-        for obj_type, keywords in OBJECTION_KEYWORDS.items():
-            # STEP 2: Skip pricing objections if budget alignment detected
-            if obj_type == "Pricing" and budget_alignment:
+        high_neg = label == "Negative" and seg["sentiment_confidence"] >= 0.75
+            
+        for clause in seg.get("clauses", []):
+            if clause.get("is_conditional") or clause.get("is_abandoned"):
                 continue
+                
+            text = clause["text"].lower()
 
-            if any(k in text for k in keywords):
-                objections.append(
-                    {"type": obj_type, "text": seg["text"], "time": seg["start"]}
-                )
+            for obj_type, keywords in OBJECTION_KEYWORDS.items():
+                # STEP 2: Skip pricing objections if budget alignment detected
+                if obj_type == "Pricing" and budget_alignment:
+                    continue
+
+                # NoIntent category: bypass sentiment gate — these are conversational
+                # signals that are explicitly low-intent regardless of tone
+                if obj_type == "NoIntent":
+                    if any(k in text for k in keywords):
+                        objections.append(
+                            {"type": obj_type, "text": clause["text"], "time": seg.get("start", 0)}
+                        )
+                    continue
+
+                # All other categories: require negative sentiment gate
+                if not high_neg:
+                    continue
+
+                if any(k in text for k in keywords):
+                    objections.append(
+                        {"type": obj_type, "text": clause["text"], "time": seg.get("start", 0)}
+                    )
 
     return objections
 

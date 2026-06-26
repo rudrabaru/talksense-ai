@@ -1,0 +1,43 @@
+{
+  "id": "meeting_10",
+  "mode": "meeting",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 3.0,
+      "speaker": "Speaker 1",
+      "text": "Are we going to ship the beta today?",
+      "sentiment_label": "Neutral",
+      "sentiment_confidence": 0.95
+    },
+    {
+      "start": 3.0,
+      "end": 6.0,
+      "speaker": "Speaker 2",
+      "text": "I will not ship the beta today because of the bug.",
+      "sentiment_label": "Negative",
+      "sentiment_confidence": 0.95
+    },
+    {
+      "start": 6.0,
+      "end": 9.0,
+      "speaker": "Speaker 3",
+      "text": "Agreed. Let's not delay the bug fix any further.",
+      "sentiment_label": "Neutral",
+      "sentiment_confidence": 0.95
+    }
+  ],
+  "expected_action_items": [],
+  "expected_decisions": [
+    "not delay the bug fix"
+  ],
+  "expected_commitments": [],
+  "expected_objections": [],
+  "expected_buying_signals": [],
+  "expected_sentiment": {
+    "Positive": 0,
+    "Neutral": 2,
+    "Negative": 1
+  },
+  "expected_alerts": []
+}

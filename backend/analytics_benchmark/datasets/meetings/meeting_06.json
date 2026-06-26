@@ -1,0 +1,50 @@
+{
+  "id": "meeting_06",
+  "mode": "meeting",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 3.0,
+      "speaker": "Speaker 1",
+      "text": "I'll handle the API...",
+      "sentiment_label": "Neutral",
+      "sentiment_confidence": 0.95
+    },
+    {
+      "start": 3.0,
+      "end": 6.0,
+      "speaker": "Speaker 2",
+      "text": "Wait, no, I am going to handle the API integration.",
+      "sentiment_label": "Neutral",
+      "sentiment_confidence": 0.95
+    },
+    {
+      "start": 6.0,
+      "end": 9.0,
+      "speaker": "Speaker 1",
+      "text": "Okay, then we decided to let you handle it.",
+      "sentiment_label": "Positive",
+      "sentiment_confidence": 0.95
+    }
+  ],
+  "expected_action_items": [
+    {
+      "task": "handle the API integration",
+      "owner": "Speaker 2"
+    }
+  ],
+  "expected_decisions": [
+    "decided to let you handle it"
+  ],
+  "expected_commitments": [
+    "I am going to handle"
+  ],
+  "expected_objections": [],
+  "expected_buying_signals": [],
+  "expected_sentiment": {
+    "Positive": 1,
+    "Neutral": 2,
+    "Negative": 0
+  },
+  "expected_alerts": []
+}

@@ -1,0 +1,4963 @@
+{
+  "total_datasets": 50,
+  "datasets": {
+    "interview_01": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 1,
+            "predicted": 1
+          }
+        ],
+        "errors": []
+      }
+    },
+    "interview_02": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "We decided to write a design doc, which resolved it.",
+            "expected": "decided to write a design doc",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "interview_03": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 1,
+            "predicted": 1
+          }
+        ],
+        "errors": []
+      }
+    },
+    "interview_04": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "We decided to write a design doc, which resolved it.",
+            "expected": "decided to write a design doc",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "interview_05": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "We decided to write a design doc, which resolved it.",
+            "expected": "decided to write a design doc",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "interview_06": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 1,
+            "predicted": 1
+          }
+        ],
+        "errors": []
+      }
+    },
+    "interview_07": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 1,
+            "predicted": 1
+          }
+        ],
+        "errors": []
+      }
+    },
+    "interview_08": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 1,
+            "predicted": 1
+          }
+        ],
+        "errors": []
+      }
+    },
+    "interview_09": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "We decided to write a design doc, which resolved it.",
+            "expected": "decided to write a design doc",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "interview_10": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 1,
+            "predicted": 1
+          }
+        ],
+        "errors": []
+      }
+    },
+    "meeting_01": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 1,
+        "matches": [],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "handle the API integration",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Okay, then we decided to let you handle it.",
+            "expected": "decided to let you handle it",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 1,
+        "matches": [],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "I am going to handle",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "meeting_02": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Let's not delay the bug fix any further.",
+            "expected": "not delay the bug fix",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "meeting_03": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Let's not delay the bug fix any further.",
+            "expected": "not delay the bug fix",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "meeting_04": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Let's not delay the bug fix any further.",
+            "expected": "not delay the bug fix",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "meeting_05": {
+      "action_items": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "I will deploy the auth service.",
+            "expected": "deploy the auth service by Friday",
+            "score": 0.67
+          }
+        ],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Great, let's lock the database schema changes.",
+            "expected": "lock the database schema changes",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.333,
+        "recall": 1.0,
+        "f1": 0.5,
+        "true_positives": 1,
+        "false_positives": 2,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "We need to deploy the new auth service by Friday.",
+            "expected": "I will deploy the auth service",
+            "score": 0.67
+          }
+        ],
+        "errors": [
+          {
+            "type": "False Positive",
+            "predicted": "Let's review the sprint.",
+            "reason": "No expected item matched",
+            "segment_idx": 0,
+            "speaker": "Speaker 1",
+            "rule": "Unknown"
+          },
+          {
+            "type": "False Positive",
+            "predicted": "I will deploy the auth service.",
+            "reason": "No expected item matched",
+            "segment_idx": 1,
+            "speaker": "Speaker 2",
+            "rule": "Pattern: i will"
+          }
+        ]
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 2,
+            "predicted": 2
+          },
+          {
+            "key": "Neutral",
+            "expected": 1,
+            "predicted": 1
+          }
+        ],
+        "errors": []
+      }
+    },
+    "meeting_06": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 1,
+        "matches": [],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "handle the API integration",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Okay, then we decided to let you handle it.",
+            "expected": "decided to let you handle it",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 1,
+        "matches": [],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "I am going to handle",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "meeting_07": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 1,
+        "matches": [],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "handle the API integration",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Okay, then we decided to let you handle it.",
+            "expected": "decided to let you handle it",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 1,
+        "matches": [],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "I am going to handle",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "meeting_08": {
+      "action_items": {
+        "precision": 1.0,
+        "recall": 0.333,
+        "f1": 0.5,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 2,
+        "matches": [
+          {
+            "predicted": "I will assign the tickets to the backend team.",
+            "expected": "assign the tickets",
+            "score": 1.0
+          }
+        ],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "follow up with the design team",
+            "reason": "Missed by predictor"
+          },
+          {
+            "type": "False Negative",
+            "expected": "confirm the requirements",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Let's go with the blue theme.",
+            "expected": "go with the blue theme",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "First, I'll follow up with the design team.",
+            "expected": "I'll follow up",
+            "score": 1.0
+          },
+          {
+            "predicted": "I can confirm the requirements with the client.",
+            "expected": "I can confirm",
+            "score": 1.0
+          },
+          {
+            "predicted": "I will assign the tickets to the backend team.",
+            "expected": "I will assign",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 4,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 3,
+            "predicted": 3
+          }
+        ],
+        "errors": []
+      }
+    },
+    "meeting_09": {
+      "action_items": {
+        "precision": 1.0,
+        "recall": 0.333,
+        "f1": 0.5,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 2,
+        "matches": [
+          {
+            "predicted": "I will assign the tickets to the backend team.",
+            "expected": "assign the tickets",
+            "score": 1.0
+          }
+        ],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "follow up with the design team",
+            "reason": "Missed by predictor"
+          },
+          {
+            "type": "False Negative",
+            "expected": "confirm the requirements",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Let's go with the blue theme.",
+            "expected": "go with the blue theme",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "First, I'll follow up with the design team.",
+            "expected": "I'll follow up",
+            "score": 1.0
+          },
+          {
+            "predicted": "I can confirm the requirements with the client.",
+            "expected": "I can confirm",
+            "score": 1.0
+          },
+          {
+            "predicted": "I will assign the tickets to the backend team.",
+            "expected": "I will assign",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 4,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 3,
+            "predicted": 3
+          }
+        ],
+        "errors": []
+      }
+    },
+    "meeting_10": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Let's not delay the bug fix any further.",
+            "expected": "not delay the bug fix",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "meeting_11": {
+      "action_items": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "I will deploy the auth service.",
+            "expected": "deploy the auth service by Friday",
+            "score": 0.67
+          }
+        ],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Great, let's lock the database schema changes.",
+            "expected": "lock the database schema changes",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.333,
+        "recall": 1.0,
+        "f1": 0.5,
+        "true_positives": 1,
+        "false_positives": 2,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "We need to deploy the new auth service by Friday.",
+            "expected": "I will deploy the auth service",
+            "score": 0.67
+          }
+        ],
+        "errors": [
+          {
+            "type": "False Positive",
+            "predicted": "Let's review the sprint.",
+            "reason": "No expected item matched",
+            "segment_idx": 0,
+            "speaker": "Speaker 1",
+            "rule": "Unknown"
+          },
+          {
+            "type": "False Positive",
+            "predicted": "I will deploy the auth service.",
+            "reason": "No expected item matched",
+            "segment_idx": 1,
+            "speaker": "Speaker 2",
+            "rule": "Pattern: i will"
+          }
+        ]
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 2,
+            "predicted": 2
+          },
+          {
+            "key": "Neutral",
+            "expected": 1,
+            "predicted": 1
+          }
+        ],
+        "errors": []
+      }
+    },
+    "meeting_12": {
+      "action_items": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "I will deploy the auth service.",
+            "expected": "deploy the auth service by Friday",
+            "score": 0.67
+          }
+        ],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Great, let's lock the database schema changes.",
+            "expected": "lock the database schema changes",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.333,
+        "recall": 1.0,
+        "f1": 0.5,
+        "true_positives": 1,
+        "false_positives": 2,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "We need to deploy the new auth service by Friday.",
+            "expected": "I will deploy the auth service",
+            "score": 0.67
+          }
+        ],
+        "errors": [
+          {
+            "type": "False Positive",
+            "predicted": "Let's review the sprint.",
+            "reason": "No expected item matched",
+            "segment_idx": 0,
+            "speaker": "Speaker 1",
+            "rule": "Unknown"
+          },
+          {
+            "type": "False Positive",
+            "predicted": "I will deploy the auth service.",
+            "reason": "No expected item matched",
+            "segment_idx": 1,
+            "speaker": "Speaker 2",
+            "rule": "Pattern: i will"
+          }
+        ]
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 2,
+            "predicted": 2
+          },
+          {
+            "key": "Neutral",
+            "expected": 1,
+            "predicted": 1
+          }
+        ],
+        "errors": []
+      }
+    },
+    "meeting_13": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 1,
+        "matches": [],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "handle the API integration",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Okay, then we decided to let you handle it.",
+            "expected": "decided to let you handle it",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 1,
+        "matches": [],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "I am going to handle",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "meeting_14": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 1,
+        "matches": [],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "handle the API integration",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Okay, then we decided to let you handle it.",
+            "expected": "decided to let you handle it",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 1,
+        "matches": [],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "I am going to handle",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "meeting_15": {
+      "action_items": {
+        "precision": 1.0,
+        "recall": 0.333,
+        "f1": 0.5,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 2,
+        "matches": [
+          {
+            "predicted": "I will assign the tickets to the backend team.",
+            "expected": "assign the tickets",
+            "score": 1.0
+          }
+        ],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "follow up with the design team",
+            "reason": "Missed by predictor"
+          },
+          {
+            "type": "False Negative",
+            "expected": "confirm the requirements",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Let's go with the blue theme.",
+            "expected": "go with the blue theme",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "First, I'll follow up with the design team.",
+            "expected": "I'll follow up",
+            "score": 1.0
+          },
+          {
+            "predicted": "I can confirm the requirements with the client.",
+            "expected": "I can confirm",
+            "score": 1.0
+          },
+          {
+            "predicted": "I will assign the tickets to the backend team.",
+            "expected": "I will assign",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 4,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 3,
+            "predicted": 3
+          }
+        ],
+        "errors": []
+      }
+    },
+    "meeting_16": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Let's not delay the bug fix any further.",
+            "expected": "not delay the bug fix",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "meeting_17": {
+      "action_items": {
+        "precision": 1.0,
+        "recall": 0.333,
+        "f1": 0.5,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 2,
+        "matches": [
+          {
+            "predicted": "I will assign the tickets to the backend team.",
+            "expected": "assign the tickets",
+            "score": 1.0
+          }
+        ],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "follow up with the design team",
+            "reason": "Missed by predictor"
+          },
+          {
+            "type": "False Negative",
+            "expected": "confirm the requirements",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Let's go with the blue theme.",
+            "expected": "go with the blue theme",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "First, I'll follow up with the design team.",
+            "expected": "I'll follow up",
+            "score": 1.0
+          },
+          {
+            "predicted": "I can confirm the requirements with the client.",
+            "expected": "I can confirm",
+            "score": 1.0
+          },
+          {
+            "predicted": "I will assign the tickets to the backend team.",
+            "expected": "I will assign",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 4,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 3,
+            "predicted": 3
+          }
+        ],
+        "errors": []
+      }
+    },
+    "meeting_18": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 1,
+        "matches": [],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "handle the API integration",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Okay, then we decided to let you handle it.",
+            "expected": "decided to let you handle it",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 1,
+        "matches": [],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "I am going to handle",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "meeting_19": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 1,
+        "matches": [],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "handle the API integration",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Okay, then we decided to let you handle it.",
+            "expected": "decided to let you handle it",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 1,
+        "matches": [],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "I am going to handle",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "meeting_20": {
+      "action_items": {
+        "precision": 1.0,
+        "recall": 0.333,
+        "f1": 0.5,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 2,
+        "matches": [
+          {
+            "predicted": "I will assign the tickets to the backend team.",
+            "expected": "assign the tickets",
+            "score": 1.0
+          }
+        ],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "follow up with the design team",
+            "reason": "Missed by predictor"
+          },
+          {
+            "type": "False Negative",
+            "expected": "confirm the requirements",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "decisions": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Let's go with the blue theme.",
+            "expected": "go with the blue theme",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "First, I'll follow up with the design team.",
+            "expected": "I'll follow up",
+            "score": 1.0
+          },
+          {
+            "predicted": "I can confirm the requirements with the client.",
+            "expected": "I can confirm",
+            "score": 1.0
+          },
+          {
+            "predicted": "I will assign the tickets to the backend team.",
+            "expected": "I will assign",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 4,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 3,
+            "predicted": 3
+          }
+        ],
+        "errors": []
+      }
+    },
+    "sales_01": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "I'm not the decision maker.",
+            "expected": "not the decision maker",
+            "score": 1.0
+          },
+          {
+            "predicted": "I need to run it by colleagues.",
+            "expected": "run it by colleagues",
+            "score": 1.0
+          },
+          {
+            "predicted": "Also, it seems a bit expensive right now.",
+            "expected": "expensive",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "sales_02": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Makes sense.",
+            "expected": "makes sense",
+            "score": 1.0
+          },
+          {
+            "predicted": "And it fits the budget.",
+            "expected": "fits the budget",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "I will send the proposal by Monday.",
+            "expected": "will send the proposal",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 2,
+            "predicted": 2
+          },
+          {
+            "key": "Neutral",
+            "expected": 1,
+            "predicted": 1
+          }
+        ],
+        "errors": []
+      }
+    },
+    "sales_03": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.75,
+        "recall": 1.0,
+        "f1": 0.857,
+        "true_positives": 3,
+        "false_positives": 1,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Honestly, we are just exploring.",
+            "expected": "just exploring",
+            "score": 1.0
+          },
+          {
+            "predicted": "Not planning to switch this quarter.",
+            "expected": "not planning to switch",
+            "score": 1.0
+          },
+          {
+            "predicted": "Should I circle back later this year?",
+            "expected": "later this year",
+            "score": 1.0
+          }
+        ],
+        "errors": [
+          {
+            "type": "False Positive",
+            "predicted": "Not planning to switch this quarter.",
+            "reason": "No expected item matched",
+            "segment_idx": 1,
+            "speaker": "Speaker 2",
+            "rule": "OBJECTION_KEYWORDS"
+          }
+        ]
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Should I circle back later this year?",
+            "expected": "circle back",
+            "score": 1.0
+          },
+          {
+            "predicted": "Yes please do that.",
+            "expected": "yes please do that",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 4,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "sales_04": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.75,
+        "recall": 1.0,
+        "f1": 0.857,
+        "true_positives": 3,
+        "false_positives": 1,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Honestly, we are just exploring.",
+            "expected": "just exploring",
+            "score": 1.0
+          },
+          {
+            "predicted": "Not planning to switch this quarter.",
+            "expected": "not planning to switch",
+            "score": 1.0
+          },
+          {
+            "predicted": "Should I circle back later this year?",
+            "expected": "later this year",
+            "score": 1.0
+          }
+        ],
+        "errors": [
+          {
+            "type": "False Positive",
+            "predicted": "Not planning to switch this quarter.",
+            "reason": "No expected item matched",
+            "segment_idx": 1,
+            "speaker": "Speaker 2",
+            "rule": "OBJECTION_KEYWORDS"
+          }
+        ]
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Should I circle back later this year?",
+            "expected": "circle back",
+            "score": 1.0
+          },
+          {
+            "predicted": "Yes please do that.",
+            "expected": "yes please do that",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 4,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "sales_05": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "I'm not the decision maker.",
+            "expected": "not the decision maker",
+            "score": 1.0
+          },
+          {
+            "predicted": "I need to run it by colleagues.",
+            "expected": "run it by colleagues",
+            "score": 1.0
+          },
+          {
+            "predicted": "Also, it seems a bit expensive right now.",
+            "expected": "expensive",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "sales_06": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Makes sense.",
+            "expected": "makes sense",
+            "score": 1.0
+          },
+          {
+            "predicted": "And it fits the budget.",
+            "expected": "fits the budget",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "I will send the proposal by Monday.",
+            "expected": "will send the proposal",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 2,
+            "predicted": 2
+          },
+          {
+            "key": "Neutral",
+            "expected": 1,
+            "predicted": 1
+          }
+        ],
+        "errors": []
+      }
+    },
+    "sales_07": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "right now it doesn't solve our problem.",
+            "expected": "doesn't solve our problem",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 1,
+        "matches": [],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "We will release",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          }
+        ],
+        "errors": []
+      }
+    },
+    "sales_08": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Makes sense.",
+            "expected": "makes sense",
+            "score": 1.0
+          },
+          {
+            "predicted": "And it fits the budget.",
+            "expected": "fits the budget",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "I will send the proposal by Monday.",
+            "expected": "will send the proposal",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 2,
+            "predicted": 2
+          },
+          {
+            "key": "Neutral",
+            "expected": 1,
+            "predicted": 1
+          }
+        ],
+        "errors": []
+      }
+    },
+    "sales_09": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Makes sense.",
+            "expected": "makes sense",
+            "score": 1.0
+          },
+          {
+            "predicted": "And it fits the budget.",
+            "expected": "fits the budget",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "I will send the proposal by Monday.",
+            "expected": "will send the proposal",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 2,
+            "predicted": 2
+          },
+          {
+            "key": "Neutral",
+            "expected": 1,
+            "predicted": 1
+          }
+        ],
+        "errors": []
+      }
+    },
+    "sales_10": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Makes sense.",
+            "expected": "makes sense",
+            "score": 1.0
+          },
+          {
+            "predicted": "And it fits the budget.",
+            "expected": "fits the budget",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "I will send the proposal by Monday.",
+            "expected": "will send the proposal",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 2,
+            "predicted": 2
+          },
+          {
+            "key": "Neutral",
+            "expected": 1,
+            "predicted": 1
+          }
+        ],
+        "errors": []
+      }
+    },
+    "sales_11": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Makes sense.",
+            "expected": "makes sense",
+            "score": 1.0
+          },
+          {
+            "predicted": "And it fits the budget.",
+            "expected": "fits the budget",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "I will send the proposal by Monday.",
+            "expected": "will send the proposal",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Positive",
+            "expected": 2,
+            "predicted": 2
+          },
+          {
+            "key": "Neutral",
+            "expected": 1,
+            "predicted": 1
+          }
+        ],
+        "errors": []
+      }
+    },
+    "sales_12": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "right now it doesn't solve our problem.",
+            "expected": "doesn't solve our problem",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 1,
+        "matches": [],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "We will release",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          }
+        ],
+        "errors": []
+      }
+    },
+    "sales_13": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.75,
+        "recall": 1.0,
+        "f1": 0.857,
+        "true_positives": 3,
+        "false_positives": 1,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Honestly, we are just exploring.",
+            "expected": "just exploring",
+            "score": 1.0
+          },
+          {
+            "predicted": "Not planning to switch this quarter.",
+            "expected": "not planning to switch",
+            "score": 1.0
+          },
+          {
+            "predicted": "Should I circle back later this year?",
+            "expected": "later this year",
+            "score": 1.0
+          }
+        ],
+        "errors": [
+          {
+            "type": "False Positive",
+            "predicted": "Not planning to switch this quarter.",
+            "reason": "No expected item matched",
+            "segment_idx": 1,
+            "speaker": "Speaker 2",
+            "rule": "OBJECTION_KEYWORDS"
+          }
+        ]
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Should I circle back later this year?",
+            "expected": "circle back",
+            "score": 1.0
+          },
+          {
+            "predicted": "Yes please do that.",
+            "expected": "yes please do that",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 4,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "sales_14": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "I'm not the decision maker.",
+            "expected": "not the decision maker",
+            "score": 1.0
+          },
+          {
+            "predicted": "I need to run it by colleagues.",
+            "expected": "run it by colleagues",
+            "score": 1.0
+          },
+          {
+            "predicted": "Also, it seems a bit expensive right now.",
+            "expected": "expensive",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "sales_15": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "right now it doesn't solve our problem.",
+            "expected": "doesn't solve our problem",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 1,
+        "matches": [],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "We will release",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          }
+        ],
+        "errors": []
+      }
+    },
+    "sales_16": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.75,
+        "recall": 1.0,
+        "f1": 0.857,
+        "true_positives": 3,
+        "false_positives": 1,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Honestly, we are just exploring.",
+            "expected": "just exploring",
+            "score": 1.0
+          },
+          {
+            "predicted": "Not planning to switch this quarter.",
+            "expected": "not planning to switch",
+            "score": 1.0
+          },
+          {
+            "predicted": "Should I circle back later this year?",
+            "expected": "later this year",
+            "score": 1.0
+          }
+        ],
+        "errors": [
+          {
+            "type": "False Positive",
+            "predicted": "Not planning to switch this quarter.",
+            "reason": "No expected item matched",
+            "segment_idx": 1,
+            "speaker": "Speaker 2",
+            "rule": "OBJECTION_KEYWORDS"
+          }
+        ]
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Should I circle back later this year?",
+            "expected": "circle back",
+            "score": 1.0
+          },
+          {
+            "predicted": "Yes please do that.",
+            "expected": "yes please do that",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 4,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "sales_17": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.75,
+        "recall": 1.0,
+        "f1": 0.857,
+        "true_positives": 3,
+        "false_positives": 1,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Honestly, we are just exploring.",
+            "expected": "just exploring",
+            "score": 1.0
+          },
+          {
+            "predicted": "Not planning to switch this quarter.",
+            "expected": "not planning to switch",
+            "score": 1.0
+          },
+          {
+            "predicted": "Should I circle back later this year?",
+            "expected": "later this year",
+            "score": 1.0
+          }
+        ],
+        "errors": [
+          {
+            "type": "False Positive",
+            "predicted": "Not planning to switch this quarter.",
+            "reason": "No expected item matched",
+            "segment_idx": 1,
+            "speaker": "Speaker 2",
+            "rule": "OBJECTION_KEYWORDS"
+          }
+        ]
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Should I circle back later this year?",
+            "expected": "circle back",
+            "score": 1.0
+          },
+          {
+            "predicted": "Yes please do that.",
+            "expected": "yes please do that",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 4,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "sales_18": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "I'm not the decision maker.",
+            "expected": "not the decision maker",
+            "score": 1.0
+          },
+          {
+            "predicted": "I need to run it by colleagues.",
+            "expected": "run it by colleagues",
+            "score": 1.0
+          },
+          {
+            "predicted": "Also, it seems a bit expensive right now.",
+            "expected": "expensive",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 3,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    },
+    "sales_19": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 1,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "right now it doesn't solve our problem.",
+            "expected": "doesn't solve our problem",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 1,
+        "matches": [],
+        "errors": [
+          {
+            "type": "False Negative",
+            "expected": "We will release",
+            "reason": "Missed by predictor"
+          }
+        ]
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          }
+        ],
+        "errors": []
+      }
+    },
+    "sales_20": {
+      "action_items": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "decisions": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "objections": {
+        "precision": 0.75,
+        "recall": 1.0,
+        "f1": 0.857,
+        "true_positives": 3,
+        "false_positives": 1,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Honestly, we are just exploring.",
+            "expected": "just exploring",
+            "score": 1.0
+          },
+          {
+            "predicted": "Not planning to switch this quarter.",
+            "expected": "not planning to switch",
+            "score": 1.0
+          },
+          {
+            "predicted": "Should I circle back later this year?",
+            "expected": "later this year",
+            "score": 1.0
+          }
+        ],
+        "errors": [
+          {
+            "type": "False Positive",
+            "predicted": "Not planning to switch this quarter.",
+            "reason": "No expected item matched",
+            "segment_idx": 1,
+            "speaker": "Speaker 2",
+            "rule": "OBJECTION_KEYWORDS"
+          }
+        ]
+      },
+      "buying_signals": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "true_positives": 0,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [],
+        "errors": []
+      },
+      "commitments": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 2,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "predicted": "Should I circle back later this year?",
+            "expected": "circle back",
+            "score": 1.0
+          },
+          {
+            "predicted": "Yes please do that.",
+            "expected": "yes please do that",
+            "score": 1.0
+          }
+        ],
+        "errors": []
+      },
+      "sentiment": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "true_positives": 4,
+        "false_positives": 0,
+        "false_negatives": 0,
+        "matches": [
+          {
+            "key": "Negative",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Positive",
+            "expected": 1,
+            "predicted": 1
+          },
+          {
+            "key": "Neutral",
+            "expected": 2,
+            "predicted": 2
+          }
+        ],
+        "errors": []
+      }
+    }
+  },
+  "overall_metrics": {
+    "action_items": {
+      "precision": 1.0,
+      "recall": 0.32,
+      "f1": 0.485,
+      "true_positives": 8,
+      "false_positives": 0,
+      "false_negatives": 17
+    },
+    "decisions": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "true_positives": 24,
+      "false_positives": 0,
+      "false_negatives": 0
+    },
+    "objections": {
+      "precision": 0.85,
+      "recall": 1.0,
+      "f1": 0.919,
+      "true_positives": 34,
+      "false_positives": 6,
+      "false_negatives": 0
+    },
+    "buying_signals": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "true_positives": 12,
+      "false_positives": 0,
+      "false_negatives": 0
+    },
+    "commitments": {
+      "precision": 0.857,
+      "recall": 0.766,
+      "f1": 0.809,
+      "true_positives": 36,
+      "false_positives": 6,
+      "false_negatives": 11
+    },
+    "sentiment": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "true_positives": 151,
+      "false_positives": 0,
+      "false_negatives": 0
+    }
+  },
+  "all_errors": [
+    {
+      "type": "False Negative",
+      "expected": "handle the API integration",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_01",
+      "module": "action_items"
+    },
+    {
+      "type": "False Negative",
+      "expected": "I am going to handle",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_01",
+      "module": "commitments"
+    },
+    {
+      "type": "False Positive",
+      "predicted": "Let's review the sprint.",
+      "reason": "No expected item matched",
+      "segment_idx": 0,
+      "speaker": "Speaker 1",
+      "rule": "Unknown",
+      "dataset_id": "meeting_05",
+      "module": "commitments"
+    },
+    {
+      "type": "False Positive",
+      "predicted": "I will deploy the auth service.",
+      "reason": "No expected item matched",
+      "segment_idx": 1,
+      "speaker": "Speaker 2",
+      "rule": "Pattern: i will",
+      "dataset_id": "meeting_05",
+      "module": "commitments"
+    },
+    {
+      "type": "False Negative",
+      "expected": "handle the API integration",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_06",
+      "module": "action_items"
+    },
+    {
+      "type": "False Negative",
+      "expected": "I am going to handle",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_06",
+      "module": "commitments"
+    },
+    {
+      "type": "False Negative",
+      "expected": "handle the API integration",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_07",
+      "module": "action_items"
+    },
+    {
+      "type": "False Negative",
+      "expected": "I am going to handle",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_07",
+      "module": "commitments"
+    },
+    {
+      "type": "False Negative",
+      "expected": "follow up with the design team",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_08",
+      "module": "action_items"
+    },
+    {
+      "type": "False Negative",
+      "expected": "confirm the requirements",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_08",
+      "module": "action_items"
+    },
+    {
+      "type": "False Negative",
+      "expected": "follow up with the design team",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_09",
+      "module": "action_items"
+    },
+    {
+      "type": "False Negative",
+      "expected": "confirm the requirements",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_09",
+      "module": "action_items"
+    },
+    {
+      "type": "False Positive",
+      "predicted": "Let's review the sprint.",
+      "reason": "No expected item matched",
+      "segment_idx": 0,
+      "speaker": "Speaker 1",
+      "rule": "Unknown",
+      "dataset_id": "meeting_11",
+      "module": "commitments"
+    },
+    {
+      "type": "False Positive",
+      "predicted": "I will deploy the auth service.",
+      "reason": "No expected item matched",
+      "segment_idx": 1,
+      "speaker": "Speaker 2",
+      "rule": "Pattern: i will",
+      "dataset_id": "meeting_11",
+      "module": "commitments"
+    },
+    {
+      "type": "False Positive",
+      "predicted": "Let's review the sprint.",
+      "reason": "No expected item matched",
+      "segment_idx": 0,
+      "speaker": "Speaker 1",
+      "rule": "Unknown",
+      "dataset_id": "meeting_12",
+      "module": "commitments"
+    },
+    {
+      "type": "False Positive",
+      "predicted": "I will deploy the auth service.",
+      "reason": "No expected item matched",
+      "segment_idx": 1,
+      "speaker": "Speaker 2",
+      "rule": "Pattern: i will",
+      "dataset_id": "meeting_12",
+      "module": "commitments"
+    },
+    {
+      "type": "False Negative",
+      "expected": "handle the API integration",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_13",
+      "module": "action_items"
+    },
+    {
+      "type": "False Negative",
+      "expected": "I am going to handle",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_13",
+      "module": "commitments"
+    },
+    {
+      "type": "False Negative",
+      "expected": "handle the API integration",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_14",
+      "module": "action_items"
+    },
+    {
+      "type": "False Negative",
+      "expected": "I am going to handle",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_14",
+      "module": "commitments"
+    },
+    {
+      "type": "False Negative",
+      "expected": "follow up with the design team",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_15",
+      "module": "action_items"
+    },
+    {
+      "type": "False Negative",
+      "expected": "confirm the requirements",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_15",
+      "module": "action_items"
+    },
+    {
+      "type": "False Negative",
+      "expected": "follow up with the design team",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_17",
+      "module": "action_items"
+    },
+    {
+      "type": "False Negative",
+      "expected": "confirm the requirements",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_17",
+      "module": "action_items"
+    },
+    {
+      "type": "False Negative",
+      "expected": "handle the API integration",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_18",
+      "module": "action_items"
+    },
+    {
+      "type": "False Negative",
+      "expected": "I am going to handle",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_18",
+      "module": "commitments"
+    },
+    {
+      "type": "False Negative",
+      "expected": "handle the API integration",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_19",
+      "module": "action_items"
+    },
+    {
+      "type": "False Negative",
+      "expected": "I am going to handle",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_19",
+      "module": "commitments"
+    },
+    {
+      "type": "False Negative",
+      "expected": "follow up with the design team",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_20",
+      "module": "action_items"
+    },
+    {
+      "type": "False Negative",
+      "expected": "confirm the requirements",
+      "reason": "Missed by predictor",
+      "dataset_id": "meeting_20",
+      "module": "action_items"
+    },
+    {
+      "type": "False Positive",
+      "predicted": "Not planning to switch this quarter.",
+      "reason": "No expected item matched",
+      "segment_idx": 1,
+      "speaker": "Speaker 2",
+      "rule": "OBJECTION_KEYWORDS",
+      "dataset_id": "sales_03",
+      "module": "objections"
+    },
+    {
+      "type": "False Positive",
+      "predicted": "Not planning to switch this quarter.",
+      "reason": "No expected item matched",
+      "segment_idx": 1,
+      "speaker": "Speaker 2",
+      "rule": "OBJECTION_KEYWORDS",
+      "dataset_id": "sales_04",
+      "module": "objections"
+    },
+    {
+      "type": "False Negative",
+      "expected": "We will release",
+      "reason": "Missed by predictor",
+      "dataset_id": "sales_07",
+      "module": "commitments"
+    },
+    {
+      "type": "False Negative",
+      "expected": "We will release",
+      "reason": "Missed by predictor",
+      "dataset_id": "sales_12",
+      "module": "commitments"
+    },
+    {
+      "type": "False Positive",
+      "predicted": "Not planning to switch this quarter.",
+      "reason": "No expected item matched",
+      "segment_idx": 1,
+      "speaker": "Speaker 2",
+      "rule": "OBJECTION_KEYWORDS",
+      "dataset_id": "sales_13",
+      "module": "objections"
+    },
+    {
+      "type": "False Negative",
+      "expected": "We will release",
+      "reason": "Missed by predictor",
+      "dataset_id": "sales_15",
+      "module": "commitments"
+    },
+    {
+      "type": "False Positive",
+      "predicted": "Not planning to switch this quarter.",
+      "reason": "No expected item matched",
+      "segment_idx": 1,
+      "speaker": "Speaker 2",
+      "rule": "OBJECTION_KEYWORDS",
+      "dataset_id": "sales_16",
+      "module": "objections"
+    },
+    {
+      "type": "False Positive",
+      "predicted": "Not planning to switch this quarter.",
+      "reason": "No expected item matched",
+      "segment_idx": 1,
+      "speaker": "Speaker 2",
+      "rule": "OBJECTION_KEYWORDS",
+      "dataset_id": "sales_17",
+      "module": "objections"
+    },
+    {
+      "type": "False Negative",
+      "expected": "We will release",
+      "reason": "Missed by predictor",
+      "dataset_id": "sales_19",
+      "module": "commitments"
+    },
+    {
+      "type": "False Positive",
+      "predicted": "Not planning to switch this quarter.",
+      "reason": "No expected item matched",
+      "segment_idx": 1,
+      "speaker": "Speaker 2",
+      "rule": "OBJECTION_KEYWORDS",
+      "dataset_id": "sales_20",
+      "module": "objections"
+    }
+  ]
+}
