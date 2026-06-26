@@ -5,13 +5,11 @@ on:
     branches:
       - dev
       - main
-      - temp-ci-test
 
   pull_request:
     branches:
       - dev
       - main
-      - temp-ci-test
 
 jobs:
   backend-tests:
