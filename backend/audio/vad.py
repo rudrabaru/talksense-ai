@@ -75,19 +75,24 @@ class VADProcessor:
             audio_int16 = np.frombuffer(pcm_bytes, dtype=np.int16)
             audio_float32 = audio_int16.astype(np.float32) / 32768.0
 
-            # Silero needs exactly chunk_size samples; pad or truncate
-            if len(audio_float32) < self._chunk_size:
-                audio_float32 = np.pad(
-                    audio_float32, (0, self._chunk_size - len(audio_float32))
-                )
-            audio_float32 = audio_float32[: self._chunk_size]
-
-            audio_tensor = torch.from_numpy(audio_float32)
-
-            with torch.no_grad():
-                speech_prob = self._model(audio_tensor, self.sample_rate).item()
-
-            return speech_prob >= self.threshold
+            # Evaluate sliding windows of chunk_size
+            num_windows = max(1, len(audio_float32) // self._chunk_size)
+            
+            for i in range(num_windows):
+                start = i * self._chunk_size
+                window = audio_float32[start: start + self._chunk_size]
+                
+                if len(window) < self._chunk_size:
+                    window = np.pad(window, (0, self._chunk_size - len(window)))
+                    
+                audio_tensor = torch.from_numpy(window)
+                with torch.no_grad():
+                    speech_prob = self._model(audio_tensor, self.sample_rate).item()
+                    
+                if speech_prob >= self.threshold:
+                    return True
+                    
+            return False
 
         except Exception as exc:
             logger.warning(f"VAD: inference error — {exc}. Passing chunk through.")

@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     # ── App ───────────────────────────────────────────────
     env: str = "development"
     cors_origins: str = "http://localhost:5173"
+    profiling_enabled: bool = True
+
 
     @property
     def cors_origins_list(self) -> list[str]:

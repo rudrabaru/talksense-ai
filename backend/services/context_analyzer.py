@@ -1,10 +1,12 @@
 import sys
 import os
 from collections import Counter
+from typing import Optional
 
 # Ensure we can import from utils
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.config_loader import KEYWORDS_CONFIG
+from utils.profiler import profile_stage
 
 # Load Configured Keywords (or defaults)
 DECISION_KEYWORDS = KEYWORDS_CONFIG["meeting"]["decisions"]
@@ -1129,6 +1131,7 @@ def analyze_meeting(nlp_input: dict) -> dict:
     Uses new independent detectors and separates meeting_quality from project_risk.
     """
     summary = None # Default initialization
+    session_id = nlp_input.get("session_id")
     
     enriched_segments = nlp_input.get("segments", [])
     segments = sorted(enriched_segments, key=lambda x: x["start"])
@@ -1140,76 +1143,80 @@ def analyze_meeting(nlp_input: dict) -> dict:
 
     # 🔒 HARD FREEZE: Single-pass signal detection
     # Signals are computed ONCE and NEVER modified
-    core_signals = detect_signals(segments)
-    
-    # Merge with legacy signals for backward compatibility
-    signals = {
-        **core_signals,
-        "risk": detect_risks_present(segments),
-        "issues": detect_issues_present(segments),
-        "topic": extract_primary_topic(segments),
-    }
-    
-    # 🔒 SIGNALS ARE NOW FROZEN - No function is allowed to modify them
-    
-    # 🎯 STEP 2: DETECT execution_attempted from EXECUTION_VERBS
-    # This is NOT derived from ownership/execution_decision
-    # It checks if concrete execution verbs were discussed
-    # 🔒 LEGACY GUARD: Force False for legacy audios to freeze outputs
-    if is_legacy:
-        execution_attempted = False
-    else:
-        execution_attempted = detect_execution_attempted(segments)
+    with profile_stage(session_id, "Buying Signal detection"):
+        core_signals = detect_signals(segments)
+        
+        # Merge with legacy signals for backward compatibility
+        signals = {
+            **core_signals,
+            "risk": detect_risks_present(segments),
+            "issues": detect_issues_present(segments),
+            "topic": extract_primary_topic(segments),
+        }
+        
+        # 🎯 STEP 2: DETECT execution_attempted from EXECUTION_VERBS
+        # This is NOT derived from ownership/execution_decision
+        # It checks if concrete execution verbs were discussed
+        # 🔒 LEGACY GUARD: Force False for legacy audios to freeze outputs
+        if is_legacy:
+            execution_attempted = False
+        else:
+            execution_attempted = detect_execution_attempted(segments)
     
     # 5.3 Sentiment Aggregation (Metadata Only - NOT used in quality)
-    sentiment_counts = aggregate_sentiment(segments)
+    with profile_stage(session_id, "Sentiment aggregation"):
+        sentiment_counts = aggregate_sentiment(segments)
     
     # 5.5 Detect Decisions Made (Legacy - for action items display)
-    decisions = detect_decisions(segments)
-    signals["decision_state"] = "decision made" if signals["decision"] else "no final decision"
+    with profile_stage(session_id, "Decision extraction"):
+        decisions = detect_decisions(segments)
+        signals["decision_state"] = "decision made" if signals["decision"] else "no final decision"
 
     # 5.6 Detect Action Items (STREAMLINED)
-    action_items = extract_actions(segments)
-    signals["action_clarity"] = "next steps identified" if action_items else "no clear next steps"
+    with profile_stage(session_id, "Action Item extraction"):
+        action_items = extract_actions(segments)
+        signals["action_clarity"] = "next steps identified" if action_items else "no clear next steps"
 
-    # 5.7 Detect Tension / Unresolved Moments
-    tension_points = detect_tension_points(segments)
+    with profile_stage(session_id, "Conversation metrics calculation"):
+        # 5.7 Detect Tension / Unresolved Moments
+        tension_points = detect_tension_points(segments)
 
-    # --- 1. OVERRIDES (NO BLOCKERS) ---
-    no_blockers_declared = detect_explicit_no_blockers(segments)
-    
-    actual_blockers = tension_points[:]
-    if no_blockers_declared:
-        actual_blockers = []
+        # --- 1. OVERRIDES (NO BLOCKERS) ---
+        no_blockers_declared = detect_explicit_no_blockers(segments)
+        
+        actual_blockers = tension_points[:]
+        if no_blockers_declared:
+            actual_blockers = []
 
-    # --- 2. MEETING HEALTH EVALUATION ---
-    meeting_health = evaluate_meeting_health(decisions, action_items, actual_blockers, sentiment_counts, segments)
-    
-    # Check for uncontrolled dependencies
-    uncontrolled_deps = meeting_health == "at_risk"
-    
-    # --- 3. BUSINESS SENTIMENT (Metadata Only) ---
-    biz_sentiment_score, biz_sentiment_label = calculate_business_sentiment(segments, meeting_health)
+        # --- 2. MEETING HEALTH EVALUATION ---
+        meeting_health = evaluate_meeting_health(decisions, action_items, actual_blockers, sentiment_counts, segments)
+        
+        # Check for uncontrolled dependencies
+        uncontrolled_deps = meeting_health == "at_risk"
+        
+        # --- 3. BUSINESS SENTIMENT (Metadata Only) ---
+        biz_sentiment_score, biz_sentiment_label = calculate_business_sentiment(segments, meeting_health)
 
-    # 🔒 HARD FREEZE: Meeting quality computed ONCE from frozen signals
-    # No function is allowed to modify it after this point
-    # DO NOT TOUCH - Meeting Quality is already correct
-    # The problem is interpretation, not scoring
-    meeting_quality = compute_meeting_quality_v2(signals)
-    
-    # 🔍 STEP 6: SANITY CHECK (Uncomment to debug)
-    # logger.info(f"🔍 QUALITY DEBUG: signals={signals}, meeting_quality={meeting_quality}")
-    # logger.info(f"🔍 GUARANTEE: ownership={signals.get('ownership')}, execution={signals.get('execution_decision')}")
-    # logger.info(f"🔍 RESULT: If ownership OR execution is True → Quality MUST be Medium or High")
-    
-    # --- STEP 7: PROJECT RISK SCORING ---
-    project_risk = compute_project_risk(signals["issues"], signals["risk"], uncontrolled_deps)
+        # 🔒 HARD FREEZE: Meeting quality computed ONCE from frozen signals
+        # No function is allowed to modify it after this point
+        # DO NOT TOUCH - Meeting Quality is already correct
+        # The problem is interpretation, not scoring
+        meeting_quality = compute_meeting_quality_v2(signals)
+        
+        # 🔍 STEP 6: SANITY CHECK (Uncomment to debug)
+        # logger.info(f"🔍 QUALITY DEBUG: signals={signals}, meeting_quality={meeting_quality}")
+        # logger.info(f"🔍 GUARANTEE: ownership={signals.get('ownership')}, execution={signals.get('execution_decision')}")
+        # logger.info(f"🔍 RESULT: If ownership OR execution is True → Quality MUST be Medium or High")
+        
+        # --- STEP 7: PROJECT RISK SCORING ---
+        project_risk = compute_project_risk(signals["issues"], signals["risk"], uncontrolled_deps)
+
+        # 🎯 STEP 4: GATE KEY INSIGHTS by execution_attempted (CRITICAL)
+        key_insights = generate_key_insights_v2(meeting_quality, execution_attempted)
 
     # 🎯 STEP 3: GATE EXECUTIVE SUMMARY by execution_attempted
-    summary = compose_executive_summary_v2(meeting_quality, execution_attempted)
-
-    # 🎯 STEP 4: GATE KEY INSIGHTS by execution_attempted (CRITICAL)
-    key_insights = generate_key_insights_v2(meeting_quality, execution_attempted)
+    with profile_stage(session_id, "Executive Summary generation"):
+        summary = compose_executive_summary_v2(meeting_quality, execution_attempted)
     
     # 🎯 STEP 5: HARD RULE for Action Plan
     # If execution was never attempted → no action plan
@@ -1720,7 +1727,7 @@ def generate_sales_insights(objections, signals, quality):
     
     return insights[:3]
 
-def analyze_sales(enriched_segments: list) -> dict:
+def analyze_sales(enriched_segments: list, session_id: Optional[str] = None) -> dict:
     """
     Main entry point for Sales Mode analysis.
     All 7 calibration steps integrated here.
@@ -1740,36 +1747,43 @@ def analyze_sales(enriched_segments: list) -> dict:
     segments = sorted(enriched_segments, key=lambda x: x["start"])
 
     # STEP 6: Weighted sentiment
-    call_sentiment = overall_call_sentiment(segments)
+    with profile_stage(session_id, "Sentiment aggregation"):
+        call_sentiment = overall_call_sentiment(segments)
     
     # Initial objection detection (will be refined after signals)
-    objections_initial = detect_objections(segments)
+    with profile_stage(session_id, "Objection detection"):
+        objections_initial = detect_objections(segments)
     
     # Temporary recommendations for signal assessment
-    recommendations_temp = recommend_actions(objections_initial)
+    with profile_stage(session_id, "Action Item extraction"):
+        recommendations_temp = recommend_actions(objections_initial)
     
     # --- QUALITY SCORING ---
     # STEPS 1, 2, 3, 4: Assess signals with all calibrations
-    sales_signals = assess_sales_signals(segments, objections_initial, recommendations_temp)
-    
-    # Add text_blob to signals for template selection (STEP 7) and action generation (STEP 5)
-    text_blob = " ".join([s["text"].lower() for s in segments])
-    sales_signals["_text_blob"] = text_blob
+    with profile_stage(session_id, "Buying Signal detection"):
+        sales_signals = assess_sales_signals(segments, objections_initial, recommendations_temp)
+        
+        # Add text_blob to signals for template selection (STEP 7) and action generation (STEP 5)
+        text_blob = " ".join([s["text"].lower() for s in segments])
+        sales_signals["_text_blob"] = text_blob
     
     # STEP 2: Re-detect objections with budget_alignment suppression
-    objections = detect_objections(segments, budget_alignment=sales_signals.get("budget_alignment", False))
+    with profile_stage(session_id, "Objection detection"):
+        objections = detect_objections(segments, budget_alignment=sales_signals.get("budget_alignment", False))
     
     # RULE 6: Context-aware action generation with stage-based mapping
-    recommendations = recommend_actions(objections, signals=sales_signals, segments=segments)
+    with profile_stage(session_id, "Action Item extraction"):
+        recommendations = recommend_actions(objections, signals=sales_signals, segments=segments)
     
-    # Compute quality with new signals
-    quality = compute_sales_quality(sales_signals)
+    # Compute quality with new signals and key insights
+    with profile_stage(session_id, "Conversation metrics calculation"):
+        quality = compute_sales_quality(sales_signals)
+        # STEPS 3 & 4: Generate insights with authority classification and value gap removal
+        key_insights = generate_sales_insights(objections, sales_signals, quality)
 
     # RULE 7: Template-based summary generation with objection acknowledgment
-    summary = compose_sales_summary(sales_signals, quality, objections=objections)
-    
-    # STEPS 3 & 4: Generate insights with authority classification and value gap removal
-    key_insights = generate_sales_insights(objections, sales_signals, quality)
+    with profile_stage(session_id, "Executive Summary generation"):
+        summary = compose_sales_summary(sales_signals, quality, objections=objections)
     
     # Calculate sentiment score from call_sentiment label
     sentiment_score_map = {

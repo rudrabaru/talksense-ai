@@ -21,6 +21,7 @@ binary frames. Invalid sessions are rejected with a close code 4004.
 import asyncio
 import logging
 import time
+import uuid
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -148,6 +149,9 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
         logger.error(f"Session {session_id[:8]}…: audio handler error — {exc}", exc_info=True)
         await manager.set_status(session_id, SessionStatus.FAILED)
     finally:
+        from utils.profiler import register_profiler
+        register_profiler(session_id)
+        
         # Flush any remaining buffered audio
         await _flush_final(session_id, transcriber, diarizer, manager)
         # Pass the current session status to preserve interrupted/failed states in DB
@@ -156,7 +160,24 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
         logger.info(f"Session {session_id[:8]}…: audio handler closed")
 
 
+
 # ── Internal helpers ──────────────────────────────────────────────────────────
+
+def _merge_overlapping_text(text1: str, text2: str) -> str:
+    """Merge two text segments by finding word-level overlaps to avoid duplication."""
+    if not text1: return text2
+    if not text2: return text1
+    
+    words1 = text1.strip().split()
+    words2 = text2.strip().split()
+    max_overlap = min(len(words1), len(words2))
+    
+    for i in range(max_overlap, 0, -1):
+        if words1[-i:] == words2[:i]:
+            return " ".join(words1 + words2[i:])
+            
+    return text1 + " " + text2
+
 
 async def _process_chunk(
     session_id: str,
@@ -183,10 +204,10 @@ async def _process_chunk(
     if flushed_data is None:
         return  # buffer not ready yet
 
-    flushed, time_offset = flushed_data
+    flushed, time_offset, is_partial = flushed_data
 
     logger.info(
-        f"Session {session_id[:8]}…: buffer flushed {len(flushed)}B → sending to Whisper"
+        f"Session {session_id[:8]}…: buffer flushed {len(flushed)}B → sending to Whisper (partial={is_partial})"
     )
 
     await _transcribe_and_enrich(
@@ -211,10 +232,18 @@ async def _transcribe_and_enrich(
     # 4. Transcribe (GPU, async via thread pool)
     _settings = get_settings()
     _language = _settings.whisper_language or None   # None = auto-detect (multilingual)
+    
+    # Extract previous text for Whisper initial_prompt to prevent hallucinations
+    prev_text = ""
+    async with session.lock:
+        if session.conversation.transcript_segments:
+            prev_text = session.conversation.transcript_segments[-1].get("text", "")
+            
     raw_segments = await transcriber.transcribe_async(
         flushed,
         time_offset=max(0.0, time_offset),
         language=_language,
+        initial_prompt=prev_text[-200:] if prev_text else None
     )
 
     logger.info(
@@ -257,9 +286,29 @@ async def _transcribe_and_enrich(
     engine = get_conversation_engine()
 
     async with session.lock:
-        # Append to transcript
+        # Append or Merge to transcript
         for seg in diarized:
-            session.conversation.transcript_segments.append(seg.__dict__)
+            merged = False
+            if session.conversation.transcript_segments:
+                # Check recent segments for overlap
+                for i in range(len(session.conversation.transcript_segments) - 1, max(-1, len(session.conversation.transcript_segments) - 5), -1):
+                    last_seg = session.conversation.transcript_segments[i]
+                    if last_seg.get("speaker") == seg.speaker and last_seg.get("end", 0) >= seg.start - 0.5:
+                        merged_text = _merge_overlapping_text(last_seg.get("text", ""), seg.text)
+                        last_seg["text"] = merged_text
+                        last_seg["end"] = max(last_seg.get("end", 0), seg.end)
+                        if "segment_id" not in last_seg:
+                            last_seg["segment_id"] = str(uuid.uuid4())
+                        
+                        seg.__dict__["segment_id"] = last_seg["segment_id"]
+                        seg.__dict__["text"] = merged_text
+                        seg.__dict__["end"] = last_seg["end"]
+                        merged = True
+                        break
+            
+            if not merged:
+                seg.__dict__["segment_id"] = str(uuid.uuid4())
+                session.conversation.transcript_segments.append(seg.__dict__)
 
         updated_metrics, new_alerts = engine.process_segments(
             diarized, session.conversation, session.mode
@@ -270,6 +319,7 @@ async def _transcribe_and_enrich(
     for seg in diarized:
         seg_dict = {
             "session_id": session_id,
+            "segment_id": getattr(seg, "segment_id", None),
             "speaker": seg.speaker,
             "text": seg.text,
             "start": seg.start,
@@ -307,7 +357,7 @@ async def _flush_final(session_id: str, transcriber, diarizer, manager) -> None:
 
     remaining_data = session.audio_buffer.flush_remaining()
     if remaining_data:
-        flushed, time_offset = remaining_data
+        flushed, time_offset, is_partial = remaining_data
         logger.info(f"Session {session_id[:8]}…: flushing {len(flushed)}B remaining audio")
         await _transcribe_and_enrich(
             session=session,

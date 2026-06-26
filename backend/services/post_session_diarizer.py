@@ -33,6 +33,7 @@ import asyncio
 import logging
 import os
 import time
+from utils.profiler import profile_stage, get_profiler, unregister_profiler
 
 logger = logging.getLogger(__name__)
 
@@ -108,23 +109,25 @@ async def run_post_session_diarization(
                 
                 gap = latest_segment_end - wav_duration
                 if gap > 1.0:
-                    logger.warning("wav duration %.2fs but latest transcript %.2fs (gap: %.2fs)", wav_duration, latest_segment_end, gap)
-                else:
-                    logger.info("wav duration %.2fs matches latest transcript %.2fs (gap: %.2fs)", wav_duration, latest_segment_end, gap)
+                    logger.warning(
+                        "wav duration %.2fs but latest transcript %.2fs (gap=%.2fs)",
+                        wav_duration, latest_segment_end, gap
+                    )
         except Exception as e:
-            logger.error("Failed to calculate WAV duration gap: %s", e)
+            logger.warning("Failed to validate audio duration gap: %s", e)
 
         # ── Step 3: mark processing ───────────────────────────────────────────
         await _set_attribution_status(session_id, "processing")
 
         # ── Step 4: run Pyannote in thread executor ───────────────────────────
         loop = asyncio.get_running_loop()
-        turns = await loop.run_in_executor(
-            None,
-            _run_pyannote_sync,
-            audio_file_path,
-            session_id,
-        )
+        with profile_stage(session_id, "Speaker Diarization"):
+            turns = await loop.run_in_executor(
+                None,
+                _run_pyannote_sync,
+                audio_file_path,
+                session_id,
+            )
 
         if turns is None:
             # _run_pyannote_sync already logged the error
@@ -132,7 +135,8 @@ async def run_post_session_diarization(
             return
 
         # ── Step 5 & 6 & 7: fetch segments, map speakers, update DB ──────────
-        update_result = await _apply_speaker_updates(session_id, turns)
+        with profile_stage(session_id, "Speaker Attribution"):
+            update_result = await _apply_speaker_updates(session_id, turns)
 
         # ── Step 8: mark completed ────────────────────────────────────────────
         await _set_attribution_status(session_id, "completed")
@@ -165,6 +169,11 @@ async def run_post_session_diarization(
         )
         
         # ── Step 10: Role Classification (V1 heuristic + V2 LLM) ─────────────
+        roles_v1 = None
+        roles_v2_result = None
+        primary_roles = {}
+        comparison = {}
+        
         from services.role_classifier import classify_roles, classify_roles_v2
         
         # Run V1 (heuristic — always runs)
@@ -177,110 +186,229 @@ async def run_post_session_diarization(
         if roles_v2_result and roles_v2_result.get("roles"):
             primary_roles = roles_v2_result["roles"]
         else:
-            primary_roles = roles_v1
+            primary_roles = roles_v1 or {}
         
         # Persist all results
         from db.database import AsyncSessionLocal
-        async with AsyncSessionLocal() as db:
-            from db import crud
-            metrics_to_save = []
-            
-            # Legacy key for backward compatibility (used by objection_handler etc.)
-            if primary_roles:
+        from db import crud
+        with profile_stage(session_id, "Database writes"):
+            async with AsyncSessionLocal() as db:
+                metrics_to_save = []
+                
+                # Legacy key for backward compatibility (used by objection_handler etc.)
+                if primary_roles:
+                    metrics_to_save.append(
+                        {"metric_name": "speaker_roles", "metric_value": primary_roles}
+                    )
+                
+                # V1 result (always)
+                if roles_v1:
+                    metrics_to_save.append(
+                        {"metric_name": "speaker_roles_v1", "metric_value": roles_v1}
+                    )
+                
+                # V2 result (when available)
+                if roles_v2_result:
+                    metrics_to_save.append(
+                        {"metric_name": "speaker_roles_v2", "metric_value": roles_v2_result}
+                    )
+                
+                # Comparison metric
+                comparison = {
+                    "v1_roles": roles_v1 or {},
+                    "v2_roles": roles_v2_result.get("roles", {}) if roles_v2_result else {},
+                    "v2_confidence": roles_v2_result.get("confidence", 0.0) if roles_v2_result else None,
+                    "v2_reasoning": roles_v2_result.get("reasoning", {}) if roles_v2_result else {},
+                    "agreement": (
+                        roles_v1 == roles_v2_result.get("roles", {})
+                        if roles_v1 and roles_v2_result and roles_v2_result.get("roles")
+                        else None
+                    ),
+                    "primary_source": "v2" if roles_v2_result and roles_v2_result.get("roles") else "v1",
+                }
                 metrics_to_save.append(
-                    {"metric_name": "speaker_roles", "metric_value": primary_roles}
+                    {"metric_name": "role_classification_comparison", "metric_value": comparison}
                 )
-            
-            # V1 result (always)
-            if roles_v1:
-                metrics_to_save.append(
-                    {"metric_name": "speaker_roles_v1", "metric_value": roles_v1}
-                )
-            
-            # V2 result (when available)
-            if roles_v2_result:
-                metrics_to_save.append(
-                    {"metric_name": "speaker_roles_v2", "metric_value": roles_v2_result}
-                )
-            
-            # Comparison metric
-            comparison = {
-                "v1_roles": roles_v1 or {},
-                "v2_roles": roles_v2_result.get("roles", {}) if roles_v2_result else {},
-                "v2_confidence": roles_v2_result.get("confidence", 0.0) if roles_v2_result else None,
-                "v2_reasoning": roles_v2_result.get("reasoning", {}) if roles_v2_result else {},
-                "agreement": (
-                    roles_v1 == roles_v2_result.get("roles", {})
-                    if roles_v1 and roles_v2_result and roles_v2_result.get("roles")
-                    else None
-                ),
-                "primary_source": "v2" if roles_v2_result and roles_v2_result.get("roles") else "v1",
-            }
-            metrics_to_save.append(
-                {"metric_name": "role_classification_comparison", "metric_value": comparison}
-            )
-            
-            if metrics_to_save:
-                await crud.save_session_metrics_batch(db, session_id, metrics_to_save)
-                await db.commit()
+                
+                if metrics_to_save:
+                    await crud.save_session_metrics_batch(db, session_id, metrics_to_save)
+                    await db.commit()
             
         logger.info(
             "post_session_diarizer — session %s: roles classified (primary=%s):\n%s",
             session_id[:8],
-            comparison["primary_source"],
+            comparison.get("primary_source", "v1"),
             "\n".join([f"{spk} -> {role}" for spk, role in primary_roles.items()]) if primary_roles else "none"
         )
 
                         
         # ── Step 11: Objection Handling Analysis ───────────────────────────────
         from services.objection_handler import analyze_objection_handling
-        from db.database import AsyncSessionLocal
         async with AsyncSessionLocal() as db:
             await analyze_objection_handling(db, session_id)
-            await db.commit()
+            with profile_stage(session_id, "Database writes"):
+                await db.commit()
 
         # ── Step 12: Talk Ratio Timeline ───────────────────────────────────────
         from services.talk_ratio_analyzer import analyze_talk_ratio
         async with AsyncSessionLocal() as db:
-            from db import crud
             # Fetch all updated segments
             segments = await crud.get_all_transcript_segments(db, session_id)
             if segments:
                 talk_ratio_data = analyze_talk_ratio(segments)
                 # Persist two metrics
-                await crud.save_session_metrics_batch(db, session_id, [
-                    {
-                        "metric_name": "talk_ratio_summary", 
-                        "metric_value": {
-                            "summary": talk_ratio_data["summary"],
-                            "overall_participation": talk_ratio_data["overall_participation"]
+                with profile_stage(session_id, "Database writes"):
+                    await crud.save_session_metrics_batch(db, session_id, [
+                        {
+                            "metric_name": "talk_ratio_summary", 
+                            "metric_value": {
+                                "summary": talk_ratio_data["summary"],
+                                "overall_participation": talk_ratio_data["overall_participation"]
+                            }
+                        },
+                        {
+                            "metric_name": "talk_timeline", 
+                            "metric_value": {
+                                "timeline": talk_ratio_data["timeline"]
+                            }
                         }
-                    },
-                    {
-                        "metric_name": "talk_timeline", 
-                        "metric_value": {
-                            "timeline": talk_ratio_data["timeline"]
-                        }
-                    }
-                ])
-                await db.commit()
+                    ])
+                    await db.commit()
                 logger.info("post_session_diarizer — session %s: Talk ratio timeline generated.", session_id[:8])
+
+        # ── Step 12.5: Context Analysis & Upsert AnalysisResult ─────────────────
+        from services.context_analyzer import analyze_meeting, analyze_sales
+        async with AsyncSessionLocal() as db:
+            db_segments = await crud.get_all_transcript_segments(db, session_id)
+            session_row = await crud.get_session(db, session_id)
+            
+            if db_segments and session_row:
+                enriched_segments = []
+                for s in db_segments:
+                    enriched_segments.append({
+                        "start": s.start_time,
+                        "end": s.end_time,
+                        "speaker": s.speaker_id or "Speaker 1",
+                        "text": s.text or "",
+                        "sentiment": s.sentiment or 0.0,
+                        "sentiment_label": s.sentiment_label or "Neutral",
+                        "sentiment_confidence": 1.0
+                    })
+                
+                final_transcript = {
+                    "session_id": session_id,
+                    "text": " ".join([s["text"] for s in enriched_segments]),
+                    "segments": enriched_segments
+                }
+                
+                # Run the appropriate mode analysis inside loop executor
+                if session_row.mode == "sales":
+                    insights = await loop.run_in_executor(None, analyze_sales, enriched_segments, session_id)
+                else:
+                    insights = await loop.run_in_executor(None, analyze_meeting, final_transcript)
+                
+                # Save AnalysisResult
+                q_score = insights.get("quality", {}).get("score", 5) if isinstance(insights.get("quality"), dict) else 5
+                health_score = int(q_score * 10)
+                
+                with profile_stage(session_id, "Database writes"):
+                    from db.models import AnalysisResult as DBAnalysisResult
+                    from sqlalchemy.dialects.postgresql import insert as pg_insert
+                    import uuid as _uuid
+                    
+                    stmt = (
+                        pg_insert(DBAnalysisResult)
+                        .values(
+                            session_id=_uuid.UUID(session_id),
+                            health_score=health_score,
+                            summary=insights.get("summary", ""),
+                            report_json=insights,
+                        )
+                        .on_conflict_do_update(
+                            index_elements=["session_id"],
+                            set_={
+                                "health_score": health_score,
+                                "summary": insights.get("summary", ""),
+                                "report_json": insights,
+                            },
+                        )
+                    )
+                    await db.execute(stmt)
+                    
+                    metrics_to_save = [
+                        {"metric_name": "health_score", "metric_value": health_score},
+                        {"metric_name": "sentiment_score", "metric_value": insights.get("sentiment_score", 0.0)},
+                        {"metric_name": "objections", "metric_value": insights.get("objections", [])},
+                        {"metric_name": "buying_signals", "metric_value": insights.get("buying_signals", []) if "buying_signals" in insights else []},
+                    ]
+                    await crud.save_session_metrics_batch(db, session_id, metrics_to_save)
+                    await db.commit()
 
         # ── Step 13: Client Memory Profile ─────────────────────────────────────
         try:
             from services.client_memory import update_client_memory
-            async with AsyncSessionLocal() as db:
-                from db import crud
-                session_row = await crud.get_session(db, session_id)
-                if session_row and session_row.client_id:
-                    logger.info("post_session_diarizer — session %s: Updating client memory for client %s...", session_id[:8], session_row.client_id)
-                    await update_client_memory(db, session_row.client_id)
-                    await db.commit()
-                    logger.info("post_session_diarizer — session %s: Client memory updated.", session_id[:8])
-                else:
-                    logger.info("post_session_diarizer — session %s: No client linked, skipping memory update.", session_id[:8])
+            with profile_stage(session_id, "Client Memory update"):
+                async with AsyncSessionLocal() as db:
+                    session_row = await crud.get_session(db, session_id)
+                    if session_row and session_row.client_id:
+                        logger.info("post_session_diarizer — session %s: Updating client memory for client %s...", session_id[:8], session_row.client_id)
+                        await update_client_memory(db, session_row.client_id)
+                        with profile_stage(session_id, "Database writes"):
+                            await db.commit()
+                        logger.info("post_session_diarizer — session %s: Client memory updated.", session_id[:8])
+                    else:
+                        logger.info("post_session_diarizer — session %s: No client linked, skipping memory update.", session_id[:8])
         except Exception as e:
             logger.error("Failed to update client memory for session %s: %s", session_id[:8], e, exc_info=True)
+
+        # ── Step 14: Simulate Dashboard data preparation ────────────────────────
+        try:
+            with profile_stage(session_id, "Dashboard data preparation"):
+                async with AsyncSessionLocal() as db:
+                    # Run the exact dashboard query DB fallback logic
+                    db_session = await crud.get_session(db, session_id)
+                    if db_session:
+                        segments = await crud.get_transcript_segments(db, session_id, limit=50)
+                        metrics_list = await crud.get_latest_session_metrics(db, session_id)
+                        alerts = await crud.get_alerts(db, session_id, limit=50)
+                        
+                        # Reconstruct metrics dictionary & speaking ratios
+                        db_segments = await crud.get_all_transcript_segments(db, session_id)
+                        if db_segments:
+                            participation = {}
+                            for seg in db_segments:
+                                speaker = seg.speaker_id or "Speaker 1"
+                                text = seg.text or ""
+                                word_count = len(text.split())
+                                participation[speaker] = participation.get(speaker, 0) + word_count
+                            total_words = sum(participation.values()) or 1
+                            speaking_ratio = {
+                                sp: round((wc / total_words) * 100, 1)
+                                for sp, wc in participation.items()
+                            }
+        except Exception as e:
+            logger.error("Failed to simulate dashboard data preparation for session %s: %s", session_id[:8], e)
+
+        # ── Profile logging & cleanup ──────────────────────────────────────────
+        profiler = get_profiler(session_id)
+        if profiler:
+            profiler.log_results()
+            try:
+                total_time = (time.perf_counter() - profiler.start_time) * 1000
+                async with AsyncSessionLocal() as db:
+                    await crud.save_session_metrics_batch(db, session_id, [
+                        {
+                            "metric_name": "performance_profile",
+                            "metric_value": {
+                                "timings": profiler.timings,
+                                "total_time_ms": total_time
+                            }
+                        }
+                    ])
+                    await db.commit()
+            except Exception as pe:
+                logger.error("Failed to save performance profile to DB: %s", pe)
+            unregister_profiler(session_id)
 
 
     except Exception:  # noqa: BLE001
@@ -361,10 +489,16 @@ def _run_pyannote_sync(
                 "Pyannote configured speakers=%s",
                 2,
             )
-            diarization = diarizer._pipeline(
-                waveform,
-                num_speakers=2,
-            )
+            
+            # OPTIMIZATION: Set batch size to 32 for maximum throughput.
+            # Stride remains 0.1 (default) to preserve SCDR accuracy.
+            diarizer._pipeline.segmentation_batch_size = 32
+                
+            with torch.inference_mode():
+                diarization = diarizer._pipeline(
+                    waveform,
+                    num_speakers=2,
+                )
 
         # Unwrap DiarizeOutput wrapper if present (pyannote-audio 4.x) using duck-typing
         # to bypass class-identity mismatches under Uvicorn reload environments.
@@ -537,8 +671,9 @@ async def _apply_speaker_updates(
             return {"segments_updated": 0, "total_segments": total,
                     "overlap_count": overlap_count, "proximity_count": proximity_count}
 
-        count = await crud.update_segment_speakers(db, session_id, speaker_updates)
-        await db.commit()
+        with profile_stage(session_id, "Database writes"):
+            count = await crud.update_segment_speakers(db, session_id, speaker_updates)
+            await db.commit()
 
     logger.info(
         "post_session_diarizer — session %s: updated %d / %d segment speaker labels",
@@ -574,10 +709,11 @@ async def _persist_attribution_diagnostics(
         from db import crud
 
         async with AsyncSessionLocal() as db:
-            await crud.save_session_metrics_batch(db, session_id, [
-                {"metric_name": "speaker_attribution", "metric_value": diagnostics}
-            ])
-            await db.commit()
+            with profile_stage(session_id, "Database writes"):
+                await crud.save_session_metrics_batch(db, session_id, [
+                    {"metric_name": "speaker_attribution", "metric_value": diagnostics}
+                ])
+                await db.commit()
 
         logger.info(
             "post_session_diarizer — session %s: attribution diagnostics persisted "

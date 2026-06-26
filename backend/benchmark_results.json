@@ -1,9 +1,9 @@
 {
-  "timestamp": "2026-06-25T23:28:18",
+  "timestamp": "2026-06-26T09:15:29",
   "total_samples": 10,
   "valid_samples": 10,
   "errored_samples": 0,
-  "total_time_s": 290.8,
+  "total_time_s": 281.6,
   "aggregate": {
     "avg_macro_f1": 0.8117,
     "avg_accuracy": 84.4,
@@ -69,8 +69,8 @@
           "text": "Yes, I will keep an eye on it."
         }
       ],
-      "whisper_time_s": 3.3,
-      "pyannote_time_s": 33.2
+      "whisper_time_s": 3.0,
+      "pyannote_time_s": 36.8
     },
     {
       "sample": "sales_ambiguous",
@@ -127,8 +127,8 @@
           "text": "Would it make sense to loop them into a demo?"
         }
       ],
-      "whisper_time_s": 7.3,
-      "pyannote_time_s": 3.4
+      "whisper_time_s": 7.0,
+      "pyannote_time_s": 3.0
     },
     {
       "sample": "sales_good",
@@ -168,8 +168,8 @@
         "Speaker 2": "B"
       },
       "failures": [],
-      "whisper_time_s": 8.5,
-      "pyannote_time_s": 46.5
+      "whisper_time_s": 10.3,
+      "pyannote_time_s": 45.2
     },
     {
       "sample": "sales_meeting",
@@ -234,8 +234,8 @@
           "text": "Alright, what would be the next steps from here?"
         }
       ],
-      "whisper_time_s": 6.7,
-      "pyannote_time_s": 3.2
+      "whisper_time_s": 5.4,
+      "pyannote_time_s": 2.9
     },
     {
       "sample": "business_meeting",
@@ -253,7 +253,23 @@
       "speakers_expected": 7,
       "speakers_detected": 6,
       "per_speaker": {
-        "B": {
+        "E": {
+          "precision": 1.0,
+          "recall": 0.8333,
+          "f1": 0.9091,
+          "tp": 5,
+          "fp": 0,
+          "fn": 1
+        },
+        "G": {
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "tp": 0,
+          "fp": 0,
+          "fn": 1
+        },
+        "C": {
           "precision": 1.0,
           "recall": 1.0,
           "f1": 1.0,
@@ -269,22 +285,6 @@
           "fp": 0,
           "fn": 0
         },
-        "E": {
-          "precision": 1.0,
-          "recall": 0.8333,
-          "f1": 0.9091,
-          "tp": 5,
-          "fp": 0,
-          "fn": 1
-        },
-        "C": {
-          "precision": 1.0,
-          "recall": 1.0,
-          "f1": 1.0,
-          "tp": 2,
-          "fp": 0,
-          "fn": 0
-        },
         "F": {
           "precision": 0.875,
           "recall": 1.0,
@@ -293,13 +293,13 @@
           "fp": 2,
           "fn": 0
         },
-        "G": {
-          "precision": 0.0,
-          "recall": 0.0,
-          "f1": 0.0,
-          "tp": 0,
+        "B": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 2,
           "fp": 0,
-          "fn": 1
+          "fn": 0
         },
         "A": {
           "precision": 1.0,
@@ -336,8 +336,8 @@
           "text": "Yes, that should work."
         }
       ],
-      "whisper_time_s": 8.4,
-      "pyannote_time_s": 11.2
+      "whisper_time_s": 7.1,
+      "pyannote_time_s": 9.7
     },
     {
       "sample": "meeting_clear",
@@ -355,14 +355,6 @@
       "speakers_expected": 3,
       "speakers_detected": 3,
       "per_speaker": {
-        "C": {
-          "precision": 1.0,
-          "recall": 1.0,
-          "f1": 1.0,
-          "tp": 3,
-          "fp": 0,
-          "fn": 0
-        },
         "B": {
           "precision": 1.0,
           "recall": 1.0,
@@ -378,6 +370,14 @@
           "tp": 4,
           "fp": 0,
           "fn": 0
+        },
+        "C": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 3,
+          "fp": 0,
+          "fn": 0
         }
       },
       "label_map": {
@@ -386,8 +386,8 @@
         "Speaker 3": "C"
       },
       "failures": [],
-      "whisper_time_s": 5.5,
-      "pyannote_time_s": 9.3
+      "whisper_time_s": 5.0,
+      "pyannote_time_s": 7.8
     },
     {
       "sample": "meeting_messy",
@@ -405,14 +405,6 @@
       "speakers_expected": 3,
       "speakers_detected": 3,
       "per_speaker": {
-        "C": {
-          "precision": 0.3333,
-          "recall": 1.0,
-          "f1": 0.5,
-          "tp": 3,
-          "fp": 6,
-          "fn": 0
-        },
         "B": {
           "precision": 1.0,
           "recall": 0.5714,
@@ -428,6 +420,14 @@
           "tp": 3,
           "fp": 0,
           "fn": 3
+        },
+        "C": {
+          "precision": 0.3333,
+          "recall": 1.0,
+          "f1": 0.5,
+          "tp": 3,
+          "fp": 6,
+          "fn": 0
         }
       },
       "label_map": {
@@ -477,8 +477,8 @@
           "text": "Alright, let's think about it and discuss again later."
         }
       ],
-      "whisper_time_s": 5.6,
-      "pyannote_time_s": 9.0
+      "whisper_time_s": 4.1,
+      "pyannote_time_s": 4.9
     },
     {
       "sample": "sales_bad",
@@ -559,8 +559,8 @@
           "text": "Okay, would it help if I showed a quick example?"
         }
       ],
-      "whisper_time_s": 4.9,
-      "pyannote_time_s": 2.5
+      "whisper_time_s": 4.6,
+      "pyannote_time_s": 2.3
     },
     {
       "sample": "business_english_long",
@@ -633,8 +633,8 @@
           "text": "Okay, Tony, I will be ready to present to everyone then."
         }
       ],
-      "whisper_time_s": 13.0,
-      "pyannote_time_s": 44.3
+      "whisper_time_s": 12.4,
+      "pyannote_time_s": 46.5
     },
     {
       "sample": "pitch_competition_long",
@@ -652,14 +652,6 @@
       "speakers_expected": 4,
       "speakers_detected": 4,
       "per_speaker": {
-        "C": {
-          "precision": 0.8571,
-          "recall": 0.6667,
-          "f1": 0.75,
-          "tp": 6,
-          "fp": 1,
-          "fn": 3
-        },
         "B": {
           "precision": 1.0,
           "recall": 1.0,
@@ -668,13 +660,13 @@
           "fp": 0,
           "fn": 0
         },
-        "D": {
-          "precision": 1.0,
-          "recall": 1.0,
-          "f1": 1.0,
-          "tp": 8,
-          "fp": 0,
-          "fn": 0
+        "C": {
+          "precision": 0.8571,
+          "recall": 0.6667,
+          "f1": 0.75,
+          "tp": 6,
+          "fp": 1,
+          "fn": 3
         },
         "A": {
           "precision": 0.9709,
@@ -683,6 +675,14 @@
           "tp": 100,
           "fp": 3,
           "fn": 1
+        },
+        "D": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 8,
+          "fp": 0,
+          "fn": 0
         }
       },
       "label_map": {
@@ -725,8 +725,8 @@
           "text": "Thank you all so much."
         }
       ],
-      "whisper_time_s": 38.0,
-      "pyannote_time_s": 23.5
+      "whisper_time_s": 37.9,
+      "pyannote_time_s": 23.6
     }
   ]
 }

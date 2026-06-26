@@ -413,19 +413,23 @@ class SessionManager:
         try:
             from db.database import AsyncSessionLocal
             from db import crud
-            async with AsyncSessionLocal() as db:
-                await crud.update_session_status(
-                    db,
-                    session_id,
-                    status.value,
-                    duration=session.elapsed_seconds,
-                )
-                if status == SessionStatus.COMPLETED:
-                    wav_path = session.audio_buffer.get_audio_file_path()
-                    if wav_path:
-                        session.audio_file_path = wav_path
-                        await crud.update_session_audio_path(db, session_id, wav_path)
-                await db.commit()
+            from utils.profiler import profile_stage
+            with profile_stage(session_id, "Session persistence"):
+                async with AsyncSessionLocal() as db:
+                    await crud.update_session_status(
+                        db,
+                        session_id,
+                        status.value,
+                        duration=session.elapsed_seconds,
+                    )
+                    if status == SessionStatus.COMPLETED:
+                        wav_path = session.audio_buffer.get_audio_file_path()
+                        if wav_path:
+                            session.audio_file_path = wav_path
+                            await crud.update_session_audio_path(db, session_id, wav_path)
+                    with profile_stage(session_id, "Database writes"):
+                        await db.commit()
+
         except Exception:  # noqa: BLE001
             logger.exception(
                 "Session %s…: failed to persist session terminal status/duration/audio_file_path",
