@@ -105,43 +105,48 @@ async def lifespan(app: FastAPI):
         async with AsyncSessionLocal() as db:
             await recover_stale_sessions(db)
 
-        # 1. VAD (CPU, fast)
-        logger.info("Loading Silero VAD …")
-        from audio.vad import get_vad
+        if settings.env != "test":
+            # 1. VAD (CPU, fast)
+            logger.info("Loading Silero VAD …")
+            from audio.vad import get_vad
 
-        get_vad()  # loads and caches singleton
+            get_vad()  # loads and caches singleton
 
-        # 2. Faster Whisper (GPU)
-        logger.info(
-            f"Loading Whisper ({settings.whisper_model}, "
-            f"{settings.whisper_compute_type}, {settings.whisper_device}) …"
-        )
-        from audio.transcriber import get_transcriber
-
-        transcriber = get_transcriber()
-        transcriber.load(
-            model_name=settings.whisper_model,
-            compute_type=settings.whisper_compute_type,
-            device=settings.whisper_device,
-        )
-
-        # 3. Pyannote (GPU, optional)
-        if settings.pyannote_enabled and settings.hf_token:
-            logger.info("Loading Pyannote speaker diarization …")
-            from audio.diarizer import get_diarizer
-
-            diarizer = get_diarizer()
-            diarizer.load(hf_token=settings.hf_token, device=settings.pyannote_device)
-        else:
+            # 2. Faster Whisper (GPU)
             logger.info(
-                "Pyannote: disabled or no HF_TOKEN — using heuristic speaker assignment"
+                f"Loading Whisper ({settings.whisper_model}, "
+                f"{settings.whisper_compute_type}, {settings.whisper_device}) …"
+            )
+            from audio.transcriber import get_transcriber
+
+            transcriber = get_transcriber()
+            transcriber.load(
+                model_name=settings.whisper_model,
+                compute_type=settings.whisper_compute_type,
+                device=settings.whisper_device,
             )
 
-        # 4. Sentiment model (CPU/GPU — Transformers)
-        logger.info("Loading sentiment model …")
-        from services.nlp_engine import get_nlp_engine
+            # 3. Pyannote (GPU, optional)
+            if settings.pyannote_enabled and settings.hf_token:
+                logger.info("Loading Pyannote speaker diarization …")
+                from audio.diarizer import get_diarizer
 
-        get_nlp_engine()  # loads and caches the singleton; reused by audio_handler
+                diarizer = get_diarizer()
+                diarizer.load(
+                    hf_token=settings.hf_token,
+                    device=settings.pyannote_device,
+                )
+            else:
+                logger.info(
+                    "Pyannote: disabled or no HF_TOKEN — "
+                    "using heuristic speaker assignment"
+                )
+
+            # 4. Sentiment model (CPU/GPU — Transformers)
+            logger.info("Loading sentiment model …")
+            from services.nlp_engine import get_nlp_engine
+
+            get_nlp_engine()  # loads and caches the singleton; reused by audio_handler
 
         # 5. Start background flusher loop
         logger.info("Flusher — starting background flusher scheduler …")
@@ -155,7 +160,11 @@ async def lifespan(app: FastAPI):
             await res
 
         logger.info("=" * 60)
-        logger.info("All models loaded. TalkSense AI is ready.")
+        logger.info(
+            "All models loaded. TalkSense AI is ready."
+            if settings.env != "test"
+            else "TalkSense AI is ready (Test Mode)."
+        )
         logger.info("=" * 60)
 
     except Exception as exc:  # noqa: BLE001

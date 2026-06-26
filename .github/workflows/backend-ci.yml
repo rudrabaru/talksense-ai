@@ -48,6 +48,11 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements-dev.txt
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsndfile1 ffmpeg
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -62,5 +67,20 @@ jobs:
       - name: Pyright
         run: pyright
 
-      - name: Run tests
-        run: pytest
+      - name: Create database tables
+        run: python -c "import asyncio; from db.database import create_all; asyncio.run(create_all())"
+
+      - name: Run server and tests
+        run: |
+          python -m uvicorn main:app --host 127.0.0.1 --port 8000 &
+          # Wait for server to be healthy
+          for i in {1..30}; do
+            curl -s http://127.0.0.1:8000/health && break
+            sleep 1
+          done
+          pytest
+        env:
+          ENV: test
+          JWT_SECRET_KEY: test_secret_key_123_test_secret_key_123_test
+          HF_TOKEN: ""
+          GEMINI_API_KEY: ""
