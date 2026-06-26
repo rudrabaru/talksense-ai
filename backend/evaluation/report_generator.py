@@ -1,13 +1,16 @@
 import json
 import os
-from datetime import datetime
 import sys
+from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from evaluation.thresholds import evaluate_thresholds, THRESHOLDS
+from evaluation.thresholds import evaluate_thresholds
+
 
 def generate_report():
-    metrics_path = os.path.join(os.path.dirname(__file__), "reports", "latest_metrics.json")
+    metrics_path = os.path.join(
+        os.path.dirname(__file__), "reports", "latest_metrics.json"
+    )
     if not os.path.exists(metrics_path):
         print(f"Error: {metrics_path} not found. Run evaluate_analytics.py first.")
         return
@@ -17,7 +20,9 @@ def generate_report():
 
     health = evaluate_thresholds(metrics)
 
-    report_path = os.path.join(os.path.dirname(__file__), "reports", "analytics_accuracy_report.md")
+    report_path = os.path.join(
+        os.path.dirname(__file__), "reports", "analytics_accuracy_report.md"
+    )
 
     # Build Executive Summary
     lines = [
@@ -26,24 +31,21 @@ def generate_report():
         "",
         "## Executive Summary",
         "| Component | Status |",
-        "|-----------|--------|"
+        "|-----------|--------|",
     ]
 
     for component, status in health.items():
         icon = "✅ PASS" if status == "PASS" else "❌ FAIL"
         lines.append(f"| {component.replace('_', ' ').title()} | {icon} |")
 
-    lines.extend([
-        "",
-        "## Component Scores"
-    ])
+    lines.extend(["", "## Component Scores"])
 
     for comp, data in metrics.items():
         lines.append(f"### {comp.replace('_', ' ').title()}")
         if "error" in data:
             lines.append(f"**Error**: {data['error']}\n")
             continue
-        
+
         for key, val in data.items():
             if key != "confusion_matrix":
                 # Handle percentages or floats
@@ -53,11 +55,13 @@ def generate_report():
                     lines.append(f"- **{key.replace('_', ' ').title()}**: {val}")
         lines.append("")
 
-    lines.extend([
-        "## Weakest Components",
-        "The following components failed to meet the production thresholds:"
-    ])
-    
+    lines.extend(
+        [
+            "## Weakest Components",
+            "The following components failed to meet the production thresholds:",
+        ]
+    )
+
     failed_components = [c for c, s in health.items() if s == "FAIL"]
     if not failed_components:
         lines.append("- *None! All components are passing.*")
@@ -65,18 +69,18 @@ def generate_report():
         for c in failed_components:
             lines.append(f"- **{c.replace('_', ' ').title()}**")
 
-    lines.extend([
-        "",
-        "## Recommended Actions"
-    ])
+    lines.extend(["", "## Recommended Actions"])
 
     for c in failed_components:
-        lines.append(f"- **{c.replace('_', ' ').title()}** fell below threshold. Recommendation: Do not use for downstream analytics until models are improved or replaced with LLM alternatives.")
+        lines.append(
+            f"- **{c.replace('_', ' ').title()}** fell below threshold. Recommendation: Do not use for downstream analytics until models are improved or replaced with LLM alternatives."  # noqa: E501
+        )
 
     with open(report_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
     print(f"Report generated at {report_path}")
+
 
 if __name__ == "__main__":
     generate_report()

@@ -21,8 +21,9 @@ Design rules (from .agent/ARCHITECTURE.md):
     - No migration tooling (Alembic deferred) — tables are created via
       Base.metadata.create_all() inside the lifespan startup hook in main.py
 """
-from datetime import datetime
+
 import uuid as _uuid_mod
+from datetime import datetime
 
 from sqlalchemy import (
     BigInteger,
@@ -38,15 +39,17 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-
 # ── Declarative base ──────────────────────────────────────────────────────────
+
 
 class Base(DeclarativeBase):
     """Shared base for all TalkSense ORM models."""
+
     pass
 
 
 # ── 1. users ──────────────────────────────────────────────────────────────────
+
 
 class User(Base):
     """
@@ -56,10 +59,13 @@ class User(Base):
     All FKs that reference users.id are nullable so Phase 3 can operate without
     a login flow.
     """
+
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    email: Mapped[str] = mapped_column(
+        String(255), unique=True, nullable=False, index=True
+    )
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -87,6 +93,7 @@ class User(Base):
 
 # ── 2. clients ────────────────────────────────────────────────────────────────
 
+
 class Client(Base):
     """
     Client profiles managed by a user.
@@ -94,13 +101,14 @@ class Client(Base):
     A client represents a company / individual that participates in meetings.
     Client memory is aggregated in client_snapshots after each session.
     """
+
     __tablename__ = "clients"
 
     id: Mapped[_uuid_mod.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
-        default=_uuid_mod.uuid4,            # ORM-level default (used by SQLAlchemy)
-        server_default=func.gen_random_uuid(),  # DB-level default (used by direct SQL inserts)
+        default=_uuid_mod.uuid4,  # ORM-level default (used by SQLAlchemy)
+        server_default=func.gen_random_uuid(),  # DB-level default (used by direct SQL inserts)  # noqa: E501
     )
     user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
@@ -138,6 +146,7 @@ class Client(Base):
 
 # ── 3. sessions ───────────────────────────────────────────────────────────────
 
+
 class Session(Base):
     """
     A single conversation session (meeting, sales call, or interview).
@@ -147,25 +156,26 @@ class Session(Base):
         created | connecting | active | processing | completed | failed |
         interrupted | expired
     """
+
     __tablename__ = "sessions"
 
     id: Mapped[_uuid_mod.UUID] = mapped_column(
         UUID(as_uuid=True),
         primary_key=True,
-        default=_uuid_mod.uuid4,            # ORM-level default (used by SQLAlchemy)
-        server_default=func.gen_random_uuid(),  # DB-level default (used by direct SQL inserts)
+        default=_uuid_mod.uuid4,  # ORM-level default (used by SQLAlchemy)
+        server_default=func.gen_random_uuid(),  # DB-level default (used by direct SQL inserts)  # noqa: E501
     )
     client_id: Mapped[_uuid_mod.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("clients.id", ondelete="SET NULL"),
         nullable=True,
-        index=True,          # sessions(client_id) — listed in ARCHITECTURE.md indexes
+        index=True,  # sessions(client_id) — listed in ARCHITECTURE.md indexes
     )
     user_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     mode: Mapped[str] = mapped_column(
-        String(50), nullable=False                # "meeting" | "sales" | "interview"
+        String(50), nullable=False  # "meeting" | "sales" | "interview"
     )
     title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     started_at: Mapped[datetime] = mapped_column(
@@ -175,9 +185,7 @@ class Session(Base):
         DateTime(timezone=True), nullable=True
     )
     duration: Mapped[float | None] = mapped_column(Float, nullable=True)
-    status: Mapped[str] = mapped_column(
-        String(50), nullable=False, default="created"
-    )
+    status: Mapped[str] = mapped_column(String(50), nullable=False, default="created")
 
     # ── Post-session speaker attribution ──────────────────────────────────────
     # Lifecycle: None (not started) → pending → processing → completed / failed
@@ -207,7 +215,7 @@ class Session(Base):
         back_populates="session",
         cascade="all, delete-orphan",
         lazy="raise",
-        order_by="TranscriptSegment.start_time",    # always ordered by timeline
+        order_by="TranscriptSegment.start_time",  # always ordered by timeline
     )
     session_metrics: Mapped[list["SessionMetric"]] = relationship(
         "SessionMetric",
@@ -226,7 +234,7 @@ class Session(Base):
         "AnalysisResult",
         back_populates="session",
         cascade="all, delete-orphan",
-        uselist=False,                              # one-to-one
+        uselist=False,  # one-to-one
         lazy="raise",
     )
 
@@ -236,6 +244,7 @@ class Session(Base):
 
 # ── 4. transcript_segments ────────────────────────────────────────────────────
 
+
 class TranscriptSegment(Base):
     """
     A single speaker utterance (one Whisper segment) within a session.
@@ -244,6 +253,7 @@ class TranscriptSegment(Base):
     ws/session_manager.py.  start_time / end_time are audio-file offsets in
     seconds, matching the payload format emitted on /ws/transcript.
     """
+
     __tablename__ = "transcript_segments"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -253,7 +263,7 @@ class TranscriptSegment(Base):
         nullable=False,
     )
     speaker_id: Mapped[str | None] = mapped_column(
-        String(100), nullable=True               # e.g. "Speaker A", "Speaker B"
+        String(100), nullable=True  # e.g. "Speaker A", "Speaker B"
     )
     start_time: Mapped[float] = mapped_column(Float, nullable=False)
     end_time: Mapped[float] = mapped_column(Float, nullable=False)
@@ -285,6 +295,7 @@ class TranscriptSegment(Base):
 
 # ── 5. session_metrics ────────────────────────────────────────────────────────
 
+
 class SessionMetric(Base):
     """
     A point-in-time metric snapshot flushed every 5 seconds.
@@ -297,6 +308,7 @@ class SessionMetric(Base):
         metric_name="filler_count",   metric_value=3
         metric_name="participation",  metric_value={"Speaker A": 60, ...}
     """
+
     __tablename__ = "session_metrics"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -336,6 +348,7 @@ class SessionMetric(Base):
 
 # ── 6. analysis_results ───────────────────────────────────────────────────────
 
+
 class AnalysisResult(Base):
     """
     Final post-session report — written exactly once when session status
@@ -345,6 +358,7 @@ class AnalysisResult(Base):
         decisions, action_items, sentiment_timeline, key_insights, summary
     This mirrors the /reports/{session_id} response schema in API_CONTRACT.md.
     """
+
     __tablename__ = "analysis_results"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -352,7 +366,7 @@ class AnalysisResult(Base):
         UUID(as_uuid=True),
         ForeignKey("sessions.id", ondelete="CASCADE"),
         nullable=False,
-        unique=True,         # one-to-one with Session
+        unique=True,  # one-to-one with Session
         index=True,
     )
     health_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -379,6 +393,7 @@ class AnalysisResult(Base):
 
 # ── 7. alerts ─────────────────────────────────────────────────────────────────
 
+
 class Alert(Base):
     """
     Persisted alert events raised by alert_engine.py during a session.
@@ -390,6 +405,7 @@ class Alert(Base):
     dropped).  They are persisted here for post-session audit and client
     briefing generation.
     """
+
     __tablename__ = "alerts"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
@@ -399,19 +415,18 @@ class Alert(Base):
         nullable=False,
     )
     type: Mapped[str | None] = mapped_column(
-        String(100), nullable=True               # e.g. "long_silence", "sentiment_crash"
+        String(100), nullable=True  # e.g. "long_silence", "sentiment_crash"
     )
     severity: Mapped[str] = mapped_column(
-        String(50), nullable=False               # "critical" | "warning" | "info"
+        String(50), nullable=False  # "critical" | "warning" | "info"
     )
     message: Mapped[str] = mapped_column(Text, nullable=False)
-    timestamp: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     # ── Indexes ───────────────────────────────────────────────────────────────
     __table_args__ = (
-        # Composite index: ordered alert log per session (replaces bare session_id index)
+        # Composite index: ordered alert log per session (replaces bare session_id
+        # index)
         Index("ix_alerts_session_ts", "session_id", "timestamp"),
     )
 
@@ -433,6 +448,7 @@ class Alert(Base):
 
 # ── 8. client_snapshots ───────────────────────────────────────────────────────
 
+
 class ClientSnapshot(Base):
     """
     Aggregated client briefing recomputed after every session end.
@@ -443,6 +459,7 @@ class ClientSnapshot(Base):
     common_objections is stored as a JSONB list so it can be queried and
     updated efficiently without string parsing.
     """
+
     __tablename__ = "client_snapshots"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -457,14 +474,14 @@ class ClientSnapshot(Base):
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     sentiment_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     sentiment_trend: Mapped[str | None] = mapped_column(
-        String(50), nullable=True               # "improving" | "stable" | "declining"
+        String(50), nullable=True  # "improving" | "stable" | "declining"
     )
     meetings_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_meeting_date: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     common_objections: Mapped[list | None] = mapped_column(
-        JSONB, nullable=True                    # e.g. ["pricing", "integration"]
+        JSONB, nullable=True  # e.g. ["pricing", "integration"]
     )
 
     # ── Indexes ───────────────────────────────────────────────────────────────

@@ -1,28 +1,28 @@
 import json
-import os
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config", "keywords.json")
+CONFIG_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "config",
+    "keywords.json",
+)
 
 # Default Fallback (Critical Safety)
 DEFAULT_KEYWORDS = {
     "meeting": {
         "decisions": ["we will", "let's", "agreed", "decided", "finalize"],
-        "actions": ["please", "can you", "need to", "will handle"]
+        "actions": ["please", "can you", "need to", "will handle"],
     },
     "sales": {
-        "objections": {
-            "Pricing": ["price", "cost"]
-        },
-        "buying_signals": ["sounds good", "interested"]
+        "objections": {"Pricing": ["price", "cost"]},
+        "buying_signals": ["sounds good", "interested"],
     },
-    "nlp_enrichment": {
-        "action_item": ["action item"],
-        "decision_made": ["decision"]
-    }
+    "nlp_enrichment": {"action_item": ["action item"], "decision_made": ["decision"]},
 }
+
 
 def load_keywords():
     """
@@ -42,6 +42,6 @@ def load_keywords():
         logger.error(f"Failed to load keyword config: {e}. Using defaults.")
         return DEFAULT_KEYWORDS
 
+
 # Singleton-like access
 KEYWORDS_CONFIG = load_keywords()
-

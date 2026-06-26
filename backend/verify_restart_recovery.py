@@ -2,21 +2,21 @@ import asyncio
 import logging
 import os
 import struct
-import uuid
-from datetime import datetime, timezone
-
 import sys
+import uuid
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+from db import crud
 from db.database import AsyncSessionLocal, create_all
 from db.models import Session as DBSession
-from db import crud
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)-8s | %(name)s — %(message)s",
 )
 logger = logging.getLogger("verify_restart_recovery")
+
 
 def build_dummy_wav(path: str, data_size: int):
     """Write a WAV file with 0 sizes in the header, followed by dummy data."""
@@ -43,12 +43,13 @@ def build_dummy_wav(path: str, data_size: int):
         b"data",
         0,
     )
-    
+
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "wb") as f:
         f.write(header)
         # Write some dummy PCM bytes (zeros)
         f.write(b"\x00" * data_size)
+
 
 def parse_wav_header(path: str):
     """Read the ChunkSize and Subchunk2Size from the WAV file."""
@@ -58,6 +59,7 @@ def parse_wav_header(path: str):
         f.seek(40)
         subchunk2_size = struct.unpack("<I", f.read(4))[0]
     return chunk_size, subchunk2_size
+
 
 async def main():
     logger.info("=" * 60)
@@ -75,13 +77,17 @@ async def main():
     wav_filename = f"session_{safe_id}.wav"
     wav_path = os.path.join("session_audio", wav_filename)
     dummy_data_size = 32000  # 1 second of audio at 16kHz 16-bit mono
-    
+
     build_dummy_wav(wav_path, dummy_data_size)
-    logger.info(f"Created unfinalized WAV at {wav_path} with size {os.path.getsize(wav_path)} bytes")
+    logger.info(
+        f"Created unfinalized WAV at {wav_path} with size {os.path.getsize(wav_path)} bytes"  # noqa: E501
+    )
 
     # Verify initial header placeholder sizes are indeed 0
     init_chunk, init_subchunk = parse_wav_header(wav_path)
-    logger.info(f"Initial header values: ChunkSize={init_chunk}, Subchunk2Size={init_subchunk}")
+    logger.info(
+        f"Initial header values: ChunkSize={init_chunk}, Subchunk2Size={init_subchunk}"
+    )
     assert init_chunk == 36, "Initial ChunkSize should be 36 (36 + 0)"
     assert init_subchunk == 0, "Initial Subchunk2Size should be 0"
 
@@ -108,24 +114,34 @@ async def main():
         assert recovered_sess is not None
         logger.info(f"Recovered session status: '{recovered_sess.status}'")
         logger.info(f"Recovered session audio path: '{recovered_sess.audio_file_path}'")
-        
-        assert recovered_sess.status == "interrupted", "Session status should be interrupted"
-        assert recovered_sess.audio_file_path == os.path.abspath(wav_path), "Audio path should be mapped"
+
+        assert (
+            recovered_sess.status == "interrupted"
+        ), "Session status should be interrupted"
+        assert recovered_sess.audio_file_path == os.path.abspath(
+            wav_path
+        ), "Audio path should be mapped"
 
     # 5. Verify WAV header finalization
     final_chunk, final_subchunk = parse_wav_header(wav_path)
-    logger.info(f"Finalized header values: ChunkSize={final_chunk}, Subchunk2Size={final_subchunk}")
+    logger.info(
+        f"Finalized header values: ChunkSize={final_chunk}, Subchunk2Size={final_subchunk}"  # noqa: E501
+    )
     expected_chunk_size = 36 + dummy_data_size
     expected_subchunk_size = dummy_data_size
-    
-    assert final_chunk == expected_chunk_size, f"Expected ChunkSize {expected_chunk_size}, got {final_chunk}"
-    assert final_subchunk == expected_subchunk_size, f"Expected Subchunk2Size {expected_subchunk_size}, got {final_subchunk}"
+
+    assert (
+        final_chunk == expected_chunk_size
+    ), f"Expected ChunkSize {expected_chunk_size}, got {final_chunk}"
+    assert (
+        final_subchunk == expected_subchunk_size
+    ), f"Expected Subchunk2Size {expected_subchunk_size}, got {final_subchunk}"
 
     # 6. Cleanup
     if os.path.exists(wav_path):
         os.remove(wav_path)
         logger.info("Cleaned up test WAV file.")
-        
+
     async with AsyncSessionLocal() as db:
         await db.delete(recovered_sess)
         await db.commit()
@@ -134,6 +150,7 @@ async def main():
     logger.info("=" * 60)
     logger.info("✅ All Checks Passed Successfully!")
     logger.info("=" * 60)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

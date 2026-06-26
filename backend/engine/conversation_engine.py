@@ -16,9 +16,8 @@ Reuses existing analysis logic from services/context_analyzer.py:
 
 Called from: ws/audio_handler.py after each transcription batch.
 """
+
 import logging
-import time
-from copy import deepcopy
 
 from engine.alert_engine import AlertEngine
 from engine.scoring_profiles import get_profile
@@ -28,8 +27,20 @@ logger = logging.getLogger(__name__)
 
 # ── Filler word list ──────────────────────────────────────────────────────────
 FILLER_WORDS = {
-    "um", "uh", "er", "ah", "like", "you know", "basically",
-    "literally", "right", "so", "actually", "honestly", "kind of", "sort of",
+    "um",
+    "uh",
+    "er",
+    "ah",
+    "like",
+    "you know",
+    "basically",
+    "literally",
+    "right",
+    "so",
+    "actually",
+    "honestly",
+    "kind of",
+    "sort of",
 }
 
 
@@ -112,10 +123,20 @@ class ConversationEngine:
     def _update_speaking_metrics(segments: list, state: ConversationState) -> None:
         """Update speaking_ratio and participation from new segments."""
         for seg in segments:
-            speaker = getattr(seg, "speaker", seg.get("speaker", "Speaker 1")) if isinstance(seg, dict) else seg.speaker
-            text = getattr(seg, "text", seg.get("text", "")) if isinstance(seg, dict) else seg.text
+            speaker = (
+                getattr(seg, "speaker", seg.get("speaker", "Speaker 1"))
+                if isinstance(seg, dict)
+                else seg.speaker
+            )
+            text = (
+                getattr(seg, "text", seg.get("text", ""))
+                if isinstance(seg, dict)
+                else seg.text
+            )
             word_count = len(text.split())
-            state.participation[speaker] = state.participation.get(speaker, 0) + word_count
+            state.participation[speaker] = (
+                state.participation.get(speaker, 0) + word_count
+            )
 
         total_words = sum(state.participation.values()) or 1
         state.speaking_ratio = {
@@ -128,7 +149,11 @@ class ConversationEngine:
         """Compute running average sentiment score."""
         scores = []
         for seg in segments:
-            val = getattr(seg, "sentiment", None) if not isinstance(seg, dict) else seg.get("sentiment")
+            val = (
+                getattr(seg, "sentiment", None)
+                if not isinstance(seg, dict)
+                else seg.get("sentiment")
+            )
             if val is not None:
                 scores.append(val)
 
@@ -152,7 +177,11 @@ class ConversationEngine:
     def _update_fillers(segments: list, state: ConversationState) -> None:
         """Count filler words across new segments."""
         for seg in segments:
-            text = (getattr(seg, "text", "") if not isinstance(seg, dict) else seg.get("text", "")).lower()
+            text = (
+                getattr(seg, "text", "")
+                if not isinstance(seg, dict)
+                else seg.get("text", "")
+            ).lower()
             for filler in FILLER_WORDS:
                 state.filler_count += text.count(filler)
 
@@ -160,16 +189,17 @@ class ConversationEngine:
     def _update_sales_metrics(all_segments: list, state: ConversationState) -> None:
         """Run sales signal detection on full session transcript."""
         try:
-            from services.context_analyzer import assess_sales_signals, OBJECTION_KEYWORDS
+            from services.context_analyzer import (
+                OBJECTION_KEYWORDS,
+                assess_sales_signals,
+            )
 
             # Convert to the format context_analyzer expects
-            seg_dicts = [
-                s if isinstance(s, dict) else s.__dict__
-                for s in all_segments
-            ]
+            seg_dicts = [s if isinstance(s, dict) else s.__dict__ for s in all_segments]
 
             # Detect objections
-            # OBJECTION_KEYWORDS is a dict: {"Pricing": ["price", "cost", ...], "Timeline": [...], ...}
+            # OBJECTION_KEYWORDS is a dict: {"Pricing": ["price", "cost", ...],
+            # "Timeline": [...], ...}
             # Flatten all keyword lists for matching
             objections = []
             for seg in seg_dicts:
@@ -178,8 +208,16 @@ class ConversationEngine:
                     # Nested dict: {category: [kw1, kw2, ...]}
                     for category, kw_list in OBJECTION_KEYWORDS.items():
                         for kw in (kw_list if isinstance(kw_list, list) else []):
-                            if kw in text and text not in [o.get("text", "") for o in objections]:
-                                objections.append({"text": seg.get("text", ""), "keyword": kw, "category": category})
+                            if kw in text and text not in [
+                                o.get("text", "") for o in objections
+                            ]:
+                                objections.append(
+                                    {
+                                        "text": seg.get("text", ""),
+                                        "keyword": kw,
+                                        "category": category,
+                                    }
+                                )
                                 break
                         else:
                             continue
@@ -187,8 +225,12 @@ class ConversationEngine:
                 else:
                     # Flat list (fallback)
                     for kw in OBJECTION_KEYWORDS:
-                        if kw in text and text not in [o.get("text", "") for o in objections]:
-                            objections.append({"text": seg.get("text", ""), "keyword": kw})
+                        if kw in text and text not in [
+                            o.get("text", "") for o in objections
+                        ]:
+                            objections.append(
+                                {"text": seg.get("text", ""), "keyword": kw}
+                            )
                             break
             state.objections = objections
 
@@ -199,9 +241,15 @@ class ConversationEngine:
                 buying_texts = [
                     s.get("text", "")
                     for s in seg_dicts
-                    if any(kw in s.get("text", "").lower() for kw in [
-                        "interested", "this looks good", "sounds good", "makes sense"
-                    ])
+                    if any(
+                        kw in s.get("text", "").lower()
+                        for kw in [
+                            "interested",
+                            "this looks good",
+                            "sounds good",
+                            "makes sense",
+                        ]
+                    )
                 ]
                 state.buying_signals = buying_texts[-3:]  # keep last 3
 
@@ -212,12 +260,12 @@ class ConversationEngine:
     def _update_meeting_metrics(all_segments: list, state: ConversationState) -> None:
         """Run meeting signal detection on full session transcript."""
         try:
-            from services.context_analyzer import detect_signals, compute_meeting_quality_v2
+            from services.context_analyzer import (
+                compute_meeting_quality_v2,
+                detect_signals,
+            )
 
-            seg_dicts = [
-                s if isinstance(s, dict) else s.__dict__
-                for s in all_segments
-            ]
+            seg_dicts = [s if isinstance(s, dict) else s.__dict__ for s in all_segments]
 
             signals = detect_signals(seg_dicts)
             quality = compute_meeting_quality_v2(signals)
@@ -277,22 +325,20 @@ class ConversationEngine:
 
         return {
             # Meeting profile
-            "participation":  participation,
-            "engagement":     engagement,
-            "balance":        balance,
-            "action_items":   50.0,  # Updated when action items are detected
-
+            "participation": participation,
+            "engagement": engagement,
+            "balance": balance,
+            "action_items": 50.0,  # Updated when action items are detected
             # Sales profile
             "objection_handling": objection_handling,
-            "sentiment":          sentiment_norm,
-            "listening_ratio":    listening_ratio,
-            "buying_signals":     buying_signal_score,
-
+            "sentiment": sentiment_norm,
+            "listening_ratio": listening_ratio,
+            "buying_signals": buying_signal_score,
             # Interview profile (placeholders until Interview mode is built)
-            "confidence":       sentiment_norm,
-            "filler_penalty":   filler_penalty,
+            "confidence": sentiment_norm,
+            "filler_penalty": filler_penalty,
             "response_quality": 50.0,
-            "pause_penalty":    50.0,
+            "pause_penalty": 50.0,
         }
 
 

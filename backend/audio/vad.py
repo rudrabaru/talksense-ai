@@ -9,7 +9,9 @@ Audio contract (enforced upstream by AudioBuffer):
 
 Silero VAD runs on CPU (it's tiny, ~1MB) to keep GPU free for Whisper.
 """
+
 import logging
+
 import numpy as np
 import torch
 
@@ -51,7 +53,9 @@ class VADProcessor:
             logger.info("VAD: Silero VAD loaded on CPU")
             self._loaded = True
         except Exception as exc:
-            logger.error(f"VAD: Failed to load Silero VAD — {exc}. Falling back to pass-through mode.")
+            logger.error(
+                f"VAD: Failed to load Silero VAD — {exc}. Falling back to pass-through mode."  # noqa: E501
+            )
             self._loaded = False
 
     def is_speech(self, pcm_bytes: bytes) -> bool:
@@ -77,21 +81,21 @@ class VADProcessor:
 
             # Evaluate sliding windows of chunk_size
             num_windows = max(1, len(audio_float32) // self._chunk_size)
-            
+
             for i in range(num_windows):
                 start = i * self._chunk_size
-                window = audio_float32[start: start + self._chunk_size]
-                
+                window = audio_float32[start : start + self._chunk_size]
+
                 if len(window) < self._chunk_size:
                     window = np.pad(window, (0, self._chunk_size - len(window)))
-                    
+
                 audio_tensor = torch.from_numpy(window)
                 with torch.no_grad():
                     speech_prob = self._model(audio_tensor, self.sample_rate).item()
-                    
+
                 if speech_prob >= self.threshold:
                     return True
-                    
+
             return False
 
         except Exception as exc:

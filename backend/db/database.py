@@ -18,8 +18,8 @@ Design rules (from .agent/ARCHITECTURE.md + database_agent.md):
     - Do NOT import this module at module level inside audio handlers or the
       WebSocket session manager — use asyncio.create_task for all DB writes
 """
-import logging
 
+import logging
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
@@ -68,6 +68,7 @@ AsyncSessionLocal: async_sessionmaker[AsyncSession] = async_sessionmaker(
 
 # ── Table initialisation ──────────────────────────────────────────────────────
 
+
 async def create_all() -> None:
     """
     Create all tables defined in db/models.py if they do not already exist.
@@ -87,6 +88,7 @@ async def create_all() -> None:
 
 
 # ── FastAPI dependency ────────────────────────────────────────────────────────
+
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """

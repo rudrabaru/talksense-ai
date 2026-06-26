@@ -8,40 +8,59 @@ Runs TWO independent diarization paths on the same audio file and compares:
 
 Then evaluates both against the ground truth to produce measured metrics.
 """
-import asyncio
+
 import json
 import os
 import subprocess
 import sys
 import time
 import wave
+
 import numpy as np
 
 # Ensure backend is on path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from audio.diarizer import get_diarizer
+from audio.transcriber import get_transcriber
 from core.config import get_settings
-from audio.transcriber import get_transcriber, TranscriptSegment
-from audio.diarizer import get_diarizer, DiarizedSegment
+from evaluate_speaker_accuracy import Segment as EvalSegment
 from evaluate_speaker_accuracy import (
-    load_ground_truth, match_segments, resolve_label_mapping,
-    compute_accuracy, compute_precision_recall_f1, compute_scdr,
-    collect_failures, Segment as EvalSegment
+    collect_failures,
+    compute_accuracy,
+    compute_precision_recall_f1,
+    compute_scdr,
+    load_ground_truth,
+    match_segments,
+    resolve_label_mapping,
 )
 
 SAMPLE_RATE = 16000
 CHUNK_DURATION_SECS = 5.0
 CHUNK_SIZE_BYTES = int(SAMPLE_RATE * 2 * CHUNK_DURATION_SECS)
 
-GT_PATH = os.path.join(os.path.dirname(__file__), "ground_truth", "meeting_short_gt.json")
-AUDIO_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "sample_audio", "meeting_short.mp3"))
+GT_PATH = os.path.join(
+    os.path.dirname(__file__), "ground_truth", "meeting_short_gt.json"
+)
+AUDIO_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "sample_audio", "meeting_short.mp3")
+)
 
 
 def decode_audio_to_pcm(audio_path: str) -> bytes:
     """Decode audio file to raw PCM using ffmpeg."""
     cmd = [
-        "ffmpeg", "-y", "-i", audio_path,
-        "-f", "s16le", "-ac", "1", "-ar", str(SAMPLE_RATE), "-"
+        "ffmpeg",
+        "-y",
+        "-i",
+        audio_path,
+        "-f",
+        "s16le",
+        "-ac",
+        "1",
+        "-ar",
+        str(SAMPLE_RATE),
+        "-",
     ]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     pcm_data = proc.stdout.read()
@@ -77,8 +96,14 @@ def evaluate_segments(predicted_segs, annotated_segs):
     label_map = resolve_label_mapping(pairs)
     accuracy, correct, total_matched = compute_accuracy(pairs, label_map)
     per_speaker = compute_precision_recall_f1(pairs, label_map)
-    scdr, scdr_detected, scdr_total = compute_scdr(predicted_segs, annotated_segs, label_map)
-    macro_f1 = sum(v["f1"] for v in per_speaker.values()) / len(per_speaker) if per_speaker else 0.0
+    scdr, scdr_detected, scdr_total = compute_scdr(
+        predicted_segs, annotated_segs, label_map
+    )
+    macro_f1 = (
+        sum(v["f1"] for v in per_speaker.values()) / len(per_speaker)
+        if per_speaker
+        else 0.0
+    )
     failures = collect_failures(pairs, label_map)
 
     return {
@@ -99,6 +124,7 @@ def evaluate_segments(predicted_segs, annotated_segs):
 
 # ── PATH A: Live Chunked Diarization ─────────────────────────────────────────
 
+
 def run_live_chunked(pcm_data: bytes, transcriber, diarizer) -> list[EvalSegment]:
     """Simulate the WebSocket pipeline: chunk → transcribe → diarize per chunk."""
     print("\n" + "=" * 60)
@@ -111,21 +137,29 @@ def run_live_chunked(pcm_data: bytes, transcriber, diarizer) -> list[EvalSegment
     prev_speaker = "Speaker 1"
 
     while offset_bytes < len(pcm_data):
-        chunk = pcm_data[offset_bytes:offset_bytes + CHUNK_SIZE_BYTES]
+        chunk = pcm_data[offset_bytes : offset_bytes + CHUNK_SIZE_BYTES]
         chunk_duration = (len(chunk) / 2) / SAMPLE_RATE
 
         raw_segments = transcriber.transcribe(chunk, time_offset=time_offset)
 
         if raw_segments:
-            diarized = diarizer.assign_speakers(raw_segments, chunk, time_offset, prev_speaker)
+            diarized = diarizer.assign_speakers(
+                raw_segments, chunk, time_offset, prev_speaker
+            )
             if diarized:
                 prev_speaker = diarized[-1].speaker
                 for seg in diarized:
-                    all_segments.append(EvalSegment(
-                        start=seg.start, end=seg.end,
-                        speaker=seg.speaker, text=seg.text,
-                    ))
-                    print(f"  [{seg.start:6.2f} - {seg.end:6.2f}] {seg.speaker:12s}: {seg.text[:60]}")
+                    all_segments.append(
+                        EvalSegment(
+                            start=seg.start,
+                            end=seg.end,
+                            speaker=seg.speaker,
+                            text=seg.text,
+                        )
+                    )
+                    print(
+                        f"  [{seg.start:6.2f} - {seg.end:6.2f}] {seg.speaker:12s}: {seg.text[:60]}"  # noqa: E501
+                    )
 
         offset_bytes += len(chunk)
         time_offset += chunk_duration
@@ -137,6 +171,7 @@ def run_live_chunked(pcm_data: bytes, transcriber, diarizer) -> list[EvalSegment
 
 
 # ── PATH B: Post-Session Full-WAV Diarization ────────────────────────────────
+
 
 def run_post_session(pcm_data: bytes, transcriber, diarizer) -> list[EvalSegment]:
     """Simulate the post-session pipeline: full WAV → single Pyannote pass."""
@@ -159,10 +194,14 @@ def run_post_session(pcm_data: bytes, transcriber, diarizer) -> list[EvalSegment
         print("  Attempting direct pipeline load for post-session test...")
         try:
             import warnings
+
             with warnings.catch_warnings():
-                warnings.filterwarnings("ignore", message=".*torchcodec.*", category=UserWarning)
+                warnings.filterwarnings(
+                    "ignore", message=".*torchcodec.*", category=UserWarning
+                )
                 from pyannote.audio import Pipeline
             import torch
+
             settings = get_settings()
             pipeline = Pipeline.from_pretrained(
                 "pyannote/speaker-diarization-3.1",
@@ -176,6 +215,7 @@ def run_post_session(pcm_data: bytes, transcriber, diarizer) -> list[EvalSegment
         pipeline = diarizer._pipeline
 
     import torch
+
     audio_int16 = np.frombuffer(pcm_data, dtype=np.int16)
     audio_float32 = audio_int16.astype(np.float32) / 32768.0
     audio_tensor = torch.from_numpy(audio_float32).unsqueeze(0)
@@ -210,7 +250,8 @@ def run_post_session(pcm_data: bytes, transcriber, diarizer) -> list[EvalSegment
     unique_speakers = set(s for _, _, s in turns)
     print(f"  Unique speakers: {len(unique_speakers)} -> {unique_speakers}")
 
-    # Step 3: Assign speakers to Whisper segments using overlap (same as post_session_diarizer)
+    # Step 3: Assign speakers to Whisper segments using overlap (same as
+    # post_session_diarizer)
     all_segments = []
     for seg in raw_segments:
         best_speaker = "Speaker 1"
@@ -220,17 +261,24 @@ def run_post_session(pcm_data: bytes, transcriber, diarizer) -> list[EvalSegment
             if overlap > best_overlap:
                 best_overlap = overlap
                 best_speaker = spk
-        all_segments.append(EvalSegment(
-            start=seg.start, end=seg.end,
-            speaker=best_speaker, text=seg.text,
-        ))
-        print(f"  [{seg.start:6.2f} - {seg.end:6.2f}] {best_speaker:12s}: {seg.text[:60]}")
+        all_segments.append(
+            EvalSegment(
+                start=seg.start,
+                end=seg.end,
+                speaker=best_speaker,
+                text=seg.text,
+            )
+        )
+        print(
+            f"  [{seg.start:6.2f} - {seg.end:6.2f}] {best_speaker:12s}: {seg.text[:60]}"
+        )
 
     print(f"\n  Total segments: {len(all_segments)}")
     return all_segments
 
 
 # ── MAIN ─────────────────────────────────────────────────────────────────────
+
 
 def main():
     print("=" * 60)
@@ -242,7 +290,9 @@ def main():
     # Load models
     print("\n[1/4] Loading Whisper...")
     transcriber = get_transcriber()
-    transcriber.load(settings.whisper_model, settings.whisper_compute_type, settings.whisper_device)
+    transcriber.load(
+        settings.whisper_model, settings.whisper_compute_type, settings.whisper_device
+    )
 
     print("[2/4] Loading Pyannote...")
     diarizer = get_diarizer()
@@ -254,7 +304,9 @@ def main():
 
     print("[4/4] Loading ground truth...")
     annotated_segs, metadata = load_ground_truth(GT_PATH)
-    print(f"  Ground truth: {len(annotated_segs)} segments, {metadata['expected_speakers']} speakers")
+    print(
+        f"  Ground truth: {len(annotated_segs)} segments, {metadata['expected_speakers']} speakers"  # noqa: E501
+    )
 
     # ── Run Path A ────────────────────────────────────────────────────────────
     live_segments = run_live_chunked(pcm_data, transcriber, diarizer)
@@ -274,8 +326,16 @@ def main():
     print("-" * 70)
 
     rows = [
-        ("Segments Matched", f"{live_metrics['segments_matched']}/{live_metrics['total_annotated']}", f"{post_metrics['segments_matched']}/{post_metrics['total_annotated']}"),
-        ("Attribution Accuracy", f"{live_metrics['accuracy']}%", f"{post_metrics['accuracy']}%"),
+        (
+            "Segments Matched",
+            f"{live_metrics['segments_matched']}/{live_metrics['total_annotated']}",
+            f"{post_metrics['segments_matched']}/{post_metrics['total_annotated']}",
+        ),
+        (
+            "Attribution Accuracy",
+            f"{live_metrics['accuracy']}%",
+            f"{post_metrics['accuracy']}%",
+        ),
         ("Macro F1", f"{live_metrics['macro_f1']}", f"{post_metrics['macro_f1']}"),
         ("SCDR", f"{live_metrics['scdr']}%", f"{post_metrics['scdr']}%"),
     ]
@@ -294,7 +354,9 @@ def main():
         "post_session": post_metrics,
     }
 
-    output_path = os.path.join(os.path.dirname(__file__), "diarization_audit_results.json")
+    output_path = os.path.join(
+        os.path.dirname(__file__), "diarization_audit_results.json"
+    )
     with open(output_path, "w") as f:
         json.dump(results, f, indent=2, default=str)
     print(f"\n  Results saved to: {output_path}")

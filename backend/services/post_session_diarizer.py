@@ -29,16 +29,19 @@ Design notes:
     session manager, keeping session completion fast regardless of
     diarization success or failure.
 """
+
 import asyncio
 import logging
 import os
 import time
-from utils.profiler import profile_stage, get_profiler, unregister_profiler
+
+from utils.profiler import get_profiler, profile_stage, unregister_profiler
 
 logger = logging.getLogger(__name__)
 
 
 # ── Public entry point ────────────────────────────────────────────────────────
+
 
 async def run_post_session_diarization(
     session_id: str,
@@ -71,7 +74,8 @@ async def run_post_session_diarization(
     t_start = time.monotonic()
     logger.info(
         "post_session_diarizer — session %s: started (audio=%s)",
-        session_id[:8], audio_file_path,
+        session_id[:8],
+        audio_file_path,
     )
 
     try:
@@ -82,7 +86,8 @@ async def run_post_session_diarization(
         if not os.path.isfile(audio_file_path):
             logger.warning(
                 "post_session_diarizer — session %s: WAV not found at %s, aborting",
-                session_id[:8], audio_file_path,
+                session_id[:8],
+                audio_file_path,
             )
             await _set_attribution_status(session_id, "failed")
             return
@@ -92,26 +97,30 @@ async def run_post_session_diarization(
         # (0.5 * 16000 * 2 = 16000 bytes + 44 header = 16044 bytes minimum)
         if file_size < 16_044:
             logger.warning(
-                "post_session_diarizer — session %s: WAV too small (%d bytes), aborting",
-                session_id[:8], file_size,
+                "post_session_diarizer — session %s: WAV too small (%d bytes), aborting",  # noqa: E501
+                session_id[:8],
+                file_size,
             )
             await _set_attribution_status(session_id, "failed")
             return
 
         wav_duration = max(0.0, (file_size - 44) / (16000 * 2))
-        
+
         try:
-            from db.database import AsyncSessionLocal
             from db import crud
+            from db.database import AsyncSessionLocal
+
             async with AsyncSessionLocal() as db:
                 segments = await crud.get_all_transcript_segments(db, session_id)
                 latest_segment_end = max((s.end_time for s in segments), default=0.0)
-                
+
                 gap = latest_segment_end - wav_duration
                 if gap > 1.0:
                     logger.warning(
                         "wav duration %.2fs but latest transcript %.2fs (gap=%.2fs)",
-                        wav_duration, latest_segment_end, gap
+                        wav_duration,
+                        latest_segment_end,
+                        gap,
                     )
         except Exception as e:
             logger.warning("Failed to validate audio duration gap: %s", e)
@@ -145,14 +154,16 @@ async def run_post_session_diarization(
         unique_speakers = len({s for _, _, s in turns})
         diagnostics = {
             "speakers_detected": unique_speakers,
-            "speaker_turns":     len(turns),
-            "segments_updated":  update_result["segments_updated"],
-            "total_segments":    update_result["total_segments"],
-            "coverage_percent":  round(
-                update_result["segments_updated"] / max(update_result["total_segments"], 1) * 100,
+            "speaker_turns": len(turns),
+            "segments_updated": update_result["segments_updated"],
+            "total_segments": update_result["total_segments"],
+            "coverage_percent": round(
+                update_result["segments_updated"]
+                / max(update_result["total_segments"], 1)
+                * 100,
                 1,
             ),
-            "overlap_matched":   update_result.get("overlap_count", 0),
+            "overlap_matched": update_result.get("overlap_count", 0),
             "proximity_matched": update_result.get("proximity_count", 0),
         }
         await _persist_attribution_diagnostics(session_id, diagnostics)
@@ -162,88 +173,118 @@ async def run_post_session_diarization(
             "post_session_diarizer — session %s: completed in %.1fs — "
             "%d speaker(s), %d turn(s), %d/%d segment(s) updated "
             "(coverage=%.1f%%, overlap=%d, proximity=%d)",
-            session_id[:8], elapsed, unique_speakers, len(turns),
-            update_result["segments_updated"], update_result["total_segments"],
+            session_id[:8],
+            elapsed,
+            unique_speakers,
+            len(turns),
+            update_result["segments_updated"],
+            update_result["total_segments"],
             diagnostics["coverage_percent"],
-            diagnostics["overlap_matched"], diagnostics["proximity_matched"],
+            diagnostics["overlap_matched"],
+            diagnostics["proximity_matched"],
         )
-        
+
         # ── Step 10: Role Classification (V1 heuristic + V2 LLM) ─────────────
         roles_v1 = None
         roles_v2_result = None
         primary_roles = {}
         comparison = {}
-        
+
         from services.role_classifier import classify_roles, classify_roles_v2
-        
+
         # Run V1 (heuristic — always runs)
         roles_v1 = await classify_roles(session_id)
-        
+
         # Run V2 (Gemini Flash — may return None on failure)
         roles_v2_result = await classify_roles_v2(session_id)
-        
+
         # Determine the primary roles to use for downstream (v2 if available, else v1)
         if roles_v2_result and roles_v2_result.get("roles"):
             primary_roles = roles_v2_result["roles"]
         else:
             primary_roles = roles_v1 or {}
-        
+
         # Persist all results
-        from db.database import AsyncSessionLocal
         from db import crud
+        from db.database import AsyncSessionLocal
+
         with profile_stage(session_id, "Database writes"):
             async with AsyncSessionLocal() as db:
                 metrics_to_save = []
-                
+
                 # Legacy key for backward compatibility (used by objection_handler etc.)
                 if primary_roles:
                     metrics_to_save.append(
                         {"metric_name": "speaker_roles", "metric_value": primary_roles}
                     )
-                
+
                 # V1 result (always)
                 if roles_v1:
                     metrics_to_save.append(
                         {"metric_name": "speaker_roles_v1", "metric_value": roles_v1}
                     )
-                
+
                 # V2 result (when available)
                 if roles_v2_result:
                     metrics_to_save.append(
-                        {"metric_name": "speaker_roles_v2", "metric_value": roles_v2_result}
+                        {
+                            "metric_name": "speaker_roles_v2",
+                            "metric_value": roles_v2_result,
+                        }
                     )
-                
+
                 # Comparison metric
                 comparison = {
                     "v1_roles": roles_v1 or {},
-                    "v2_roles": roles_v2_result.get("roles", {}) if roles_v2_result else {},
-                    "v2_confidence": roles_v2_result.get("confidence", 0.0) if roles_v2_result else None,
-                    "v2_reasoning": roles_v2_result.get("reasoning", {}) if roles_v2_result else {},
+                    "v2_roles": (
+                        roles_v2_result.get("roles", {}) if roles_v2_result else {}
+                    ),
+                    "v2_confidence": (
+                        roles_v2_result.get("confidence", 0.0)
+                        if roles_v2_result
+                        else None
+                    ),
+                    "v2_reasoning": (
+                        roles_v2_result.get("reasoning", {}) if roles_v2_result else {}
+                    ),
                     "agreement": (
                         roles_v1 == roles_v2_result.get("roles", {})
                         if roles_v1 and roles_v2_result and roles_v2_result.get("roles")
                         else None
                     ),
-                    "primary_source": "v2" if roles_v2_result and roles_v2_result.get("roles") else "v1",
+                    "primary_source": (
+                        "v2"
+                        if roles_v2_result and roles_v2_result.get("roles")
+                        else "v1"
+                    ),
                 }
                 metrics_to_save.append(
-                    {"metric_name": "role_classification_comparison", "metric_value": comparison}
+                    {
+                        "metric_name": "role_classification_comparison",
+                        "metric_value": comparison,
+                    }
                 )
-                
+
                 if metrics_to_save:
-                    await crud.save_session_metrics_batch(db, session_id, metrics_to_save)
+                    await crud.save_session_metrics_batch(
+                        db, session_id, metrics_to_save
+                    )
                     await db.commit()
-            
+
         logger.info(
             "post_session_diarizer — session %s: roles classified (primary=%s):\n%s",
             session_id[:8],
             comparison.get("primary_source", "v1"),
-            "\n".join([f"{spk} -> {role}" for spk, role in primary_roles.items()]) if primary_roles else "none"
+            (
+                "\n".join([f"{spk} -> {role}" for spk, role in primary_roles.items()])
+                if primary_roles
+                else "none"
+            ),
         )
 
-                        
         # ── Step 11: Objection Handling Analysis ───────────────────────────────
         from services.objection_handler import analyze_objection_handling
+
         async with AsyncSessionLocal() as db:
             await analyze_objection_handling(db, session_id)
             with profile_stage(session_id, "Database writes"):
@@ -251,6 +292,7 @@ async def run_post_session_diarization(
 
         # ── Step 12: Talk Ratio Timeline ───────────────────────────────────────
         from services.talk_ratio_analyzer import analyze_talk_ratio
+
         async with AsyncSessionLocal() as db:
             # Fetch all updated segments
             segments = await crud.get_all_transcript_segments(db, session_id)
@@ -258,64 +300,86 @@ async def run_post_session_diarization(
                 talk_ratio_data = analyze_talk_ratio(segments)
                 # Persist two metrics
                 with profile_stage(session_id, "Database writes"):
-                    await crud.save_session_metrics_batch(db, session_id, [
-                        {
-                            "metric_name": "talk_ratio_summary", 
-                            "metric_value": {
-                                "summary": talk_ratio_data["summary"],
-                                "overall_participation": talk_ratio_data["overall_participation"]
-                            }
-                        },
-                        {
-                            "metric_name": "talk_timeline", 
-                            "metric_value": {
-                                "timeline": talk_ratio_data["timeline"]
-                            }
-                        }
-                    ])
+                    await crud.save_session_metrics_batch(
+                        db,
+                        session_id,
+                        [
+                            {
+                                "metric_name": "talk_ratio_summary",
+                                "metric_value": {
+                                    "summary": talk_ratio_data["summary"],
+                                    "overall_participation": talk_ratio_data[
+                                        "overall_participation"
+                                    ],
+                                },
+                            },
+                            {
+                                "metric_name": "talk_timeline",
+                                "metric_value": {
+                                    "timeline": talk_ratio_data["timeline"]
+                                },
+                            },
+                        ],
+                    )
                     await db.commit()
-                logger.info("post_session_diarizer — session %s: Talk ratio timeline generated.", session_id[:8])
+                logger.info(
+                    "post_session_diarizer — session %s: Talk ratio timeline generated.",  # noqa: E501
+                    session_id[:8],
+                )
 
         # ── Step 12.5: Context Analysis & Upsert AnalysisResult ─────────────────
         from services.context_analyzer import analyze_meeting, analyze_sales
+
         async with AsyncSessionLocal() as db:
             db_segments = await crud.get_all_transcript_segments(db, session_id)
             session_row = await crud.get_session(db, session_id)
-            
+
             if db_segments and session_row:
                 enriched_segments = []
                 for s in db_segments:
-                    enriched_segments.append({
-                        "start": s.start_time,
-                        "end": s.end_time,
-                        "speaker": s.speaker_id or "Speaker 1",
-                        "text": s.text or "",
-                        "sentiment": s.sentiment or 0.0,
-                        "sentiment_label": s.sentiment_label or "Neutral",
-                        "sentiment_confidence": 1.0
-                    })
-                
+                    enriched_segments.append(
+                        {
+                            "start": s.start_time,
+                            "end": s.end_time,
+                            "speaker": s.speaker_id or "Speaker 1",
+                            "text": s.text or "",
+                            "sentiment": s.sentiment or 0.0,
+                            "sentiment_label": s.sentiment_label or "Neutral",
+                            "sentiment_confidence": 1.0,
+                        }
+                    )
+
                 final_transcript = {
                     "session_id": session_id,
                     "text": " ".join([s["text"] for s in enriched_segments]),
-                    "segments": enriched_segments
+                    "segments": enriched_segments,
                 }
-                
+
                 # Run the appropriate mode analysis inside loop executor
                 if session_row.mode == "sales":
-                    insights = await loop.run_in_executor(None, analyze_sales, enriched_segments, session_id)
+                    insights = await loop.run_in_executor(
+                        None, analyze_sales, enriched_segments, session_id
+                    )
                 else:
-                    insights = await loop.run_in_executor(None, analyze_meeting, final_transcript)
-                
+                    insights = await loop.run_in_executor(
+                        None, analyze_meeting, final_transcript
+                    )
+
                 # Save AnalysisResult
-                q_score = insights.get("quality", {}).get("score", 5) if isinstance(insights.get("quality"), dict) else 5
+                q_score = (
+                    insights.get("quality", {}).get("score", 5)
+                    if isinstance(insights.get("quality"), dict)
+                    else 5
+                )
                 health_score = int(q_score * 10)
-                
+
                 with profile_stage(session_id, "Database writes"):
-                    from db.models import AnalysisResult as DBAnalysisResult
-                    from sqlalchemy.dialects.postgresql import insert as pg_insert
                     import uuid as _uuid
-                    
+
+                    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+                    from db.models import AnalysisResult as DBAnalysisResult
+
                     stmt = (
                         pg_insert(DBAnalysisResult)
                         .values(
@@ -334,32 +398,63 @@ async def run_post_session_diarization(
                         )
                     )
                     await db.execute(stmt)
-                    
+
                     metrics_to_save = [
                         {"metric_name": "health_score", "metric_value": health_score},
-                        {"metric_name": "sentiment_score", "metric_value": insights.get("sentiment_score", 0.0)},
-                        {"metric_name": "objections", "metric_value": insights.get("objections", [])},
-                        {"metric_name": "buying_signals", "metric_value": insights.get("buying_signals", []) if "buying_signals" in insights else []},
+                        {
+                            "metric_name": "sentiment_score",
+                            "metric_value": insights.get("sentiment_score", 0.0),
+                        },
+                        {
+                            "metric_name": "objections",
+                            "metric_value": insights.get("objections", []),
+                        },
+                        {
+                            "metric_name": "buying_signals",
+                            "metric_value": (
+                                insights.get("buying_signals", [])
+                                if "buying_signals" in insights
+                                else []
+                            ),
+                        },
                     ]
-                    await crud.save_session_metrics_batch(db, session_id, metrics_to_save)
+                    await crud.save_session_metrics_batch(
+                        db, session_id, metrics_to_save
+                    )
                     await db.commit()
 
         # ── Step 13: Client Memory Profile ─────────────────────────────────────
         try:
             from services.client_memory import update_client_memory
+
             with profile_stage(session_id, "Client Memory update"):
                 async with AsyncSessionLocal() as db:
                     session_row = await crud.get_session(db, session_id)
                     if session_row and session_row.client_id:
-                        logger.info("post_session_diarizer — session %s: Updating client memory for client %s...", session_id[:8], session_row.client_id)
+                        logger.info(
+                            "post_session_diarizer — session %s: Updating client memory for client %s...",  # noqa: E501
+                            session_id[:8],
+                            session_row.client_id,
+                        )
                         await update_client_memory(db, session_row.client_id)
                         with profile_stage(session_id, "Database writes"):
                             await db.commit()
-                        logger.info("post_session_diarizer — session %s: Client memory updated.", session_id[:8])
+                        logger.info(
+                            "post_session_diarizer — session %s: Client memory updated.",  # noqa: E501
+                            session_id[:8],
+                        )
                     else:
-                        logger.info("post_session_diarizer — session %s: No client linked, skipping memory update.", session_id[:8])
+                        logger.info(
+                            "post_session_diarizer — session %s: No client linked, skipping memory update.",  # noqa: E501
+                            session_id[:8],
+                        )
         except Exception as e:
-            logger.error("Failed to update client memory for session %s: %s", session_id[:8], e, exc_info=True)
+            logger.error(
+                "Failed to update client memory for session %s: %s",
+                session_id[:8],
+                e,
+                exc_info=True,
+            )
 
         # ── Step 14: Simulate Dashboard data preparation ────────────────────────
         try:
@@ -368,26 +463,35 @@ async def run_post_session_diarization(
                     # Run the exact dashboard query DB fallback logic
                     db_session = await crud.get_session(db, session_id)
                     if db_session:
-                        segments = await crud.get_transcript_segments(db, session_id, limit=50)
-                        metrics_list = await crud.get_latest_session_metrics(db, session_id)
-                        alerts = await crud.get_alerts(db, session_id, limit=50)
-                        
+                        await crud.get_transcript_segments(db, session_id, limit=50)
+                        await crud.get_latest_session_metrics(db, session_id)
+                        await crud.get_alerts(db, session_id, limit=50)
+
                         # Reconstruct metrics dictionary & speaking ratios
-                        db_segments = await crud.get_all_transcript_segments(db, session_id)
+                        db_segments = await crud.get_all_transcript_segments(
+                            db, session_id
+                        )
                         if db_segments:
                             participation = {}
                             for seg in db_segments:
                                 speaker = seg.speaker_id or "Speaker 1"
                                 text = seg.text or ""
                                 word_count = len(text.split())
-                                participation[speaker] = participation.get(speaker, 0) + word_count
+                                participation[speaker] = (
+                                    participation.get(speaker, 0) + word_count
+                                )
                             total_words = sum(participation.values()) or 1
-                            speaking_ratio = {
+                            # Compute speaking ratio to simulate load
+                            {
                                 sp: round((wc / total_words) * 100, 1)
                                 for sp, wc in participation.items()
                             }
         except Exception as e:
-            logger.error("Failed to simulate dashboard data preparation for session %s: %s", session_id[:8], e)
+            logger.error(
+                "Failed to simulate dashboard data preparation for session %s: %s",
+                session_id[:8],
+                e,
+            )
 
         # ── Profile logging & cleanup ──────────────────────────────────────────
         profiler = get_profiler(session_id)
@@ -396,20 +500,23 @@ async def run_post_session_diarization(
             try:
                 total_time = (time.perf_counter() - profiler.start_time) * 1000
                 async with AsyncSessionLocal() as db:
-                    await crud.save_session_metrics_batch(db, session_id, [
-                        {
-                            "metric_name": "performance_profile",
-                            "metric_value": {
-                                "timings": profiler.timings,
-                                "total_time_ms": total_time
+                    await crud.save_session_metrics_batch(
+                        db,
+                        session_id,
+                        [
+                            {
+                                "metric_name": "performance_profile",
+                                "metric_value": {
+                                    "timings": profiler.timings,
+                                    "total_time_ms": total_time,
+                                },
                             }
-                        }
-                    ])
+                        ],
+                    )
                     await db.commit()
             except Exception as pe:
                 logger.error("Failed to save performance profile to DB: %s", pe)
             unregister_profiler(session_id)
-
 
     except Exception:  # noqa: BLE001
         logger.exception(
@@ -423,6 +530,7 @@ async def run_post_session_diarization(
 
 
 # ── Synchronous Pyannote execution (runs in thread executor) ──────────────────
+
 
 def _run_pyannote_sync(
     audio_file_path: str,
@@ -438,8 +546,9 @@ def _run_pyannote_sync(
         or None if diarization failed.
     """
     try:
-        from audio.diarizer import get_diarizer
         import warnings
+
+        from audio.diarizer import get_diarizer
 
         diarizer = get_diarizer()
         if not diarizer._loaded or diarizer._pipeline is None:
@@ -453,7 +562,8 @@ def _run_pyannote_sync(
         t0 = time.monotonic()
         logger.info(
             "post_session_diarizer — session %s: running Pyannote on %s …",
-            session_id[:8], audio_file_path,
+            session_id[:8],
+            audio_file_path,
         )
 
         with warnings.catch_warnings():
@@ -463,37 +573,46 @@ def _run_pyannote_sync(
                 category=UserWarning,
             )
             import wave
+
             import numpy as np
             import torch
-            
-            logger.info("post_session_diarizer — session %s: pre-loading WAV file using wave module", session_id[:8])
+
+            logger.info(
+                "post_session_diarizer — session %s: pre-loading WAV file using wave module",  # noqa: E501
+                session_id[:8],
+            )
             with wave.open(audio_file_path, "rb") as w:
                 params = w.getparams()
                 nchannels, sampwidth, framerate, nframes = params[:4]
                 raw_bytes = w.readframes(nframes)
-                
+
             audio_int16 = np.frombuffer(raw_bytes, dtype=np.int16)
             if nchannels > 1:
-                audio_int16 = audio_int16.reshape(-1, nchannels).mean(axis=1).astype(np.int16)
-                
+                audio_int16 = (
+                    audio_int16.reshape(-1, nchannels).mean(axis=1).astype(np.int16)
+                )
+
             audio_float32 = audio_int16.astype(np.float32) / 32768.0
             audio_tensor = torch.from_numpy(audio_float32).unsqueeze(0)
-            
+
             waveform = {"waveform": audio_tensor, "sample_rate": framerate}
             logger.info(
-                "post_session_diarizer — session %s: waveform pre-loaded (channels=%d, sample_rate=%d, duration=%.2fs)",
-                session_id[:8], nchannels, framerate, len(audio_int16) / framerate
+                "post_session_diarizer — session %s: waveform pre-loaded (channels=%d, sample_rate=%d, duration=%.2fs)",  # noqa: E501
+                session_id[:8],
+                nchannels,
+                framerate,
+                len(audio_int16) / framerate,
             )
-            
+
             logger.info(
                 "Pyannote configured speakers=%s",
                 2,
             )
-            
+
             # OPTIMIZATION: Set batch size to 32 for maximum throughput.
             # Stride remains 0.1 (default) to preserve SCDR accuracy.
             diarizer._pipeline.segmentation_batch_size = 32
-                
+
             with torch.inference_mode():
                 diarization = diarizer._pipeline(
                     waveform,
@@ -521,34 +640,39 @@ def _run_pyannote_sync(
         logger.info(
             "post_session_diarizer — session %s: Pyannote finished in %.1fs — "
             "detected %d speaker(s), %d turn(s)",
-            session_id[:8], elapsed, unique_speakers, len(turns),
+            session_id[:8],
+            elapsed,
+            unique_speakers,
+            len(turns),
         )
         return turns
 
     except Exception as exc:
         logger.error(
             "post_session_diarizer — session %s: Pyannote error — %s",
-            session_id[:8], exc, exc_info=True,
+            session_id[:8],
+            exc,
+            exc_info=True,
         )
         return None
 
 
 # ── DB helpers ────────────────────────────────────────────────────────────────
 
+
 async def _set_attribution_status(session_id: str, status: str) -> None:
     """Update speaker_attribution_status on the session row and commit."""
     try:
-        from db.database import AsyncSessionLocal
         from db import crud
+        from db.database import AsyncSessionLocal
 
         async with AsyncSessionLocal() as db:
-            await crud.update_session_speaker_attribution_status(
-                db, session_id, status
-            )
+            await crud.update_session_speaker_attribution_status(db, session_id, status)
             await db.commit()
 
         # Synchronise memory state
         from ws.session_manager import get_session_manager
+
         manager = get_session_manager()
         session = manager.get(session_id)
         if session:
@@ -561,12 +685,14 @@ async def _set_attribution_status(session_id: str, status: str) -> None:
         )
         logger.debug(
             "post_session_diarizer — session %s: attribution status → %s",
-            session_id[:8], status,
+            session_id[:8],
+            status,
         )
     except Exception:  # noqa: BLE001
         logger.exception(
             "post_session_diarizer — session %s: failed to set status=%s",
-            session_id[:8], status,
+            session_id[:8],
+            status,
         )
 
 
@@ -598,11 +724,15 @@ async def _apply_speaker_updates(
             "speaker_id fields unchanged",
             session_id[:8],
         )
-        return {"segments_updated": 0, "total_segments": 0,
-                "overlap_count": 0, "proximity_count": 0}
+        return {
+            "segments_updated": 0,
+            "total_segments": 0,
+            "overlap_count": 0,
+            "proximity_count": 0,
+        }
 
-    from db.database import AsyncSessionLocal
     from db import crud
+    from db.database import AsyncSessionLocal
 
     async with AsyncSessionLocal() as db:
         segments = await crud.get_all_transcript_segments(db, session_id)
@@ -613,8 +743,12 @@ async def _apply_speaker_updates(
                 "post_session_diarizer — session %s: no transcript segments in DB",
                 session_id[:8],
             )
-            return {"segments_updated": 0, "total_segments": 0,
-                    "overlap_count": 0, "proximity_count": 0}
+            return {
+                "segments_updated": 0,
+                "total_segments": 0,
+                "overlap_count": 0,
+                "proximity_count": 0,
+            }
 
         speaker_updates: list[dict] = []
         overlap_count = 0
@@ -623,7 +757,9 @@ async def _apply_speaker_updates(
         logger.debug(
             "post_session_diarizer — session %s: matching %d segment(s) against "
             "%d Pyannote turn(s)",
-            session_id[:8], total, len(turns),
+            session_id[:8],
+            total,
+            len(turns),
         )
 
         for seg in segments:
@@ -635,41 +771,63 @@ async def _apply_speaker_updates(
                 overlap_count += 1
                 logger.debug(
                     "  MATCHED  seg=%-4s [%6.2f-%6.2f] → %-12s | %s",
-                    seg.id, seg.start_time, seg.end_time, new_speaker, reason,
+                    seg.id,
+                    seg.start_time,
+                    seg.end_time,
+                    new_speaker,
+                    reason,
                 )
             elif reason.startswith("nearest"):
                 proximity_count += 1
                 logger.debug(
                     "  PROXIM   seg=%-4s [%6.2f-%6.2f] → %-12s | %s",
-                    seg.id, seg.start_time, seg.end_time, new_speaker, reason,
+                    seg.id,
+                    seg.start_time,
+                    seg.end_time,
+                    new_speaker,
+                    reason,
                 )
             else:
                 logger.debug(
                     "  UNMATCH  seg=%-4s [%6.2f-%6.2f] → %-12s | %s",
-                    seg.id, seg.start_time, seg.end_time, new_speaker, reason,
+                    seg.id,
+                    seg.start_time,
+                    seg.end_time,
+                    new_speaker,
+                    reason,
                 )
 
             if new_speaker != seg.speaker_id:
-                speaker_updates.append({
-                    "segment_id": seg.id,
-                    "speaker": new_speaker,
-                })
+                speaker_updates.append(
+                    {
+                        "segment_id": seg.id,
+                        "speaker": new_speaker,
+                    }
+                )
 
         logger.info(
             "post_session_diarizer — session %s: assignment summary — "
             "overlap=%d, proximity=%d, unmatched=%d (total=%d)",
-            session_id[:8], overlap_count, proximity_count,
-            total - overlap_count - proximity_count, total,
+            session_id[:8],
+            overlap_count,
+            proximity_count,
+            total - overlap_count - proximity_count,
+            total,
         )
 
         if not speaker_updates:
             logger.info(
                 "post_session_diarizer — session %s: all %d segment(s) already have "
                 "correct speaker labels — no updates needed",
-                session_id[:8], total,
+                session_id[:8],
+                total,
             )
-            return {"segments_updated": 0, "total_segments": total,
-                    "overlap_count": overlap_count, "proximity_count": proximity_count}
+            return {
+                "segments_updated": 0,
+                "total_segments": total,
+                "overlap_count": overlap_count,
+                "proximity_count": proximity_count,
+            }
 
         with profile_stage(session_id, "Database writes"):
             count = await crud.update_segment_speakers(db, session_id, speaker_updates)
@@ -677,13 +835,15 @@ async def _apply_speaker_updates(
 
     logger.info(
         "post_session_diarizer — session %s: updated %d / %d segment speaker labels",
-        session_id[:8], count, total,
+        session_id[:8],
+        count,
+        total,
     )
     return {
         "segments_updated": count,
-        "total_segments":   total,
-        "overlap_count":    overlap_count,
-        "proximity_count":  proximity_count,
+        "total_segments": total,
+        "overlap_count": overlap_count,
+        "proximity_count": proximity_count,
     }
 
 
@@ -705,14 +865,21 @@ async def _persist_attribution_diagnostics(
     No schema changes required — uses the existing session_metrics table.
     """
     try:
-        from db.database import AsyncSessionLocal
         from db import crud
+        from db.database import AsyncSessionLocal
 
         async with AsyncSessionLocal() as db:
             with profile_stage(session_id, "Database writes"):
-                await crud.save_session_metrics_batch(db, session_id, [
-                    {"metric_name": "speaker_attribution", "metric_value": diagnostics}
-                ])
+                await crud.save_session_metrics_batch(
+                    db,
+                    session_id,
+                    [
+                        {
+                            "metric_name": "speaker_attribution",
+                            "metric_value": diagnostics,
+                        }
+                    ],
+                )
                 await db.commit()
 
         logger.info(
@@ -726,7 +893,7 @@ async def _persist_attribution_diagnostics(
         )
     except Exception:  # noqa: BLE001
         logger.exception(
-            "post_session_diarizer — session %s: failed to persist attribution diagnostics",
+            "post_session_diarizer — session %s: failed to persist attribution diagnostics",  # noqa: E501
             session_id[:8],
         )
 
@@ -782,7 +949,11 @@ def _find_best_speaker(
     if best_speaker is not None:
         seg_dur = max(seg_end - seg_start, 1e-6)
         overlap_pct = round(best_overlap / seg_dur * 100, 1)
-        return best_speaker, f"overlap({best_overlap:.2f}s,{overlap_pct}%)", best_overlap
+        return (
+            best_speaker,
+            f"overlap({best_overlap:.2f}s,{overlap_pct}%)",
+            best_overlap,
+        )
 
     # ── Stage 2: nearest-turn proximity fallback ─────────────────────────────
     # No turn overlaps this segment — find the nearest turn by boundary gap.

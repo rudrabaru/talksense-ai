@@ -14,6 +14,7 @@ Backpressure:
 JSON envelope:
   { "type": "<channel>", "payload": { ... }, "ts": <unix_ms> }
 """
+
 import asyncio
 import logging
 import time
@@ -24,7 +25,7 @@ from starlette.websockets import WebSocketState
 
 logger = logging.getLogger(__name__)
 
-SEND_TIMEOUT = 0.5   # seconds — give up trying to send after this
+SEND_TIMEOUT = 0.5  # seconds — give up trying to send after this
 
 
 def _now_ms() -> int:
@@ -35,7 +36,9 @@ def _envelope(channel: str, payload: dict) -> dict:
     return {"type": channel, "payload": payload, "ts": _now_ms()}
 
 
-async def _safe_send(ws: WebSocket | None, data: dict, drop_on_lag: bool = False) -> bool:
+async def _safe_send(
+    ws: WebSocket | None, data: dict, drop_on_lag: bool = False
+) -> bool:
     """
     Send JSON to a WebSocket connection.
 
@@ -72,6 +75,7 @@ async def _safe_send(ws: WebSocket | None, data: dict, drop_on_lag: bool = False
 
 
 # ── Public broadcast functions ────────────────────────────────────────────────
+
 
 async def broadcast_transcript(ws: WebSocket | None, segment: dict) -> None:
     """
@@ -120,7 +124,9 @@ async def broadcast_alert(ws: WebSocket | None, alert: dict) -> None:
     )
 
 
-async def broadcast_status(ws: WebSocket | None, status: str, extra: dict | None = None) -> None:
+async def broadcast_status(
+    ws: WebSocket | None, status: str, extra: dict | None = None
+) -> None:
     """
     Send a session status change.
 

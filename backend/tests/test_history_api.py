@@ -1,18 +1,22 @@
-import sys
-import os
 import asyncio
-import uuid
-import requests
+import os
+import sys
 import traceback
+import uuid
+
+import requests
 
 # Add project root to python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from db.database import AsyncSessionLocal, engine
-from db.models import Session as DBSession, Client as DBClient, SessionMetric as DBSessionMetric
+from db.models import Client as DBClient
+from db.models import Session as DBSession
+from db.models import SessionMetric as DBSessionMetric
 
 BASE_URL = "http://localhost:8000"
+
 
 async def test_all():
     print("Initializing test data...")
@@ -81,13 +85,23 @@ async def test_all():
         db.add(s5)
 
         # S1 has health=75 then health=85 (latest). Sentiment=positive.
-        m1_h1 = DBSessionMetric(session_id=s_ids[0], metric_name="health_score", metric_value=75)
-        m1_h2 = DBSessionMetric(session_id=s_ids[0], metric_name="health_score", metric_value=85)
-        m1_s = DBSessionMetric(session_id=s_ids[0], metric_name="sentiment", metric_value="positive")
-        
+        m1_h1 = DBSessionMetric(
+            session_id=s_ids[0], metric_name="health_score", metric_value=75
+        )
+        m1_h2 = DBSessionMetric(
+            session_id=s_ids[0], metric_name="health_score", metric_value=85
+        )
+        m1_s = DBSessionMetric(
+            session_id=s_ids[0], metric_name="sentiment", metric_value="positive"
+        )
+
         # S4 has health=95. Sentiment=neutral.
-        m4_h = DBSessionMetric(session_id=s_ids[3], metric_name="health_score", metric_value=95)
-        m4_s = DBSessionMetric(session_id=s_ids[3], metric_name="sentiment", metric_value="neutral")
+        m4_h = DBSessionMetric(
+            session_id=s_ids[3], metric_name="health_score", metric_value=95
+        )
+        m4_s = DBSessionMetric(
+            session_id=s_ids[3], metric_name="sentiment", metric_value="neutral"
+        )
 
         db.add_all([m1_h1, m1_h2, m1_s, m4_h, m4_s])
         await db.commit()
@@ -104,7 +118,9 @@ async def test_all():
         assert s1_item["mode"] == "meeting"
         assert s1_item["status"] == "completed"
         assert s1_item["client_name"] == "Test Client Alpha"
-        assert s1_item["health_score"] == 85, f"Expected latest health score 85, got {s1_item['health_score']}"
+        assert (
+            s1_item["health_score"] == 85
+        ), f"Expected latest health score 85, got {s1_item['health_score']}"
         assert s1_item["sentiment"] == "positive"
         print("[OK] Baseline list & DTO verified")
 
@@ -133,13 +149,17 @@ async def test_all():
         res = requests.get(f"{BASE_URL}/sessions?search=Beta")
         assert res.status_code == 200
         for item in res.json()["items"]:
-            assert "Beta" in (item["title"] or "") or "Beta" in (item["client_name"] or "")
+            assert "Beta" in (item["title"] or "") or "Beta" in (
+                item["client_name"] or ""
+            )
         print("[OK] Client name search verified")
 
         # Test 6: Sort by duration
         res = requests.get(f"{BASE_URL}/sessions?sort_by=duration&sort_order=desc")
         assert res.status_code == 200
-        durations = [i["duration"] for i in res.json()["items"] if i["duration"] is not None]
+        durations = [
+            i["duration"] for i in res.json()["items"] if i["duration"] is not None
+        ]
         assert durations == sorted(durations, reverse=True)
         print("[OK] Sorting verified")
 
@@ -163,12 +183,17 @@ async def test_all():
         print("Cleaning up test data...")
         async with AsyncSessionLocal() as db:
             for sid in s_ids:
-                await db.execute(DBSession.__table__.delete().where(DBSession.id == sid))
-            await db.execute(DBClient.__table__.delete().where(DBClient.id.in_([c1_id, c2_id])))
+                await db.execute(
+                    DBSession.__table__.delete().where(DBSession.id == sid)
+                )
+            await db.execute(
+                DBClient.__table__.delete().where(DBClient.id.in_([c1_id, c2_id]))
+            )
             await db.commit()
         # Dispose engine to close all connections cleanly
         await engine.dispose()
         print("Cleanup done.")
+
 
 if __name__ == "__main__":
     asyncio.run(test_all())

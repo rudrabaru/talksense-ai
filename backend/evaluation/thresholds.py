@@ -4,12 +4,13 @@ THRESHOLDS = {
     "role_classification_macro_f1": 0.70,
     "buying_signal_f1": 0.70,
     "objection_f1": 0.70,
-    "objection_handling_accuracy": 0.70
+    "objection_handling_accuracy": 0.70,
 }
+
 
 def evaluate_thresholds(metrics: dict) -> dict:
     """
-    Given a metrics dictionary from evaluate_analytics.py, 
+    Given a metrics dictionary from evaluate_analytics.py,
     return a PASS/FAIL status for each subsystem.
     """
     health = {
@@ -17,14 +18,17 @@ def evaluate_thresholds(metrics: dict) -> dict:
         "role_classification": "FAIL",
         "buying_signals": "FAIL",
         "objections": "FAIL",
-        "objection_handling": "FAIL"
+        "objection_handling": "FAIL",
     }
-    
+
     # Speaker Attribution
     sa_metrics = metrics.get("speaker_attribution", {})
     if sa_metrics:
-        if sa_metrics.get("macro_f1", 0) >= THRESHOLDS["speaker_attribution_macro_f1"] and \
-           sa_metrics.get("coverage", 0) >= THRESHOLDS["speaker_attribution_coverage"]:
+        if (
+            sa_metrics.get("macro_f1", 0) >= THRESHOLDS["speaker_attribution_macro_f1"]
+            and sa_metrics.get("coverage", 0)
+            >= THRESHOLDS["speaker_attribution_coverage"]
+        ):
             health["speaker_attribution"] = "PASS"
 
     # Role Classification

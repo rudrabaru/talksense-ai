@@ -22,7 +22,8 @@ Implementation is staged across phases:
         save_alerts_batch()          — batch-stage multiple alert event rows
         save_analysis_result()       — atomic PostgreSQL upsert for final analysis
         update_client_snapshot()     — append a new client briefing snapshot row
-        recover_stale_sessions()     — bulk-transition orphaned active sessions on startup
+        recover_stale_sessions()     — bulk-transition orphaned active
+                                       sessions on startup
 
 Design rules (from .agent/ARCHITECTURE.md + database_agent.md):
     - All functions are async; no sync SQLAlchemy calls
@@ -39,26 +40,27 @@ Transaction ownership rules (Approved CRUD Refactor Design):
           await crud.save_session_metrics_batch(db, ...)
           await crud.save_alerts_batch(db, ...)
           await db.commit()         # single commit covers all three
-          session.last_flushed_segment_index += len(delta)  # advance watermarks AFTER commit
+          session.last_flushed_segment_index += len(delta)
+          # advance watermarks AFTER commit
     - recover_stale_sessions() is a self-contained startup task and manages its
       own commit internally since it runs in isolation before any flusher starts.
     - Callers are responsible for advancing watermarks AFTER commit succeeds
 """
+
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import cast
 
-from sqlalchemy import select, update, CursorResult
+from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
-from db.models import Session as _DBSession
 
 from db.models import Alert as DBAlert
 from db.models import AnalysisResult as DBAnalysisResult
 from db.models import Client as DBClient
 from db.models import ClientSnapshot as DBClientSnapshot
 from db.models import Session as DBSession
+from db.models import Session as _DBSession
 from db.models import SessionMetric as DBSessionMetric
 from db.models import TranscriptSegment as DBTranscriptSegment
 
@@ -66,9 +68,7 @@ logger = logging.getLogger(__name__)
 
 # ── Terminal status set ───────────────────────────────────────────────────────
 # Used to decide whether ended_at / duration should be stamped on update.
-_TERMINAL_STATUSES = frozenset(
-    {"completed", "failed", "interrupted", "expired"}
-)
+_TERMINAL_STATUSES = frozenset({"completed", "failed", "interrupted", "expired"})
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -79,8 +79,8 @@ _TERMINAL_STATUSES = frozenset(
 async def create_session(
     db: AsyncSession,
     *,
-    session_id: str,          # UUID string from ws/session_manager.py
-    mode: str,                # "meeting" | "sales" | "interview"
+    session_id: str,  # UUID string from ws/session_manager.py
+    mode: str,  # "meeting" | "sales" | "interview"
     client_id: str | None = None,
     user_id: int | None = None,
     title: str | None = None,
@@ -187,9 +187,7 @@ async def update_session_status(
         if duration is not None:
             row.duration = round(duration, 3)
 
-    logger.info(
-        "DB — session %s status staged → %s", session_id[:8], status
-    )
+    logger.info("DB — session %s status staged → %s", session_id[:8], status)
     return row
 
 
@@ -361,7 +359,8 @@ async def save_transcript_segments(
     db.add_all(rows)
     logger.debug(
         "DB — %d transcript segment(s) staged for session %s",
-        len(rows), session_id[:8],
+        len(rows),
+        session_id[:8],
     )
 
 
@@ -408,7 +407,8 @@ async def save_session_metrics_batch(
     db.add_all(rows)
     logger.debug(
         "DB — %d metric row(s) staged for session %s",
-        len(rows), session_id[:8],
+        len(rows),
+        session_id[:8],
     )
 
 
@@ -454,22 +454,25 @@ async def save_alerts_batch(
             ts = datetime.fromisoformat(ts)
         elif ts is None:
             ts = datetime.now(tz=timezone.utc)
-            
+
         if ts.tzinfo is None:
             ts = ts.replace(tzinfo=timezone.utc)
 
-        rows.append(DBAlert(
-            session_id=sid,
-            type=alert.get("alert_type", alert.get("type")),
-            severity=alert.get("level", alert.get("severity", "info")),
-            message=alert.get("message", ""),
-            timestamp=ts,
-        ))
+        rows.append(
+            DBAlert(
+                session_id=sid,
+                type=alert.get("alert_type", alert.get("type")),
+                severity=alert.get("level", alert.get("severity", "info")),
+                message=alert.get("message", ""),
+                timestamp=ts,
+            )
+        )
 
     db.add_all(rows)
     logger.debug(
         "DB — %d alert(s) staged for session %s",
-        len(rows), session_id[:8],
+        len(rows),
+        session_id[:8],
     )
 
 
@@ -529,7 +532,8 @@ async def save_analysis_result(
     await db.execute(stmt)
     logger.info(
         "DB — analysis_result upsert staged for session %s [health=%s]",
-        session_id[:8], health_score,
+        session_id[:8],
+        health_score,
     )
 
 
@@ -577,7 +581,8 @@ async def update_client_snapshot(
     db.add(row)
     logger.info(
         "DB — client_snapshot staged for client %s [meetings=%d]",
-        client_id[:8], meetings_count,
+        client_id[:8],
+        meetings_count,
     )
 
 
@@ -641,13 +646,15 @@ async def recover_stale_sessions(db: AsyncSession) -> int:
                         f.write(struct.pack("<I", data_bytes))
                     logger.info(
                         "DB — finalized WAV header for recovered session %s [size=%d]",
-                        session_id_str[:8], file_size
+                        session_id_str[:8],
+                        file_size,
                     )
                 session.audio_file_path = os.path.abspath(wav_path)
             except Exception as exc:
                 logger.error(
                     "DB — failed to finalize WAV for recovered session %s: %s",
-                    session_id_str[:8], exc
+                    session_id_str[:8],
+                    exc,
                 )
 
         affected += 1
@@ -698,7 +705,11 @@ async def get_latest_session_metrics(
         select(DBSessionMetric)
         .distinct(DBSessionMetric.metric_name)
         .where(DBSessionMetric.session_id == sid)
-        .order_by(DBSessionMetric.metric_name, DBSessionMetric.timestamp.desc(), DBSessionMetric.id.desc())
+        .order_by(
+            DBSessionMetric.metric_name,
+            DBSessionMetric.timestamp.desc(),
+            DBSessionMetric.id.desc(),
+        )
     )
     result = await db.execute(stmt)
     return list(result.scalars().all())
@@ -753,7 +764,8 @@ async def update_session_audio_path(
     await db.execute(stmt)
     logger.debug(
         "DB — audio_file_path staged for session %s [path=%s]",
-        session_id[:8], audio_file_path,
+        session_id[:8],
+        audio_file_path,
     )
 
 
@@ -785,7 +797,8 @@ async def update_session_speaker_attribution_status(
     await db.execute(stmt)
     logger.debug(
         "DB — speaker_attribution_status staged → %s for session %s",
-        status, session_id[:8],
+        status,
+        session_id[:8],
     )
 
 
@@ -848,7 +861,7 @@ async def update_segment_speakers(
 
     count = 0
     for item in speaker_updates:
-        seg_id  = item["segment_id"]
+        seg_id = item["segment_id"]
         speaker = item["speaker"]
         stmt = (
             update(DBTranscriptSegment)
@@ -861,7 +874,8 @@ async def update_segment_speakers(
 
     logger.debug(
         "DB — %d segment speaker_id update(s) staged for session %s",
-        count, session_id[:8],
+        count,
+        session_id[:8],
     )
     return count
 
@@ -882,11 +896,15 @@ async def list_sessions_paginated(
     List historical sessions with search, filtering, sorting, and pagination.
     Returns a tuple of (items_list, total_count).
     """
-    from sqlalchemy.orm import joinedload
     from sqlalchemy import func
+    from sqlalchemy.orm import joinedload
 
     # 1. Base query for sessions and count
-    stmt = select(DBSession).outerjoin(DBSession.client).options(joinedload(DBSession.client))
+    stmt = (
+        select(DBSession)
+        .outerjoin(DBSession.client)
+        .options(joinedload(DBSession.client))
+    )
     count_stmt = select(func.count(DBSession.id)).outerjoin(DBSession.client)
 
     # 2. Filters
@@ -903,9 +921,9 @@ async def list_sessions_paginated(
 
     if search:
         search_filter = (
-            DBSession.title.ilike(f"%{search}%") |
-            DBSession.mode.ilike(f"%{search}%") |
-            DBClient.name.ilike(f"%{search}%")
+            DBSession.title.ilike(f"%{search}%")
+            | DBSession.mode.ilike(f"%{search}%")
+            | DBClient.name.ilike(f"%{search}%")
         )
         filters.append(search_filter)
 
@@ -950,14 +968,15 @@ async def list_sessions_paginated(
             DBSessionMetric.session_id,
             DBSessionMetric.metric_name,
             DBSessionMetric.metric_value,
-            func.row_number().over(
+            func.row_number()
+            .over(
                 partition_by=(DBSessionMetric.session_id, DBSessionMetric.metric_name),
-                order_by=(DBSessionMetric.timestamp.desc(), DBSessionMetric.id.desc())
-            ).label("rn")
-        )
-        .where(
+                order_by=(DBSessionMetric.timestamp.desc(), DBSessionMetric.id.desc()),
+            )
+            .label("rn"),
+        ).where(
             DBSessionMetric.session_id.in_(session_ids),
-            DBSessionMetric.metric_name.in_(["health_score", "sentiment"])
+            DBSessionMetric.metric_name.in_(["health_score", "sentiment"]),
         )
     ).subquery()
 
@@ -989,20 +1008,20 @@ async def list_sessions_paginated(
         if not isinstance(sentiment, str) and sentiment is not None:
             sentiment = str(sentiment)
 
-        items.append({
-            "session_id": sid_str,
-            "mode": s.mode,
-            "status": s.status,
-            "title": s.title,
-            "started_at": s.started_at,
-            "ended_at": s.ended_at,
-            "duration": s.duration,
-            "client_id": str(s.client_id) if s.client_id else None,
-            "client_name": s.client.name if s.client else None,
-            "health_score": health_score,
-            "sentiment": sentiment,
-        })
+        items.append(
+            {
+                "session_id": sid_str,
+                "mode": s.mode,
+                "status": s.status,
+                "title": s.title,
+                "started_at": s.started_at,
+                "ended_at": s.ended_at,
+                "duration": s.duration,
+                "client_id": str(s.client_id) if s.client_id else None,
+                "client_name": s.client.name if s.client else None,
+                "health_score": health_score,
+                "sentiment": sentiment,
+            }
+        )
 
     return items, total
-
-

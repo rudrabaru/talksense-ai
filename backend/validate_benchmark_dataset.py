@@ -14,18 +14,28 @@ Checks:
     - Expected speakers count matches segments
     - Metadata matches audio file properties
 """
+
 import json
 import os
 import subprocess
 import sys
 
 SAMPLE_RATE = 16000
-DATASET_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "benchmark_dataset")
-AUDIO_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sample_audio"))
+DATASET_ROOT = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "benchmark_dataset"
+)
+AUDIO_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sample_audio")
+)
 
 REQUIRED_GT_FIELDS = ["recording", "expected_speakers", "segments"]
 REQUIRED_SEG_FIELDS = ["start", "end", "speaker", "text"]
-REQUIRED_META_FIELDS = ["recording", "category", "duration_seconds", "expected_speakers"]
+REQUIRED_META_FIELDS = [
+    "recording",
+    "category",
+    "duration_seconds",
+    "expected_speakers",
+]
 CATEGORIES = ["2_speaker", "3_speaker", "4_speaker", "noisy", "long_form"]
 
 
@@ -33,9 +43,19 @@ def get_audio_duration(audio_path):
     """Get audio duration using ffprobe."""
     try:
         result = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-             "-of", "default=noprint_wrappers=1:nokey=1", audio_path],
-            capture_output=True, text=True, timeout=10
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                audio_path,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         return float(result.stdout.strip())
     except Exception:
@@ -91,7 +111,9 @@ def validate_ground_truth(gt_path, audio_path):
         if end <= start:
             errors.append(f"Segment {i}: end ({end}) <= start ({start})")
         if start < prev_end - 0.1:  # Allow 100ms tolerance
-            warnings.append(f"Segment {i}: overlaps with previous (start={start:.2f}, prev_end={prev_end:.2f})")
+            warnings.append(
+                f"Segment {i}: overlaps with previous (start={start:.2f}, prev_end={prev_end:.2f})"  # noqa: E501
+            )
 
         prev_end = end
         speakers_in_segments.add(speaker)
@@ -100,7 +122,9 @@ def validate_ground_truth(gt_path, audio_path):
     expected = gt.get("expected_speakers", 0)
     actual = len(speakers_in_segments)
     if expected != actual:
-        errors.append(f"expected_speakers={expected} but segments have {actual} unique speakers: {speakers_in_segments}")
+        errors.append(
+            f"expected_speakers={expected} but segments have {actual} unique speakers: {speakers_in_segments}"  # noqa: E501
+        )
 
     # Validate against audio file
     if audio_path and os.path.isfile(audio_path):
@@ -108,9 +132,13 @@ def validate_ground_truth(gt_path, audio_path):
         if duration:
             last_end = max(s.get("end", 0) for s in segments)
             if last_end > duration + 1.0:
-                errors.append(f"Last segment ends at {last_end:.1f}s but audio is only {duration:.1f}s")
+                errors.append(
+                    f"Last segment ends at {last_end:.1f}s but audio is only {duration:.1f}s"  # noqa: E501
+                )
             if abs(last_end - duration) > 5.0:
-                warnings.append(f"Large gap: last segment ends at {last_end:.1f}s, audio duration is {duration:.1f}s")
+                warnings.append(
+                    f"Large gap: last segment ends at {last_end:.1f}s, audio duration is {duration:.1f}s"  # noqa: E501
+                )
     else:
         errors.append(f"Audio file not found: {audio_path}")
 
@@ -159,8 +187,9 @@ def validate_dataset():
             print(f"\n  WARNING: Category directory missing: {category}/")
             continue
 
-        samples = [d for d in os.listdir(cat_dir)
-                    if os.path.isdir(os.path.join(cat_dir, d))]
+        samples = [
+            d for d in os.listdir(cat_dir) if os.path.isdir(os.path.join(cat_dir, d))
+        ]
 
         if not samples:
             print(f"\n  WARNING: No samples in {category}/")
@@ -196,7 +225,6 @@ def validate_dataset():
             has_meta = os.path.isfile(meta_path)
             has_audio = audio_path and os.path.isfile(audio_path)
 
-            status_parts = []
             sample_errors = []
             sample_warnings = []
 
@@ -230,7 +258,9 @@ def validate_dataset():
             cat_samples += 1
 
         category_stats[category] = {
-            "samples": cat_samples, "errors": cat_errors, "warnings": cat_warnings
+            "samples": cat_samples,
+            "errors": cat_errors,
+            "warnings": cat_warnings,
         }
         total_samples += cat_samples
         total_errors += cat_errors
@@ -238,7 +268,7 @@ def validate_dataset():
 
     # Summary
     print(f"\n{'=' * 70}")
-    print(f"  SUMMARY")
+    print("  SUMMARY")
     print(f"{'=' * 70}")
     print(f"  Total samples:  {total_samples}")
     print(f"  Total errors:   {total_errors}")
@@ -246,7 +276,9 @@ def validate_dataset():
 
     for cat, stats in category_stats.items():
         status = "PASS" if stats["errors"] == 0 else "FAIL"
-        print(f"    {cat:20s}: {stats['samples']} samples, {stats['errors']} errors [{status}]")
+        print(
+            f"    {cat:20s}: {stats['samples']} samples, {stats['errors']} errors [{status}]"  # noqa: E501
+        )
 
     overall = total_errors == 0
     print(f"\n  OVERALL: {'[PASS]' if overall else '[FAIL]'}")

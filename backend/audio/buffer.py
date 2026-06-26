@@ -18,6 +18,7 @@ Post-session diarization:
   length, while giving the post-session diarizer a valid WAV file to read.
   The WAV file is created on first speech and closed on flush_remaining().
 """
+
 import logging
 import os
 import struct
@@ -27,14 +28,18 @@ from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
 
-SAMPLE_RATE = 16_000          # Hz
-BYTES_PER_SAMPLE = 2          # int16
+SAMPLE_RATE = 16_000  # Hz
+BYTES_PER_SAMPLE = 2  # int16
 SAMPLES_PER_MS = SAMPLE_RATE // 1000  # 16 samples per ms
 
-TARGET_DURATION_MS = 2_000    # Flush after 2.0s — Whisper accuracy peaks with longer chunks
-SILENCE_GAP_MS = 600          # Flush faster after speaker stops (was 800ms)
-MIN_FLUSH_MS = 800            # Reject chunks < 800ms — avoids Whisper hallucination on tiny fragments
-OVERLAP_MS = 1_000            # Retain 1.0s of overlap on partial flushes
+TARGET_DURATION_MS = (
+    2_000  # Flush after 2.0s — Whisper accuracy peaks with longer chunks
+)
+SILENCE_GAP_MS = 600  # Flush faster after speaker stops (was 800ms)
+MIN_FLUSH_MS = (
+    800  # Reject chunks < 800ms — avoids Whisper hallucination on tiny fragments
+)
+OVERLAP_MS = 1_000  # Retain 1.0s of overlap on partial flushes
 
 # Directory for session WAV files (relative to backend working directory)
 SESSION_AUDIO_DIR = "session_audio"
@@ -63,18 +68,18 @@ def _wav_header(num_data_bytes: int) -> bytes:
     header = struct.pack(
         "<4sI4s4sIHHIIHH4sI",
         b"RIFF",
-        36 + num_data_bytes,   # ChunkSize (file size - 8)
+        36 + num_data_bytes,  # ChunkSize (file size - 8)
         b"WAVE",
         b"fmt ",
-        16,                    # Subchunk1Size (PCM)
-        1,                     # AudioFormat (PCM = 1)
+        16,  # Subchunk1Size (PCM)
+        1,  # AudioFormat (PCM = 1)
         num_channels,
         SAMPLE_RATE,
         byte_rate,
         block_align,
         bits_per_sample,
         b"data",
-        num_data_bytes,        # Subchunk2Size
+        num_data_bytes,  # Subchunk2Size
     )
     return header
 
@@ -101,9 +106,9 @@ class AudioBuffer:
     _speech_active: bool = False
 
     # ── WAV file accumulator (disk) ───────────────────────────────────────────
-    _wav_path: str | None = None          # None until first speech chunk
-    _wav_file = None                      # raw file handle (binary append)
-    _wav_data_bytes: int = 0              # running count of PCM bytes written
+    _wav_path: str | None = None  # None until first speech chunk
+    _wav_file = None  # raw file handle (binary append)
+    _wav_data_bytes: int = 0  # running count of PCM bytes written
 
     _total_bytes_received: int = 0
     _chunk_start_bytes: int = 0
@@ -115,7 +120,9 @@ class AudioBuffer:
 
     # ── Public interface ──────────────────────────────────────────────────────
 
-    def push(self, pcm_bytes: bytes, is_speech: bool) -> tuple[bytes, float, bool] | None:
+    def push(
+        self, pcm_bytes: bytes, is_speech: bool
+    ) -> tuple[bytes, float, bool] | None:
         """
         Push a PCM chunk into the buffer.
 
@@ -124,7 +131,8 @@ class AudioBuffer:
             is_speech:  Whether VAD classified this chunk as speech.
 
         Returns:
-            Tuple of (flushed_pcm_bytes, start_time_offset_seconds) if flushed, else None.
+            Tuple of (flushed_pcm_bytes, start_time_offset_seconds)
+            if flushed, else None.
         """
         # Always write ALL incoming audio to WAV to maintain correct timeline
         self._write_to_wav(pcm_bytes)
@@ -169,9 +177,11 @@ class AudioBuffer:
         Also finalizes the WAV file by rewriting the RIFF/data chunk sizes.
 
         Returns:
-            Tuple of (remaining_pcm_bytes, start_time_offset_seconds), or None if buffer is empty / too small.
+            Tuple of (remaining_pcm_bytes, start_time_offset_seconds),
+            or None if buffer is empty / too small.
         """
         from utils.profiler import profile_stage
+
         with profile_stage(self._session_id, "Save WAV"):
             result = None
             if self._buffered_ms >= MIN_FLUSH_MS:
@@ -182,7 +192,6 @@ class AudioBuffer:
             # Always finalize and close the WAV file on session end
             self._finalize_wav()
             return result
-
 
     def get_audio_file_path(self) -> str | None:
         """
@@ -202,22 +211,29 @@ class AudioBuffer:
         """Concatenate all chunks, manage overlap, return bytes and time offset."""
         audio = b"".join(self._chunks)
         start_time_offset = self._chunk_start_bytes / (SAMPLE_RATE * BYTES_PER_SAMPLE)
-        
+
         if is_partial:
             overlap_bytes = int((OVERLAP_MS / 1000) * SAMPLE_RATE * BYTES_PER_SAMPLE)
             total_bytes = len(audio)
             drop_bytes = max(0, total_bytes - overlap_bytes)
-            
+
             self._chunk_start_bytes += drop_bytes
             self._chunks.clear()
-            
-            overlap_audio = audio[-overlap_bytes:] if overlap_bytes < total_bytes else audio
+
+            overlap_audio = (
+                audio[-overlap_bytes:] if overlap_bytes < total_bytes else audio
+            )
             self._chunks.append(overlap_audio)
             self._buffered_ms = self._bytes_to_ms(overlap_audio)
         else:
             self._clear()
-            
-        logger.debug(f"AudioBuffer: flushed {len(audio)} bytes at offset {start_time_offset:.2f}s (partial={is_partial})")
+
+        logger.debug(
+            "AudioBuffer: flushed %d bytes at offset %.2fs (partial=%s)",
+            len(audio),
+            start_time_offset,
+            is_partial,
+        )
         return audio, start_time_offset, is_partial
 
     def _clear(self) -> None:
@@ -243,16 +259,18 @@ class AudioBuffer:
         try:
             if self._wav_file is None:
                 audio_dir = _ensure_audio_dir()
-                safe_id = self._session_id.replace("-", "")[:16] if self._session_id else "unknown"
+                safe_id = (
+                    self._session_id.replace("-", "")[:16]
+                    if self._session_id
+                    else "unknown"
+                )
                 filename = f"session_{safe_id}.wav"
                 self._wav_path = os.path.join(audio_dir, filename)
 
                 # Open in write+binary mode; write placeholder header (0 bytes data)
                 self._wav_file = open(self._wav_path, "wb")
                 self._wav_file.write(_wav_header(0))
-                logger.debug(
-                    "AudioBuffer: opened WAV file %s", self._wav_path
-                )
+                logger.debug("AudioBuffer: opened WAV file %s", self._wav_path)
 
             # Append raw PCM (no header) after initial header
             self._wav_file.write(pcm_bytes)
@@ -285,7 +303,8 @@ class AudioBuffer:
                     f.write(struct.pack("<I", self._wav_data_bytes))
 
                 logger.info(
-                    "audio stats: received=%d written=%d speech=%d nonspeech=%d duration=%.2fs",
+                    "audio stats: received=%d written=%d speech=%d nonspeech=%d "
+                    "duration=%.2fs",
                     self._total_bytes_received,
                     self._wav_data_bytes,
                     self._total_speech_chunks,

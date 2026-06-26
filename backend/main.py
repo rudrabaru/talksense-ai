@@ -29,17 +29,35 @@ REST endpoints:
   POST   /analyze           ← legacy batch mode (kept for compatibility)
   GET    /health
 """
+
 import logging
 import os
 import sys
+from contextlib import asynccontextmanager
 from datetime import datetime
 
-from contextlib import asynccontextmanager
-
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, status
+from fastapi import (
+    Body,
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    UploadFile,
+    status,
+)
+from fastapi import Depends as _Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession
 from starlette.concurrency import run_in_threadpool
+
+from db.database import get_db
+from db.database import get_db as _get_db
+from ws.audio_handler import router as audio_router
+from ws.subscriptions import router as subscriptions_router
 
 # ── Path setup ────────────────────────────────────────────────────────────────
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -76,18 +94,21 @@ async def lifespan(app: FastAPI):
     try:
         # 0. PostgreSQL — create tables if they do not exist
         logger.info("DB — connecting to PostgreSQL and running create_all() …")
-        from db.database import create_all, AsyncSessionLocal
+        from db.database import AsyncSessionLocal, create_all
+
         await create_all()
 
         # 0b. Startup recovery: bulk-transition orphaned sessions
         logger.info("DB — running startup recovery for stale sessions …")
         from db.crud import recover_stale_sessions
+
         async with AsyncSessionLocal() as db:
             await recover_stale_sessions(db)
 
         # 1. VAD (CPU, fast)
         logger.info("Loading Silero VAD …")
         from audio.vad import get_vad
+
         get_vad()  # loads and caches singleton
 
         # 2. Faster Whisper (GPU)
@@ -96,6 +117,7 @@ async def lifespan(app: FastAPI):
             f"{settings.whisper_compute_type}, {settings.whisper_device}) …"
         )
         from audio.transcriber import get_transcriber
+
         transcriber = get_transcriber()
         transcriber.load(
             model_name=settings.whisper_model,
@@ -107,20 +129,26 @@ async def lifespan(app: FastAPI):
         if settings.pyannote_enabled and settings.hf_token:
             logger.info("Loading Pyannote speaker diarization …")
             from audio.diarizer import get_diarizer
+
             diarizer = get_diarizer()
             diarizer.load(hf_token=settings.hf_token, device=settings.pyannote_device)
         else:
-            logger.info("Pyannote: disabled or no HF_TOKEN — using heuristic speaker assignment")
+            logger.info(
+                "Pyannote: disabled or no HF_TOKEN — using heuristic speaker assignment"
+            )
 
         # 4. Sentiment model (CPU/GPU — Transformers)
         logger.info("Loading sentiment model …")
         from services.nlp_engine import get_nlp_engine
+
         get_nlp_engine()  # loads and caches the singleton; reused by audio_handler
 
         # 5. Start background flusher loop
         logger.info("Flusher — starting background flusher scheduler …")
-        from ws.session_manager import start_flusher
         import inspect
+
+        from ws.session_manager import start_flusher
+
         res = start_flusher()
         if inspect.isawaitable(res):
             await res
@@ -137,15 +165,17 @@ async def lifespan(app: FastAPI):
 
     # ── Shutdown ──────────────────────────────────────────────────────────────
     logger.info("TalkSense AI — Shutting down")
-    
+
     try:
         from ws.session_manager import stop_flusher
+
         await stop_flusher()
         logger.info("Flusher — background flusher stopped.")
     except Exception as exc:  # noqa: BLE001
         logger.exception("Flusher — shutdown failed: %s", exc)
     finally:
         from db.database import engine
+
         await engine.dispose()
         logger.info("DB — connection pool disposed.")
 
@@ -168,8 +198,6 @@ app.add_middleware(
 )
 
 # ── WebSocket routers ─────────────────────────────────────────────────────────
-from ws.audio_handler import router as audio_router
-from ws.subscriptions import router as subscriptions_router
 
 app.include_router(audio_router)
 app.include_router(subscriptions_router)
@@ -189,24 +217,23 @@ def health_check():
 @app.get("/check_diarizer", tags=["System"])
 def check_diarizer():
     from audio.diarizer import get_diarizer
+
     diarizer = get_diarizer()
     return {
         "loaded": diarizer._loaded,
         "has_pipeline": diarizer._pipeline is not None,
         "hf_token_len": len(settings.hf_token) if settings.hf_token else 0,
-        "pyannote_enabled": settings.pyannote_enabled
+        "pyannote_enabled": settings.pyannote_enabled,
     }
 
 
 # ── Session REST endpoints ────────────────────────────────────────────────────
-from fastapi import Depends, Body
-from db.database import get_db
-from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel
+
 
 class SessionCreateRequest(BaseModel):
     mode: str = "meeting"
     client_id: str | None = None
+
 
 @app.post("/sessions", tags=["Sessions"])
 async def create_session(
@@ -220,8 +247,8 @@ async def create_session(
 
     Returns the session_id needed to connect the WebSocket channels.
     """
-    from ws.session_manager import get_session_manager
     from db import crud
+    from ws.session_manager import get_session_manager
 
     # Determine mode and client_id, prioritizing request body
     req_mode = "meeting"
@@ -230,8 +257,9 @@ async def create_session(
     if body is not None:
         req_mode = body.mode
         req_client_id = body.client_id
-        
-        # If body uses defaults, but query parameters specify custom values, use the query parameters
+
+        # If body uses defaults, but query parameters specify custom values, use the
+        # query parameters
         if req_mode == "meeting" and mode is not None:
             req_mode = mode
         if req_client_id is None and client_id is not None:
@@ -259,11 +287,11 @@ async def create_session(
         "mode": session.mode,
         "status": session.status,
         "ws": {
-            "audio":      f"/ws/audio/{session.session_id}",
+            "audio": f"/ws/audio/{session.session_id}",
             "transcript": f"/ws/transcript/{session.session_id}",
-            "metrics":    f"/ws/metrics/{session.session_id}",
-            "alerts":     f"/ws/alerts/{session.session_id}",
-            "status":     f"/ws/status/{session.session_id}",
+            "metrics": f"/ws/metrics/{session.session_id}",
+            "alerts": f"/ws/alerts/{session.session_id}",
+            "status": f"/ws/status/{session.session_id}",
         },
     }
 
@@ -381,8 +409,8 @@ async def get_session(
     db: AsyncSession = Depends(get_db),
 ):
     """Get current state of an active or terminal/persisted session."""
-    from ws.session_manager import get_session_manager
     from db import crud
+    from ws.session_manager import get_session_manager
 
     manager = get_session_manager()
     session = manager.get(session_id)
@@ -432,7 +460,7 @@ async def get_session(
 @app.delete("/sessions/{session_id}", tags=["Sessions"])
 async def end_session(session_id: str):
     """Gracefully end an active session."""
-    from ws.session_manager import get_session_manager, SessionStatus
+    from ws.session_manager import SessionStatus, get_session_manager
 
     manager = get_session_manager()
     await manager.end(session_id, SessionStatus.COMPLETED)
@@ -440,10 +468,7 @@ async def end_session(session_id: str):
 
 
 # ── Dashboard snapshot ────────────────────────────────────────────────────────
-from fastapi import Depends
-from db.database import get_db
-from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime
+
 
 @app.get("/dashboard/{session_id}", tags=["Dashboard"])
 async def get_dashboard_snapshot(
@@ -454,8 +479,8 @@ async def get_dashboard_snapshot(
     Get the current full conversation state for a session.
     Used on reconnect to restore dashboard state.
     """
-    from ws.session_manager import get_session_manager
     from db import crud
+    from ws.session_manager import get_session_manager
 
     manager = get_session_manager()
     session = manager.get(session_id)
@@ -468,12 +493,12 @@ async def get_dashboard_snapshot(
             "status": session.status,
             "speaker_attribution_status": attr_status,
             "speaker_attribution": {
-                "status":            attr_status,
+                "status": attr_status,
                 "speakers_detected": None,
-                "speaker_turns":     None,
-                "segments_updated":  None,
-                "total_segments":    None,
-                "coverage":          None,
+                "speaker_turns": None,
+                "segments_updated": None,
+                "total_segments": None,
+                "coverage": None,
             },
             "speaker_roles": None,
             "objection_handling": [],
@@ -505,6 +530,7 @@ async def get_dashboard_snapshot(
 
         # Reconstruct metrics dictionary
         from typing import Any
+
         metrics: dict[str, Any] = {
             "health_score": 50,
             "sentiment": "neutral",
@@ -514,7 +540,8 @@ async def get_dashboard_snapshot(
             "filler_count": 0,
             "objections": [],
             "buying_signals": [],
-            # Populated by _persist_attribution_diagnostics after post-session diarization
+            # Populated by _persist_attribution_diagnostics after post-session
+            # diarization
             "speaker_attribution": None,
             "speaker_roles": None,
             "objection_handling": [],
@@ -528,7 +555,8 @@ async def get_dashboard_snapshot(
             if name in metrics:
                 metrics[name] = val
 
-        # For completed/terminal sessions, recalculate speaking metrics from the full set of DB segments
+        # For completed/terminal sessions, recalculate speaking metrics from the full
+        # set of DB segments
         # to ensure they reflect the post-session Pyannote speaker labels.
         if db_session.status in ["completed", "failed", "interrupted", "expired"]:
             db_segments = await crud.get_all_transcript_segments(db, session_id)
@@ -539,7 +567,7 @@ async def get_dashboard_snapshot(
                     text = seg.text or ""
                     word_count = len(text.split())
                     participation[speaker] = participation.get(speaker, 0) + word_count
-                
+
                 total_words = sum(participation.values()) or 1
                 speaking_ratio = {
                     sp: round((wc / total_words) * 100, 1)
@@ -556,47 +584,61 @@ async def get_dashboard_snapshot(
             diff = (db_session.ended_at - db_session.started_at).total_seconds()
             elapsed = round(max(0.0, diff), 1)
         else:
-            diff = (datetime.now(tz=db_session.started_at.tzinfo) - db_session.started_at).total_seconds()
+            diff = (
+                datetime.now(tz=db_session.started_at.tzinfo) - db_session.started_at
+            ).total_seconds()
             elapsed = round(max(0.0, diff), 1)
 
-        # Map transcript segments: speaker_id -> speaker, start_time -> start, end_time -> end
+        # Map transcript segments: speaker_id -> speaker, start_time -> start, end_time
+        # -> end
         mapped_segments = []
         for s in segments:
-            mapped_segments.append({
-                "speaker": s.speaker_id or "Unknown",
-                "text": s.text,
-                "start": round(s.start_time, 2),
-                "end": round(s.end_time, 2),
-                "sentiment": s.sentiment,
-                "sentiment_label": s.sentiment_label,
-            })
+            mapped_segments.append(
+                {
+                    "speaker": s.speaker_id or "Unknown",
+                    "text": s.text,
+                    "start": round(s.start_time, 2),
+                    "end": round(s.end_time, 2),
+                    "sentiment": s.sentiment,
+                    "sentiment_label": s.sentiment_label,
+                }
+            )
 
         # Map alerts: severity -> level, timestamp to Unix epoch
         mapped_alerts = []
         for a in alerts:
-            mapped_alerts.append({
-                "level": a.severity,
-                "message": a.message,
-                "timestamp": a.timestamp.timestamp(),
-            })
+            mapped_alerts.append(
+                {
+                    "level": a.severity,
+                    "message": a.message,
+                    "timestamp": a.timestamp.timestamp(),
+                }
+            )
 
         # Build speaker_attribution nested payload from session_metrics JSONB row
         raw_attribution = metrics.get("speaker_attribution") or {}
         speaker_attribution_payload = {
-            "status":            db_session.speaker_attribution_status,
+            "status": db_session.speaker_attribution_status,
             "speakers_detected": raw_attribution.get("speakers_detected"),
-            "speaker_turns":     raw_attribution.get("speaker_turns"),
-            "segments_updated":  raw_attribution.get("segments_updated"),
-            "total_segments":    raw_attribution.get("total_segments"),
-            "coverage":          raw_attribution.get("coverage_percent"),
+            "speaker_turns": raw_attribution.get("speaker_turns"),
+            "segments_updated": raw_attribution.get("segments_updated"),
+            "total_segments": raw_attribution.get("total_segments"),
+            "coverage": raw_attribution.get("coverage_percent"),
         }
 
         # Load global benchmark health
         import json
         import os
+
         try:
             from evaluation.thresholds import evaluate_thresholds
-            metrics_path = os.path.join(os.path.dirname(__file__), "evaluation", "reports", "latest_metrics.json")
+
+            metrics_path = os.path.join(
+                os.path.dirname(__file__),
+                "evaluation",
+                "reports",
+                "latest_metrics.json",
+            )
             if os.path.exists(metrics_path):
                 with open(metrics_path, "r", encoding="utf-8") as f:
                     benchmark_metrics = json.load(f)
@@ -607,7 +649,7 @@ async def get_dashboard_snapshot(
                     "role_classification": "FAIL",
                     "buying_signals": "FAIL",
                     "objections": "FAIL",
-                    "objection_handling": "FAIL"
+                    "objection_handling": "FAIL",
                 }
         except Exception:
             analytics_health = {
@@ -615,7 +657,7 @@ async def get_dashboard_snapshot(
                 "role_classification": "FAIL",
                 "buying_signals": "FAIL",
                 "objections": "FAIL",
-                "objection_handling": "FAIL"
+                "objection_handling": "FAIL",
             }
 
         return {
@@ -642,16 +684,12 @@ async def get_dashboard_snapshot(
         }
 
 
-
 # ── Client REST endpoints ─────────────────────────────────────────────────────
-from pydantic import BaseModel
-from fastapi import Depends as _Depends
-from db.database import get_db as _get_db
-from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession
 
 
 class ClientCreateRequest(BaseModel):
     """Request body for POST /clients — mirrors the API Contract schema."""
+
     name: str
     industry: str | None = None
 
@@ -683,7 +721,6 @@ async def post_client(
         "industry": row.industry,
         "created_at": row.created_at.isoformat(),
     }
-
 
 
 @app.get("/clients", tags=["Clients"])
@@ -726,6 +763,7 @@ async def get_client(
     If no snapshot exists yet (no completed sessions), safe defaults are returned.
     """
     from sqlalchemy import select
+
     from db.crud import get_client as _crud_get_client
     from db.models import ClientSnapshot
 
@@ -750,11 +788,12 @@ async def get_client(
         "sentiment_trend": snap.sentiment_trend if snap else None,
         "common_objections": snap.common_objections if snap else [],
         "last_meeting_date": (
-            snap.last_meeting_date.isoformat() if snap and snap.last_meeting_date else None
+            snap.last_meeting_date.isoformat()
+            if snap and snap.last_meeting_date
+            else None
         ),
         "summary": snap.summary if snap else None,
     }
-
 
 
 # ── Legacy batch analysis endpoint (kept for compatibility) ───────────────────
@@ -773,9 +812,10 @@ async def analyze_audio(
     import shutil
     import uuid
     from datetime import datetime, timezone
+
     from db import crud
-    from services.nlp_engine import get_nlp_engine
     from services.context_analyzer import analyze_meeting, analyze_sales
+    from services.nlp_engine import get_nlp_engine
 
     if not file.filename:
         raise HTTPException(
@@ -796,6 +836,7 @@ async def analyze_audio(
 
         # Use legacy openai-whisper transcriber (services/speech_to_text.py)
         from services.speech_to_text import transcribe_audio
+
         raw_transcript_data = await run_in_threadpool(transcribe_audio, file_path)
         raw_segments = raw_transcript_data.get("segments", [])
         if not isinstance(raw_segments, list):
@@ -826,10 +867,11 @@ async def analyze_audio(
         db_session.status = "completed"
         db_session.duration = enriched_segments[-1]["end"] if enriched_segments else 0.0
         db_session.ended_at = datetime.now(timezone.utc)
-        
+
         # Save transcript segments
         for seg in enriched_segments:
             from db.models import TranscriptSegment as DBTranscriptSegment
+
             db_seg = DBTranscriptSegment(
                 session_id=uuid.UUID(session_id),
                 speaker_id="Speaker A",
@@ -837,46 +879,67 @@ async def analyze_audio(
                 end_time=seg.get("end", 0.0),
                 text=seg.get("text", ""),
                 sentiment=seg.get("sentiment", 0.0),
-                sentiment_label=seg.get("sentiment_label", "Neutral")
+                sentiment_label=seg.get("sentiment_label", "Neutral"),
             )
             db.add(db_seg)
-        
+
         # Save metrics
-        q_score = insights.get("quality", {}).get("score", 5) if isinstance(insights.get("quality"), dict) else 5
+        q_score = (
+            insights.get("quality", {}).get("score", 5)
+            if isinstance(insights.get("quality"), dict)
+            else 5
+        )
         metrics_to_save = [
             {"metric_name": "health_score", "metric_value": int(q_score * 10)},
-            {"metric_name": "sentiment_score", "metric_value": insights.get("sentiment_score", 0.0)},
-            {"metric_name": "objections", "metric_value": insights.get("objections", [])},
-            {"metric_name": "buying_signals", "metric_value": insights.get("buying_signals", []) if "buying_signals" in insights else []},
+            {
+                "metric_name": "sentiment_score",
+                "metric_value": insights.get("sentiment_score", 0.0),
+            },
+            {
+                "metric_name": "objections",
+                "metric_value": insights.get("objections", []),
+            },
+            {
+                "metric_name": "buying_signals",
+                "metric_value": (
+                    insights.get("buying_signals", [])
+                    if "buying_signals" in insights
+                    else []
+                ),
+            },
             {"metric_name": "speaking_ratio", "metric_value": {"Speaker A": 100.0}},
-            {"metric_name": "participation", "metric_value": {"Speaker A": 100.0}}
+            {"metric_name": "participation", "metric_value": {"Speaker A": 100.0}},
         ]
         await crud.save_session_metrics_batch(db, session_id, metrics_to_save)
-        
+
         # Save analysis result summary
         from db.models import AnalysisResult as DBAnalysisResult
+
         analysis_res = DBAnalysisResult(
             session_id=uuid.UUID(session_id),
             health_score=int(q_score * 10),
             summary=insights.get("summary", ""),
-            report_json=insights
+            report_json=insights,
         )
         db.add(analysis_res)
-        
+
         await db.commit()
 
         # Update client memory if client_id is linked
         if client_id:
             from services.client_memory import update_client_memory
+
             await update_client_memory(db, uuid.UUID(client_id))
             await db.commit()
 
-        return JSONResponse(content={
-            "filename": file.filename,
-            "mode": mode,
-            "transcript": final_transcript,
-            "insights": insights,
-        })
+        return JSONResponse(
+            content={
+                "filename": file.filename,
+                "mode": mode,
+                "transcript": final_transcript,
+                "insights": insights,
+            }
+        )
 
     finally:
         if os.path.exists(file_path):

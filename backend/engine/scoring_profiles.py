@@ -10,6 +10,7 @@ Health Score formula (0–100):
 
 Each metric_value is normalised to 0–100 before weighting.
 """
+
 from dataclasses import dataclass
 
 
@@ -21,6 +22,7 @@ class ScoringProfile:
     All weights must sum to 1.0.
     Keys map to metric names in ConversationState.
     """
+
     mode: str
     weights: dict[str, float]
 
@@ -46,10 +48,10 @@ class ScoringProfile:
 MEETING_PROFILE = ScoringProfile(
     mode="meeting",
     weights={
-        "participation":  0.40,
-        "engagement":     0.30,
-        "balance":        0.20,
-        "action_items":   0.10,
+        "participation": 0.40,
+        "engagement": 0.30,
+        "balance": 0.20,
+        "action_items": 0.10,
     },
 )
 
@@ -57,25 +59,25 @@ SALES_PROFILE = ScoringProfile(
     mode="sales",
     weights={
         "objection_handling": 0.35,
-        "sentiment":          0.25,
-        "listening_ratio":    0.20,
-        "buying_signals":     0.20,
+        "sentiment": 0.25,
+        "listening_ratio": 0.20,
+        "buying_signals": 0.20,
     },
 )
 
 INTERVIEW_PROFILE = ScoringProfile(
     mode="interview",
     weights={
-        "confidence":       0.35,
-        "filler_penalty":   0.25,
+        "confidence": 0.35,
+        "filler_penalty": 0.25,
         "response_quality": 0.25,
-        "pause_penalty":    0.15,
+        "pause_penalty": 0.15,
     },
 )
 
 _PROFILES: dict[str, ScoringProfile] = {
-    "meeting":   MEETING_PROFILE,
-    "sales":     SALES_PROFILE,
+    "meeting": MEETING_PROFILE,
+    "sales": SALES_PROFILE,
     "interview": INTERVIEW_PROFILE,
 }
 

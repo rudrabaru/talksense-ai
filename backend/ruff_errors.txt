@@ -1,0 +1,2326 @@
+E501 Line too long (90 > 88)
+   --> audio\buffer.py:134:89
+    |
+133 |         Returns:
+134 |             Tuple of (flushed_pcm_bytes, start_time_offset_seconds) if flushed, else None.
+    |                                                                                         ^^
+135 |         """
+136 |         # Always write ALL incoming audio to WAV to maintain correct timeline
+    |
+
+E501 Line too long (110 > 88)
+   --> audio\buffer.py:179:89
+    |
+178 |         Returns:
+179 |             Tuple of (remaining_pcm_bytes, start_time_offset_seconds), or None if buffer is empty / too small.
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^
+180 |         """
+181 |         from utils.profiler import profile_stage
+    |
+
+E501 Line too long (112 > 88)
+   --> audio\buffer.py:230:89
+    |
+229 |         logger.debug(
+230 |             f"AudioBuffer: flushed {len(audio)} bytes at offset {start_time_offset:.2f}s (partial={is_partial})"
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^
+231 |         )
+232 |         return audio, start_time_offset, is_partial
+    |
+
+E501 Line too long (96 > 88)
+   --> audio\buffer.py:301:89
+    |
+300 |                 logger.info(
+301 |                     "audio stats: received=%d written=%d speech=%d nonspeech=%d duration=%.2fs",
+    |                                                                                         ^^^^^^^^
+302 |                     self._total_bytes_received,
+303 |                     self._wav_data_bytes,
+    |
+
+E501 Line too long (108 > 88)
+   --> audio\diarizer.py:157:89
+    |
+155 |             if duration < 1.5:
+156 |                 logger.warning(
+157 |                     f"Diarizer: Chunk too short ({duration:.2f}s < 1.5s). Falling back to previous speaker."
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^
+158 |                 )
+159 |                 return self._diarize_heuristic(segments, fallback_speaker)
+    |
+
+E501 Line too long (95 > 88)
+   --> audio\diarizer.py:171:89
+    |
+169 |             logger.debug(f"Diarizer: Pyannote finished in {elapsed:.0f}ms")
+170 |
+171 |             # pyannote-audio 4.x returns a DiarizeOutput dataclass. Unwrap it using duck-typing
+    |                                                                                         ^^^^^^^
+172 |             # to bypass class-identity mismatches under Uvicorn reload environments.
+173 |             annotation = getattr(diarization, "speaker_diarization", diarization)
+    |
+
+E501 Line too long (93 > 88)
+   --> audio\transcriber.py:130:89
+    |
+128 |                 temperature=0.0,  # explicit deterministic; no sampling fallback
+129 |                 no_speech_threshold=0.6,  # relaxed back to 0.6 to capture soft speech
+130 |                 compression_ratio_threshold=2.2,  # was 2.4; reject repetitive hallucinations
+    |                                                                                         ^^^^^
+131 |                 condition_on_previous_text=True,  # Use prior context across chunks
+132 |                 initial_prompt=initial_prompt,  # Pass context manually
+    |
+
+E501 Line too long (93 > 88)
+  --> audio\vad.py:57:89
+   |
+55 |         except Exception as exc:
+56 |             logger.error(
+57 |                 f"VAD: Failed to load Silero VAD — {exc}. Falling back to pass-through mode."
+   |                                                                                         ^^^^^
+58 |             )
+59 |             self._loaded = False
+   |
+
+E501 Line too long (117 > 88)
+   --> benchmark_pyannote_sweep.py:108:89
+    |
+106 |     for r in results:
+107 |         print(
+108 |             f"| {r['stride']} | {r['batch_size']} | {r['latency_ms']:.1f} | {r['peak_vram_mb']:.1f} | {r['turns']} |"
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+109 |         )
+    |
+
+E501 Line too long (90 > 88)
+  --> db\crud.py:25:89
+   |
+23 |         save_analysis_result()       — atomic PostgreSQL upsert for final analysis
+24 |         update_client_snapshot()     — append a new client briefing snapshot row
+25 |         recover_stale_sessions()     — bulk-transition orphaned active sessions on startup
+   |                                                                                         ^^
+26 |
+27 | Design rules (from .agent/ARCHITECTURE.md + database_agent.md):
+   |
+
+E501 Line too long (93 > 88)
+  --> db\crud.py:42:89
+   |
+40 |           await crud.save_alerts_batch(db, ...)
+41 |           await db.commit()         # single commit covers all three
+42 |           session.last_flushed_segment_index += len(delta)  # advance watermarks AFTER commit
+   |                                                                                         ^^^^^
+43 |     - recover_stale_sessions() is a self-contained startup task and manages its
+44 |       own commit internally since it runs in isolation before any flusher starts.
+   |
+
+E501 Line too long (95 > 88)
+   --> db\models.py:111:89
+    |
+109 |         primary_key=True,
+110 |         default=_uuid_mod.uuid4,  # ORM-level default (used by SQLAlchemy)
+111 |         server_default=func.gen_random_uuid(),  # DB-level default (used by direct SQL inserts)
+    |                                                                                         ^^^^^^^
+112 |     )
+113 |     user_id: Mapped[int | None] = mapped_column(
+    |
+
+E501 Line too long (95 > 88)
+   --> db\models.py:166:89
+    |
+164 |         primary_key=True,
+165 |         default=_uuid_mod.uuid4,  # ORM-level default (used by SQLAlchemy)
+166 |         server_default=func.gen_random_uuid(),  # DB-level default (used by direct SQL inserts)
+    |                                                                                         ^^^^^^^
+167 |     )
+168 |     client_id: Mapped[_uuid_mod.UUID | None] = mapped_column(
+    |
+
+E501 Line too long (89 > 88)
+   --> db\models.py:428:89
+    |
+426 |     # ── Indexes ───────────────────────────────────────────────────────────────
+427 |     __table_args__ = (
+428 |         # Composite index: ordered alert log per session (replaces bare session_id index)
+    |                                                                                         ^
+429 |         Index("ix_alerts_session_ts", "session_id", "timestamp"),
+430 |     )
+    |
+
+E501 Line too long (99 > 88)
+   --> diarization_audit.py:161:89
+    |
+159 |                     )
+160 |                     print(
+161 |                         f"  [{seg.start:6.2f} - {seg.end:6.2f}] {seg.speaker:12s}: {seg.text[:60]}"
+    |                                                                                         ^^^^^^^^^^^
+162 |                     )
+    |
+
+E501 Line too long (95 > 88)
+   --> diarization_audit.py:253:89
+    |
+251 |     print(f"  Unique speakers: {len(unique_speakers)} -> {unique_speakers}")
+252 |
+253 |     # Step 3: Assign speakers to Whisper segments using overlap (same as post_session_diarizer)
+    |                                                                                         ^^^^^^^
+254 |     all_segments = []
+255 |     for seg in raw_segments:
+    |
+
+E501 Line too long (99 > 88)
+   --> diarization_audit.py:307:89
+    |
+305 |     annotated_segs, metadata = load_ground_truth(GT_PATH)
+306 |     print(
+307 |         f"  Ground truth: {len(annotated_segs)} segments, {metadata['expected_speakers']} speakers"
+    |                                                                                         ^^^^^^^^^^^
+308 |     )
+    |
+
+E501 Line too long (99 > 88)
+   --> engine\alert_engine.py:149:89
+    |
+147 |                     id=str(uuid.uuid4()),
+148 |                     level="critical",
+149 |                     message="Speaking imbalance detected — one person dominates the conversation.",
+    |                                                                                         ^^^^^^^^^^^
+150 |                     alert_type="speaking_imbalance",
+151 |                 )
+    |
+
+E501 Line too long (114 > 88)
+   --> engine\alert_engine.py:162:89
+    |
+160 |                     id=str(uuid.uuid4()),
+161 |                     level="critical",
+162 |                     message=f"Multiple objections detected ({len(state.objections)}). Address concerns directly.",
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+163 |                     alert_type="repeated_objections",
+164 |                 )
+    |
+
+E501 Line too long (112 > 88)
+   --> engine\alert_engine.py:190:89
+    |
+188 |                     id=str(uuid.uuid4()),
+189 |                     level="warning",
+190 |                     message=f"Excessive filler words detected ({state.filler_count}). Speak more deliberately.",
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^
+191 |                     alert_type="excessive_fillers",
+192 |                 )
+    |
+
+E501 Line too long (103 > 88)
+   --> engine\conversation_engine.py:201:89
+    |
+200 |             # Detect objections
+201 |             # OBJECTION_KEYWORDS is a dict: {"Pricing": ["price", "cost", ...], "Timeline": [...], ...}
+    |                                                                                         ^^^^^^^^^^^^^^^
+202 |             # Flatten all keyword lists for matching
+203 |             objections = []
+    |
+
+E501 Line too long (89 > 88)
+   --> evaluate_speaker_accuracy.py:418:89
+    |
+416 |     if is_safe:
+417 |         lines.append(
+418 |             "\nAttribution quality meets the threshold (Macro F1 ≥ 0.75 and SCDR ≥ 70%)."
+    |                                                                                         ^
+419 |         )
+420 |         lines.append(
+    |
+
+E501 Line too long (89 > 88)
+   --> evaluate_speaker_accuracy.py:421:89
+    |
+419 |         )
+420 |         lines.append(
+421 |             "Role classification can be reliably layered on top of the current pipeline."
+    |                                                                                         ^
+422 |         )
+423 |     else:
+    |
+
+E501 Line too long (89 > 88)
+   --> evaluate_speaker_accuracy.py:479:89
+    |
+477 |     annotated_segs, metadata = load_ground_truth(gt_path)
+478 |     print(
+479 |         f"  Recording: {metadata['recording']}, {len(annotated_segs)} annotated segments"
+    |                                                                                         ^
+480 |     )
+    |
+
+E501 Line too long (89 > 88)
+   --> evaluate_speaker_accuracy.py:498:89
+    |
+496 |     if not pairs:
+497 |         print(
+498 |             "ERROR: No segments could be matched. Check timestamps in ground truth file."
+    |                                                                                         ^
+499 |         )
+500 |         sys.exit(1)
+    |
+
+E501 Line too long (98 > 88)
+   --> evaluate_speaker_accuracy.py:551:89
+    |
+549 | def main():
+550 |     parser = argparse.ArgumentParser(
+551 |         description="Evaluate speaker attribution accuracy against a hand-annotated ground truth."
+    |                                                                                         ^^^^^^^^^^
+552 |     )
+553 |     parser.add_argument(
+    |
+
+E501 Line too long (93 > 88)
+   --> evaluate_speaker_accuracy.py:562:89
+    |
+560 |         "--output",
+561 |         default="speaker_attribution_accuracy_report.md",
+562 |         help="Output markdown report path (default: speaker_attribution_accuracy_report.md)",
+    |                                                                                         ^^^^^
+563 |     )
+564 |     args = parser.parse_args()
+    |
+
+E501 Line too long (101 > 88)
+   --> evaluate_speaker_attribution.py:145:89
+    |
+144 |     lines.append("\n## Recommendation")
+145 |     # Condition: Avg Coverage > 80%, and if ground truth is present, reasonably high change accuracy.
+    |                                                                                         ^^^^^^^^^^^^^
+146 |     is_safe = avg_coverage >= 80.0
+147 |     if with_truth and avg_chg_acc is not None and avg_chg_acc < 70.0:
+    |
+
+E501 Line too long (89 > 88)
+   --> evaluate_speaker_attribution.py:153:89
+    |
+151 |         lines.append("> **Role Classification Safe**")
+152 |         lines.append(
+153 |             "\nSpeaker attribution quality is sufficient to support role classification."
+    |                                                                                         ^
+154 |         )
+155 |     else:
+    |
+
+E501 Line too long (103 > 88)
+   --> evaluate_speaker_attribution.py:158:89
+    |
+156 |         lines.append("> **Role Classification Not Yet Safe**")
+157 |         lines.append(
+158 |             "\nSpeaker attribution requires further tuning before role classification can be reliable."
+    |                                                                                         ^^^^^^^^^^^^^^^
+159 |         )
+    |
+
+E501 Line too long (91 > 88)
+   --> evaluate_speaker_attribution.py:165:89
+    |
+163 |         for f in failures:
+164 |             lines.append(
+165 |                 f"- **Session `{f['session_id']}`**: Coverage {f['coverage']:.1f}% (< 80%)"
+    |                                                                                         ^^^
+166 |             )
+    |
+
+E501 Line too long (128 > 88)
+   --> evaluate_speaker_attribution.py:181:89
+    |
+179 |             lines.append("- **Ground Truth Comparison**:")
+180 |             lines.append(
+181 |                 f"  - Expected Speakers: {len(gt.get('expected_speakers', []))} (Accuracy: {r.get('speaker_accuracy', 0):.1f}%)"
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+182 |             )
+183 |             lines.append(
+    |
+
+E501 Line too long (119 > 88)
+   --> evaluate_speaker_attribution.py:184:89
+    |
+182 |             )
+183 |             lines.append(
+184 |                 f"  - Expected Changes: {gt.get('expected_changes', 0)} (Accuracy: {r.get('change_accuracy', 0):.1f}%)"
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+185 |             )
+    |
+
+E501 Line too long (97 > 88)
+   --> evaluation\evaluate_analytics.py:214:89
+    |
+213 |     # Convert predicted_handling list of dicts to a dict for easy lookup
+214 |     # Assuming predicted_handling has structure [{"objection": "pricing", "status": "addressed"}]
+    |                                                                                         ^^^^^^^^^
+215 |     pred_map = {
+216 |         item.get("objection"): item.get("status", "ignored").lower()
+    |
+
+E501 Line too long (185 > 88)
+  --> evaluation\report_generator.py:76:89
+   |
+74 | …
+75 | …
+76 | …. Recommendation: Do not use for downstream analytics until models are improved or replaced with LLM alternatives."
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+77 | …
+   |
+
+E501 Line too long (101 > 88)
+   --> main.py:261:89
+    |
+259 |         req_client_id = body.client_id
+260 |
+261 |         # If body uses defaults, but query parameters specify custom values, use the query parameters
+    |                                                                                         ^^^^^^^^^^^^^
+262 |         if req_mode == "meeting" and mode is not None:
+263 |             req_mode = mode
+    |
+
+E501 Line too long (90 > 88)
+   --> main.py:542:89
+    |
+540 |             "objections": [],
+541 |             "buying_signals": [],
+542 |             # Populated by _persist_attribution_diagnostics after post-session diarization
+    |                                                                                         ^^
+543 |             "speaker_attribution": None,
+544 |             "speaker_roles": None,
+    |
+
+E501 Line too long (104 > 88)
+   --> main.py:556:89
+    |
+554 |                 metrics[name] = val
+555 |
+556 |         # For completed/terminal sessions, recalculate speaking metrics from the full set of DB segments
+    |                                                                                         ^^^^^^^^^^^^^^^^
+557 |         # to ensure they reflect the post-session Pyannote speaker labels.
+558 |         if db_session.status in ["completed", "failed", "interrupted", "expired"]:
+    |
+
+E501 Line too long (94 > 88)
+   --> main.py:589:89
+    |
+587 |             elapsed = round(max(0.0, diff), 1)
+588 |
+589 |         # Map transcript segments: speaker_id -> speaker, start_time -> start, end_time -> end
+    |                                                                                         ^^^^^^
+590 |         mapped_segments = []
+591 |         for s in segments:
+    |
+
+E501 Line too long (94 > 88)
+ --> pipeline_sweep.py:4:89
+  |
+2 | TalkSense AI — Pipeline Parameter Sweep Tool
+3 |
+4 | Simulates the real-time streaming pipeline (250ms chunks, VAD, AudioBuffer, Whisper, Pyannote)
+  |                                                                                         ^^^^^^
+5 | across the benchmark dataset to evaluate different:
+6 | 1. Buffer Target Durations (1600ms, 1800ms, 2000ms)
+  |
+
+E501 Line too long (105 > 88)
+   --> pipeline_sweep.py:165:89
+    |
+163 |         for vad_thresh in vad_thresholds:
+164 |             print(
+165 |                 f"\n--- Running Sweep: TARGET_DURATION_MS={target_dur}ms, VAD_THRESHOLD={vad_thresh} ---"
+    |                                                                                         ^^^^^^^^^^^^^^^^^
+166 |             )
+    |
+
+E501 Line too long (119 > 88)
+   --> pipeline_sweep.py:233:89
+    |
+232 |             print(
+233 |                 f"Sweep Result: F1={avg_f1:.4f} | Accuracy={avg_acc:.1f}% | SCDR={avg_scdr:.1f}% | Time={elapsed:.1f}s"
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+234 |             )
+    |
+
+E501 Line too long (94 > 88)
+ --> pipeline_sweep_fast.py:4:89
+  |
+2 | TalkSense AI — Fast Pipeline Parameter Sweep Tool
+3 |
+4 | Simulates the real-time streaming pipeline (250ms chunks, VAD, AudioBuffer, Whisper, Pyannote)
+  |                                                                                         ^^^^^^
+5 | across two representative benchmark samples to quickly evaluate parameter configurations.
+6 | """
+  |
+
+E501 Line too long (89 > 88)
+ --> pipeline_sweep_fast.py:5:89
+  |
+4 | Simulates the real-time streaming pipeline (250ms chunks, VAD, AudioBuffer, Whisper, Pyannote)
+5 | across two representative benchmark samples to quickly evaluate parameter configurations.
+  |                                                                                         ^
+6 | """
+  |
+
+E501 Line too long (91 > 88)
+  --> pipeline_sweep_fast.py:43:89
+   |
+41 | )
+42 |
+43 | # Select two representative samples (clean business meeting and conversational sales audio)
+   |                                                                                         ^^^
+44 | SELECTED_SAMPLES = ["2_speaker/meeting_short", "2_speaker/sales_ambiguous"]
+   |
+
+E501 Line too long (102 > 88)
+   --> pipeline_sweep_fast.py:159:89
+    |
+157 |         for vad_thresh in vad_thresholds:
+158 |             print(
+159 |                 f"\n--- Running Sweep: TARGET_DURATION={target_dur}ms, VAD_THRESHOLD={vad_thresh} ---"
+    |                                                                                         ^^^^^^^^^^^^^^
+160 |             )
+161 |             sys.stdout.flush()
+    |
+
+E501 Line too long (119 > 88)
+   --> pipeline_sweep_fast.py:229:89
+    |
+228 |             print(
+229 |                 f"Sweep Result: F1={avg_f1:.4f} | Accuracy={avg_acc:.1f}% | SCDR={avg_scdr:.1f}% | Time={elapsed:.1f}s"
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+230 |             )
+231 |             sys.stdout.flush()
+    |
+
+E501 Line too long (115 > 88)
+   --> run_full_benchmark.py:247:89
+    |
+245 |     lines.append(f"\n> Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}")
+246 |     lines.append(
+247 |         f"> Thresholds: F1 >= {THRESHOLD_F1}, Accuracy >= {THRESHOLD_ACCURACY*100}%, SCDR >= {THRESHOLD_SCDR*100}%"
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+248 |     )
+249 |     lines.append("")
+    |
+
+E501 Line too long (120 > 88)
+   --> run_full_benchmark.py:264:89
+    |
+262 |         lines.append("|--------|-------|-----------|--------|")
+263 |         lines.append(
+264 |             f"| Average Macro F1 | **{avg_f1:.4f}** | {THRESHOLD_F1} | {'PASS' if avg_f1 >= THRESHOLD_F1 else 'FAIL'} |"
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+265 |         )
+266 |         lines.append(
+    |
+
+E501 Line too long (144 > 88)
+   --> run_full_benchmark.py:267:89
+    |
+265 | …
+266 | …
+267 | …%** | {THRESHOLD_ACCURACY*100}% | {'PASS' if avg_acc/100 >= THRESHOLD_ACCURACY else 'FAIL'} |"
+    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+268 | …
+269 | …
+    |
+
+E501 Line too long (134 > 88)
+   --> run_full_benchmark.py:270:89
+    |
+268 |         )
+269 |         lines.append(
+270 |             f"| Average SCDR | **{avg_scdr:.1f}%** | {THRESHOLD_SCDR*100}% | {'PASS' if avg_scdr/100 >= THRESHOLD_SCDR else 'FAIL'} |"
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+271 |         )
+272 |         lines.append(f"| Samples Tested | {len(valid)} | - | - |")
+    |
+
+E501 Line too long (92 > 88)
+   --> run_full_benchmark.py:274:89
+    |
+272 |         lines.append(f"| Samples Tested | {len(valid)} | - | - |")
+273 |         lines.append(
+274 |             f"| Total Audio | {total_duration:.0f}s ({total_duration/60:.1f} min) | - | - |"
+    |                                                                                         ^^^^
+275 |         )
+276 |         lines.append("")
+    |
+
+E501 Line too long (97 > 88)
+   --> run_full_benchmark.py:318:89
+    |
+316 |         )
+317 |         lines.append(
+318 |             f"| {cat} | {len(cat_results)} | {cf1:.4f} | {cacc:.1f}% | {cscdr:.1f}% | {status} |"
+    |                                                                                         ^^^^^^^^^
+319 |         )
+    |
+
+E501 Line too long (99 > 88)
+   --> run_full_benchmark.py:329:89
+    |
+327 |     lines.append("")
+328 |     lines.append(
+329 |         "| Sample | Category | Duration | Spk Expected | Spk Detected | F1 | SCDR | Acc | Status |"
+    |                                                                                         ^^^^^^^^^^^
+330 |     )
+331 |     lines.append(
+    |
+
+E501 Line too long (90 > 88)
+   --> run_full_benchmark.py:344:89
+    |
+342 |         )
+343 |         lines.append(
+344 |             f"| {r['sample']} | {r.get('category','-')} | {r.get('duration_s',0):.0f}s | "
+    |                                                                                         ^^
+345 |             f"{r.get('speakers_expected','?')} | {r.get('speakers_detected','?')} | "
+346 |             f"{r['macro_f1']:.3f} | {r['scdr']:.0f}% | {r['accuracy']:.0f}% | {status} |"
+    |
+
+E501 Line too long (89 > 88)
+   --> run_full_benchmark.py:346:89
+    |
+344 |             f"| {r['sample']} | {r.get('category','-')} | {r.get('duration_s',0):.0f}s | "
+345 |             f"{r.get('speakers_expected','?')} | {r.get('speakers_detected','?')} | "
+346 |             f"{r['macro_f1']:.3f} | {r['scdr']:.0f}% | {r['accuracy']:.0f}% | {status} |"
+    |                                                                                         ^
+347 |         )
+    |
+
+E501 Line too long (95 > 88)
+   --> run_full_benchmark.py:454:89
+    |
+452 |                 )
+453 |                 print(
+454 |                     f"    F1={f1:.3f}  SCDR={scdr:.0f}%  Acc={acc:.0f}%  Spk={spk}  [{status}]"
+    |                                                                                         ^^^^^^^
+455 |                 )
+    |
+
+E501 Line too long (89 > 88)
+  --> services\client_memory.py:33:89
+   |
+31 | logger = logging.getLogger(__name__)
+32 |
+33 | BRIEFING_PROMPT = """You are an CRM relationship intelligence assistant for TalkSense AI.
+   |                                                                                         ^
+34 |
+35 | You are given the meeting history for client "{client_name}" in the "{client_industry}" industry.
+   |
+
+E501 Line too long (97 > 88)
+  --> services\client_memory.py:35:89
+   |
+33 | BRIEFING_PROMPT = """You are an CRM relationship intelligence assistant for TalkSense AI.
+34 |
+35 | You are given the meeting history for client "{client_name}" in the "{client_industry}" industry.
+   |                                                                                         ^^^^^^^^^
+36 | Your goal is to write a concise, professional relationship briefing summary (2-3 sentences max) that a sales representative can read i…
+   |
+
+E501 Line too long (199 > 88)
+  --> services\client_memory.py:36:89
+   |
+35 | …industry}" industry.
+36 | …2-3 sentences max) that a sales representative can read in 10 seconds before starting their next meeting with this client.
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+37 | …
+38 | …
+   |
+
+E501 Line too long (110 > 88)
+  --> services\client_memory.py:41:89
+   |
+39 | 1. The client's main concerns or interests.
+40 | 2. Sentiment trend and any unresolved objections.
+41 | 3. Crucial context from recent sessions (e.g. key focus areas, pricing discussions, or integration timelines).
+   |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^
+42 |
+43 | Here is the history of the last {num_sessions} meetings:
+   |
+
+E501 Line too long (139 > 88)
+  --> services\client_memory.py:46:89
+   |
+44 | …
+45 | …
+46 | …o not include any greeting, intro, markdown formatting, or prefix. Be direct and actionable.
+   |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+47 | …
+   |
+
+E501 Line too long (92 > 88)
+  --> services\client_memory.py:53:89
+   |
+51 |     """
+52 |     Query completed sessions and metrics for a client, calculate sentiment trend,
+53 |     aggregate common objections, generate a relationship summary using Gemini (or fallback),
+   |                                                                                         ^^^^
+54 |     and persist a new ClientSnapshot row.
+55 |     """
+   |
+
+E501 Line too long (93 > 88)
+  --> services\client_memory.py:68:89
+   |
+66 |             return
+67 |
+68 |         # 2. Fetch all completed sessions for this client ordered chronologically (ascending)
+   |                                                                                         ^^^^^
+69 |         sessions_res = await db.execute(
+70 |             select(DBSession)
+   |
+
+E501 Line too long (94 > 88)
+   --> services\client_memory.py:206:89
+    |
+204 |                         f"Meeting {i+1}:\n"
+205 |                         f"  Title: {s.title or 'Untitled Session'}\n"
+206 |                         f"  Date: {s.started_at.isoformat() if s.started_at else 'Unknown'}\n"
+    |                                                                                         ^^^^^^
+207 |                         f"  Mode: {s.mode}\n"
+208 |                         f"  Summary: {summary_text}\n"
+    |
+
+E501 Line too long (94 > 88)
+   --> services\client_memory.py:254:89
+    |
+252 |             else:
+253 |                 fallback_parts.append(
+254 |                     f"Client {client.name} has completed {meetings_count} meeting(s) to date."
+    |                                                                                         ^^^^^^
+255 |                 )
+    |
+
+E501 Line too long (110 > 88)
+   --> services\client_memory.py:263:89
+    |
+261 |             elif sentiment_trend == "declining":
+262 |                 fallback_parts.append(
+263 |                     "Their engagement trend is declining, suggesting potential concerns or unresolved issues."
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^
+264 |                 )
+265 |             else:
+    |
+
+E501 Line too long (114 > 88)
+   --> services\client_memory.py:270:89
+    |
+268 |             if common_objections:
+269 |                 fallback_parts.append(
+270 |                     f"Key areas of concern or discussion have focused on: {', '.join(common_objections).lower()}."
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+271 |                 )
+    |
+
+E501 Line too long (99 > 88)
+   --> services\client_memory.py:291:89
+    |
+289 |         )
+290 |         logger.info(
+291 |             "client_memory — client %s: memory update successfully staged [meetings=%d, trend=%s]",
+    |                                                                                         ^^^^^^^^^^^
+292 |             str(client_id)[:8],
+293 |             meetings_count,
+    |
+
+E501 Line too long (92 > 88)
+   --> services\comparison.py:273:89
+    |
+271 |         session_a       — snapshot dict for the first session
+272 |         session_b       — snapshot dict for the second session
+273 |         delta           — numeric deltas (b - a) for health_score, sentiment_score, duration
+    |                                                                                         ^^^^
+274 |         shared_objections
+275 |         unique_to_a_objections
+    |
+
+F841 Local variable `forbid_concern` is assigned to but never used
+   --> services\context_analyzer.py:498:5
+    |
+497 |     # 2. Hard Gate: Forbid concern language if no uncontrolled issues
+498 |     forbid_concern = len(uncontrolled_issues) == 0
+    |     ^^^^^^^^^^^^^^
+499 |
+500 |     # 3. Select Template
+    |
+help: Remove assignment to unused variable `forbid_concern`
+
+E501 Line too long (110 > 88)
+   --> services\context_analyzer.py:506:89
+    |
+504 |     if quality == "good":
+505 |         summary = (
+506 |             f"The discussion focused on {topic}, with key decisions locked in and clear next steps assigned. "
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^
+507 |             "Minor issues were identified with ownership and resolution plans in place."
+508 |         )
+    |
+
+E501 Line too long (137 > 88)
+   --> services\context_analyzer.py:517:89
+    |
+515 | …led Issues
+516 | …ecisions) > 0:
+517 | …opic} and resulted in decisions, but some issues remain unresolved and require follow-up."
+    |                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+518 | …
+519 | …d Issues (or Neutral with Issues)
+    |
+
+E501 Line too long (147 > 88)
+   --> services\context_analyzer.py:521:89
+    |
+519 | …ues (or Neutral with Issues)
+520 | …
+521 | …ed concerns regarding {topic} without clear decisions or ownership, indicating potential risk."
+    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+522 | …
+523 | …atus Check)
+    |
+
+E501 Line too long (99 > 88)
+   --> services\context_analyzer.py:525:89
+    |
+523 |     # Case D (NEUTRAL): No Decisions + No Issues (Status Check)
+524 |     else:
+525 |         summary = f"The team discussed {topic}. Future actions need to be defined to move forward."
+    |                                                                                         ^^^^^^^^^^^
+526 |
+527 |     return summary
+    |
+
+E501 Line too long (100 > 88)
+   --> services\context_analyzer.py:991:89
+    |
+989 |         # "none" is risky alone, but "no blockers" is safe.
+990 |         # "any blockers? none" implies detection of question answer pair logic
+991 |         # which is hard with just looking at single segments, but let's try strict keywords for now.
+    |                                                                                         ^^^^^^^^^^^^
+992 |         if "no blocker" in text or ("none" in text and "blocker" in text):
+993 |             # Simplistic: "none for me re: blockers"
+    |
+
+E501 Line too long (96 > 88)
+   --> services\context_analyzer.py:995:89
+    |
+993 |             # Simplistic: "none for me re: blockers"
+994 |             return True
+995 |         # Check for specific "Any blockers?" -> "None" question/answer pattern requires context,
+    |                                                                                         ^^^^^^^^
+996 |         # but let's assume specific phrases like "no impediments", "all clear".
+997 |         if "all clear" in text or "good to go" in text:
+    |
+
+E501 Line too long (98 > 88)
+    --> services\context_analyzer.py:1169:89
+     |
+1167 | INSIGHT_TEMPLATES = {
+1168 |     "Escalation Required": "Critical blockers in {topic} require immediate escalation.",
+1169 |     "Execution Risk": "Potential execution risk identified in {topic} due to unclear next steps.",
+     |                                                                                         ^^^^^^^^^^
+1170 |     "Decision Ambiguity": "Key issues around {topic} were discussed, but no final decision was reached.",
+1171 |     "Ownership Gap": "Follow-up actions related to {topic} lack clear ownership.",
+     |
+
+E501 Line too long (105 > 88)
+    --> services\context_analyzer.py:1170:89
+     |
+1168 |     "Escalation Required": "Critical blockers in {topic} require immediate escalation.",
+1169 |     "Execution Risk": "Potential execution risk identified in {topic} due to unclear next steps.",
+1170 |     "Decision Ambiguity": "Key issues around {topic} were discussed, but no final decision was reached.",
+     |                                                                                         ^^^^^^^^^^^^^^^^^
+1171 |     "Ownership Gap": "Follow-up actions related to {topic} lack clear ownership.",
+1172 |     "Positive Momentum": "Clear progress made on {topic} with assigned actions and decisions.",
+     |
+
+E501 Line too long (95 > 88)
+    --> services\context_analyzer.py:1172:89
+     |
+1170 |     "Decision Ambiguity": "Key issues around {topic} were discussed, but no final decision was reached.",
+1171 |     "Ownership Gap": "Follow-up actions related to {topic} lack clear ownership.",
+1172 |     "Positive Momentum": "Clear progress made on {topic} with assigned actions and decisions.",
+     |                                                                                         ^^^^^^^
+1173 | }
+     |
+
+E501 Line too long (92 > 88)
+    --> services\context_analyzer.py:1244:89
+     |
+1242 |                 {
+1243 |                     "type": "Decision Ambiguity",
+1244 |                     "text": "Some execution elements remain unclear and require follow-up.",
+     |                                                                                         ^^^^
+1245 |                 }
+1246 |             )
+     |
+
+E501 Line too long (123 > 88)
+    --> services\context_analyzer.py:1252:89
+     |
+1250 |                 {
+1251 |                     "type": "Strategic Planning",
+1252 |                     "text": "Direction and strategy were discussed. Detailed execution planning deferred to next meeting.",
+     |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1253 |                 }
+1254 |             )
+     |
+
+E501 Line too long (96 > 88)
+    --> services\context_analyzer.py:1449:88
+     |
+1448 |         # 🔍 STEP 6: SANITY CHECK (Uncomment to debug)
+1449 |         # logger.info(f"🔍 QUALITY DEBUG: signals={signals}, meeting_quality={meeting_quality}")
+     |                                                                                         ^^^^^^^^
+1450 |         # logger.info(f"🔍 GUARANTEE: ownership={signals.get('ownership')}, execution={signals.get('execution_decision')}")
+1451 |         # logger.info(f"🔍 RESULT: If ownership OR execution is True → Quality MUST be Medium or High")
+     |
+
+E501 Line too long (123 > 88)
+    --> services\context_analyzer.py:1450:88
+     |
+1448 |         # 🔍 STEP 6: SANITY CHECK (Uncomment to debug)
+1449 |         # logger.info(f"🔍 QUALITY DEBUG: signals={signals}, meeting_quality={meeting_quality}")
+1450 |         # logger.info(f"🔍 GUARANTEE: ownership={signals.get('ownership')}, execution={signals.get('execution_decision')}")
+     |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1451 |         # logger.info(f"🔍 RESULT: If ownership OR execution is True → Quality MUST be Medium or High")
+     |
+
+E501 Line too long (103 > 88)
+    --> services\context_analyzer.py:1451:88
+     |
+1449 |         # logger.info(f"🔍 QUALITY DEBUG: signals={signals}, meeting_quality={meeting_quality}")
+1450 |         # logger.info(f"🔍 GUARANTEE: ownership={signals.get('ownership')}, execution={signals.get('execution_decision')}")
+1451 |         # logger.info(f"🔍 RESULT: If ownership OR execution is True → Quality MUST be Medium or High")
+     |                                                                                         ^^^^^^^^^^^^^^^
+1452 |
+1453 |         # --- STEP 7: PROJECT RISK SCORING ---
+     |
+
+E501 Line too long (124 > 88)
+    --> services\context_analyzer.py:1870:89
+     |
+1868 |     if quality["label"] == "Low":
+1869 |         if signals.get("no_intent"):
+1870 |             return "The prospect indicated no plans to switch or lack of interest. The opportunity is currently not active."
+     |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1871 |         if signals.get("deferred"):
+1872 |             return "The prospect signaled a deferral to a later timeline. The opportunity is currently paused."
+     |
+
+E501 Line too long (111 > 88)
+    --> services\context_analyzer.py:1872:89
+     |
+1870 |             return "The prospect indicated no plans to switch or lack of interest. The opportunity is currently not active."
+1871 |         if signals.get("deferred"):
+1872 |             return "The prospect signaled a deferral to a later timeline. The opportunity is currently paused."
+     |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^
+1873 |
+1874 |         # Check for objections in weak calls
+     |
+
+E501 Line too long (154 > 88)
+    --> services\context_analyzer.py:1878:89
+     |
+1876 | …in objections]))
+1877 | …
+1878 | ….join(objection_types).lower()}) without clear resolution. Opportunity requires re-qualification."
+     |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1879 | …
+1880 | …ction_types[0].lower()} without clear path forward. Follow-up needed to assess viability."
+     |
+
+E501 Line too long (146 > 88)
+    --> services\context_analyzer.py:1880:89
+     |
+1878 | …', '.join(objection_types).lower()}) without clear resolution. Opportunity requires re-qualification."
+1879 | …
+1880 | …objection_types[0].lower()} without clear path forward. Follow-up needed to assess viability."
+     |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1881 | …
+1882 | …on
+     |
+
+E501 Line too long (118 > 88)
+    --> services\context_analyzer.py:1883:89
+     |
+1882 |         # Fallback Low - Template 3: Early Exploration
+1883 |         return "Early exploration phase. Buyer is gathering information. Follow-up needed to assess fit and timeline."
+     |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1884 |
+1885 |     # Template 1: Strong Progress
+     |
+
+E501 Line too long (141 > 88)
+    --> services\context_analyzer.py:1903:89
+     |
+1902 | …
+1903 | …posal agreed and review scheduled. Clear buying signals detected with confirmed next steps."
+     |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1904 | …
+1905 | …ar commitment to next steps. The opportunity is advancing with confirmed actions."
+     |
+
+E501 Line too long (131 > 88)
+    --> services\context_analyzer.py:1905:89
+     |
+1903 | …h proposal agreed and review scheduled. Clear buying signals detected with confirmed next steps."
+1904 | …
+1905 | …h clear commitment to next steps. The opportunity is advancing with confirmed actions."
+     |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1906 | …
+1907 | …h hard commitment to next steps. The opportunity is advancing."
+     |
+
+E501 Line too long (107 > 88)
+    --> services\context_analyzer.py:1907:89
+     |
+1905 |             return "Strong progress made with clear commitment to next steps. The opportunity is advancing with confirmed actions."
+1906 |         else:
+1907 |             return "Strong progress made with hard commitment to next steps. The opportunity is advancing."
+     |                                                                                         ^^^^^^^^^^^^^^^^^^^
+1908 |
+1909 |     # Template 2: Moderate Progress
+     |
+
+E501 Line too long (140 > 88)
+    --> services\context_analyzer.py:1913:89
+     |
+1911 | …
+1912 | …ignals.get("next_step"):
+1913 | …uyer interest confirmed. Next steps identified but require firmer commitment and timeline."
+     |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1914 | …
+1915 | …lear signals
+     |
+
+E501 Line too long (134 > 88)
+    --> services\context_analyzer.py:1916:89
+     |
+1914 | …
+1915 | …t clear signals
+1916 | …ith some interest shown. Requires follow-up to establish clear next steps and timeline."
+     |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1917 | …
+1918 | …
+     |
+
+E501 Line too long (108 > 88)
+    --> services\context_analyzer.py:1919:89
+     |
+1918 |     # Fallback - Conservative
+1919 |     return "The discussion concluded without clear next steps or momentum. Additional qualification needed."
+     |                                                                                         ^^^^^^^^^^^^^^^^^^^^
+     |
+
+E501 Line too long (129 > 88)
+    --> services\context_analyzer.py:1934:89
+     |
+1932 |             {
+1933 |                 "type": "Execution Risk",
+1934 |                 "text": "Prospect indicated no immediate intent or deferred timeline. Opportunity may require re-qualification.",
+     |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1935 |             }
+1936 |         )
+     |
+
+E501 Line too long (108 > 88)
+    --> services\context_analyzer.py:1944:89
+     |
+1942 |             {
+1943 |                 "type": "Positive Momentum",
+1944 |                 "text": "Hard commitment secured with confirmed next steps. Strong buying signal detected.",
+     |                                                                                         ^^^^^^^^^^^^^^^^^^^^
+1945 |             }
+1946 |         )
+     |
+
+E501 Line too long (138 > 88)
+    --> services\context_analyzer.py:1964:89
+     |
+1962 | …
+1963 | …
+1964 | … types raised ({', '.join(objection_types)}). Requires comprehensive follow-up strategy.",
+     |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1965 | …
+1966 | …
+     |
+
+E501 Line too long (110 > 88)
+    --> services\context_analyzer.py:1971:89
+     |
+1969 |                 {
+1970 |                     "type": "Positive Momentum",
+1971 |                     "text": f"Objections around {', '.join(objection_types)} were addressed during the call.",
+     |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^
+1972 |                 }
+1973 |             )
+     |
+
+E501 Line too long (109 > 88)
+    --> services\context_analyzer.py:1978:89
+     |
+1976 |                 {
+1977 |                     "type": "Decision Ambiguity",
+1978 |                     "text": f"Unresolved concerns regarding {', '.join(objection_types)} require follow-up.",
+     |                                                                                         ^^^^^^^^^^^^^^^^^^^^^
+1979 |                 }
+1980 |             )
+     |
+
+E501 Line too long (98 > 88)
+    --> services\context_analyzer.py:1998:89
+     |
+1996 |             {
+1997 |                 "type": "Decision Ambiguity",
+1998 |                 "text": "Soft next step agreed but lacks firm commitment. Requires confirmation.",
+     |                                                                                         ^^^^^^^^^^
+1999 |             }
+2000 |         )
+     |
+
+E501 Line too long (103 > 88)
+    --> services\context_analyzer.py:2005:89
+     |
+2003 |             {
+2004 |                 "type": "Execution Risk",
+2005 |                 "text": "No clear next steps defined. Follow-up strategy needed to maintain momentum.",
+     |                                                                                         ^^^^^^^^^^^^^^^
+2006 |             }
+2007 |         )
+     |
+
+E501 Line too long (92 > 88)
+    --> services\context_analyzer.py:2009:89
+     |
+2007 |         )
+2008 |
+2009 |     # STEP 3: Decision Maker - Distinguish between shared decision-making and authority risk
+     |                                                                                         ^^^^
+2010 |     if signals.get("decision_authority_risk"):
+2011 |         # True authority risk: hard blocker
+     |
+
+E501 Line too long (115 > 88)
+    --> services\context_analyzer.py:2015:89
+     |
+2013 |             {
+2014 |                 "type": "Ownership Gap",
+2015 |                 "text": "Decision authority unclear and no next steps defined. May need to engage decision maker.",
+     |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2016 |             }
+2017 |         )
+     |
+
+E501 Line too long (106 > 88)
+    --> services\context_analyzer.py:2023:89
+     |
+2021 |             {
+2022 |                 "type": "Decision Ambiguity",
+2023 |                 "text": "Shared decision-making process identified. Stakeholder alignment may be needed.",
+     |                                                                                         ^^^^^^^^^^^^^^^^^^
+2024 |             }
+2025 |         )
+     |
+
+E501 Line too long (109 > 88)
+    --> services\context_analyzer.py:2031:89
+     |
+2029 |             {
+2030 |                 "type": "Decision Ambiguity",
+2031 |                 "text": "Decision maker not clearly identified. May need to engage additional stakeholders.",
+     |                                                                                         ^^^^^^^^^^^^^^^^^^^^^
+2032 |             }
+2033 |         )
+     |
+
+E501 Line too long (97 > 88)
+    --> services\context_analyzer.py:2089:89
+     |
+2087 |         )
+2088 |
+2089 |         # Add text_blob to signals for template selection (STEP 7) and action generation (STEP 5)
+     |                                                                                         ^^^^^^^^^
+2090 |         text_blob = " ".join([s["text"].lower() for s in segments])
+2091 |         sales_signals["_text_blob"] = text_blob
+     |
+
+E501 Line too long (92 > 88)
+    --> services\context_analyzer.py:2108:89
+     |
+2106 |     with profile_stage(session_id, "Conversation metrics calculation"):
+2107 |         quality = compute_sales_quality(sales_signals)
+2108 |         # STEPS 3 & 4: Generate insights with authority classification and value gap removal
+     |                                                                                         ^^^^
+2109 |         key_insights = generate_sales_insights(objections, sales_signals, quality)
+     |
+
+E501 Line too long (89 > 88)
+   --> services\post_session_diarizer.py:100:89
+    |
+ 98 |         if file_size < 16_044:
+ 99 |             logger.warning(
+100 |                 "post_session_diarizer — session %s: WAV too small (%d bytes), aborting",
+    |                                                                                         ^
+101 |                 session_id[:8],
+102 |                 file_size,
+    |
+
+E501 Line too long (89 > 88)
+   --> services\post_session_diarizer.py:326:89
+    |
+324 |                     await db.commit()
+325 |                 logger.info(
+326 |                     "post_session_diarizer — session %s: Talk ratio timeline generated.",
+    |                                                                                         ^
+327 |                     session_id[:8],
+328 |                 )
+    |
+
+E501 Line too long (106 > 88)
+   --> services\post_session_diarizer.py:435:89
+    |
+433 |                     if session_row and session_row.client_id:
+434 |                         logger.info(
+435 |                             "post_session_diarizer — session %s: Updating client memory for client %s...",
+    |                                                                                         ^^^^^^^^^^^^^^^^^^
+436 |                             session_id[:8],
+437 |                             session_row.client_id,
+    |
+
+E501 Line too long (89 > 88)
+   --> services\post_session_diarizer.py:443:89
+    |
+441 |                             await db.commit()
+442 |                         logger.info(
+443 |                             "post_session_diarizer — session %s: Client memory updated.",
+    |                                                                                         ^
+444 |                             session_id[:8],
+445 |                         )
+    |
+
+E501 Line too long (108 > 88)
+   --> services\post_session_diarizer.py:448:89
+    |
+446 |                     else:
+447 |                         logger.info(
+448 |                             "post_session_diarizer — session %s: No client linked, skipping memory update.",
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^
+449 |                             session_id[:8],
+450 |                         )
+    |
+
+E501 Line too long (93 > 88)
+   --> services\post_session_diarizer.py:581:89
+    |
+580 |             logger.info(
+581 |                 "post_session_diarizer — session %s: pre-loading WAV file using wave module",
+    |                                                                                         ^^^^^
+582 |                 session_id[:8],
+583 |             )
+    |
+
+E501 Line too long (120 > 88)
+   --> services\post_session_diarizer.py:600:89
+    |
+598 |             waveform = {"waveform": audio_tensor, "sample_rate": framerate}
+599 |             logger.info(
+600 |                 "post_session_diarizer — session %s: waveform pre-loaded (channels=%d, sample_rate=%d, duration=%.2fs)",
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+601 |                 session_id[:8],
+602 |                 nchannels,
+    |
+
+E501 Line too long (92 > 88)
+   --> services\post_session_diarizer.py:896:89
+    |
+894 |     except Exception:  # noqa: BLE001
+895 |         logger.exception(
+896 |             "post_session_diarizer — session %s: failed to persist attribution diagnostics",
+    |                                                                                         ^^^^
+897 |             session_id[:8],
+898 |         )
+    |
+
+E501 Line too long (125 > 88)
+   --> services\role_classifier.py:106:89
+    |
+104 | # ── V2 LLM Classifier (Gemini Flash) ─────────────────────────────────────────
+105 |
+106 | ROLE_CLASSIFICATION_PROMPT = """You are an expert conversation analyst for a sales intelligence platform called TalkSense AI.
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+107 |
+108 | You are given a transcript of a conversation between two speakers. Your task is to determine which speaker is the **Sales Representat…
+    |
+
+E501 Line too long (169 > 88)
+   --> services\role_classifier.py:108:89
+    |
+106 | …analyst for a sales intelligence platform called TalkSense AI.
+107 | …
+108 | …rs. Your task is to determine which speaker is the **Sales Representative** and which is the **Customer**.
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+109 | …
+110 | …
+    |
+
+E501 Line too long (165 > 88)
+   --> services\role_classifier.py:131:89
+    |
+129 | …
+130 | …
+131 | … sales context, make your best judgment based on who is presenting/offering vs who is evaluating/asking.
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+132 | …
+133 | …
+    |
+
+E501 Line too long (91 > 88)
+   --> services\role_classifier.py:176:89
+    |
+174 |         if not settings.gemini_api_key:
+175 |             logger.warning(
+176 |                 "role_classifier — session %s: GEMINI_API_KEY not configured, skipping v2",
+    |                                                                                         ^^^
+177 |                 session_id[:8],
+178 |             )
+    |
+
+E501 Line too long (89 > 88)
+  --> services\talk_ratio_analyzer.py:57:89
+   |
+55 |     total_talk_time = 0.0
+56 |
+57 |     # 1. First pass: Analyze overall flow (switches, interruptions, silences, monologues)
+   |                                                                                         ^
+58 |     for i, seg in enumerate(segments):
+59 |         speaker = seg.speaker_id or "Unknown"
+   |
+
+E501 Line too long (89 > 88)
+   --> services\talk_ratio_analyzer.py:180:89
+    |
+178 |                 "talk_time": round(duration, 1),
+179 |                 "participation": part,
+180 |                 "dominance": part,  # In a window, dominance is essentially participation
+    |                                                                                         ^
+181 |             }
+    |
+
+E501 Line too long (96 > 88)
+  --> test_integration.py:48:89
+   |
+46 |         print(f"   - Filename: {result.get('filename')}")
+47 |         print(
+48 |             f"   - Transcript segments: {len(result.get('transcript', {}).get('segments', []))}"
+   |                                                                                         ^^^^^^^^
+49 |         )
+50 |         print(f"   - Insights keys: {list(result.get('insights', {}).keys())}")
+   |
+
+E501 Line too long (98 > 88)
+  --> test_objection_handling.py:23:89
+   |
+21 |         # Time 0-5: Customer objection 1 (Ignored)
+22 |         # Time 10-15: Customer objection 2 (Acknowledged) -> Sales Rep 15-18 (short)
+23 |         # Time 20-25: Customer objection 3 (Addressed) -> Sales Rep 25-35 (long, mentions keyword)
+   |                                                                                         ^^^^^^^^^^
+24 |         # Time 40-45: Customer objection 4 (Resolved) -> Sales Rep 45-55 -> Customer 60-65 (Buying signal)
+   |
+
+E501 Line too long (106 > 88)
+  --> test_objection_handling.py:24:89
+   |
+22 |         # Time 10-15: Customer objection 2 (Acknowledged) -> Sales Rep 15-18 (short)
+23 |         # Time 20-25: Customer objection 3 (Addressed) -> Sales Rep 25-35 (long, mentions keyword)
+24 |         # Time 40-45: Customer objection 4 (Resolved) -> Sales Rep 45-55 -> Customer 60-65 (Buying signal)
+   |                                                                                         ^^^^^^^^^^^^^^^^^^
+25 |
+26 |         segments = [
+   |
+
+E501 Line too long (103 > 88)
+  --> test_objection_handling.py:53:89
+   |
+51 |                 "text": "I hear you on timeline.",
+52 |             },
+53 |             # Objection 3: Security (Addressed, > 10 words, contains keyword "plan") - response at 265s
+   |                                                                                         ^^^^^^^^^^^^^^^
+54 |             {
+55 |                 "speaker_id": "Speaker 2",
+   |
+
+E501 Line too long (115 > 88)
+  --> test_objection_handling.py:64:89
+   |
+62 |                 "start_time": 265.0,
+63 |                 "end_time": 275.0,
+64 |                 "text": "Our security plan is very comprehensive and we offer many features to protect your data.",
+   |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+65 |             },
+66 |             # Objection 4: Features (Resolved, followed by buying signal) - response at 385s, bs at 400s
+   |
+
+E501 Line too long (104 > 88)
+  --> test_objection_handling.py:66:89
+   |
+64 |                 "text": "Our security plan is very comprehensive and we offer many features to protect your data.",
+65 |             },
+66 |             # Objection 4: Features (Resolved, followed by buying signal) - response at 385s, bs at 400s
+   |                                                                                         ^^^^^^^^^^^^^^^^
+67 |             {
+68 |                 "speaker_id": "Speaker 2",
+   |
+
+E501 Line too long (93 > 88)
+  --> test_talk_ratio.py:66:89
+   |
+64 |             res = await db.execute(
+65 |                 text(
+66 |                     "SELECT status, speaker_attribution_status FROM sessions WHERE id = :sid"
+   |                                                                                         ^^^^^
+67 |                 ),
+68 |                 {"sid": session_id},
+   |
+
+E501 Line too long (94 > 88)
+  --> tests\test_client_memory.py:39:89
+   |
+38 |     print(
+39 |         "Asserting GET /clients/{client_id} returns default values when no snapshot exists..."
+   |                                                                                         ^^^^^^
+40 |     )
+41 |     res = requests.get(f"{BASE_URL}/clients/{client_id}")
+   |
+
+E501 Line too long (96 > 88)
+  --> tests\test_client_memory.py:53:89
+   |
+51 |     print("[OK] Default briefing card validated")
+52 |
+53 |     # Add 1st completed session: sentiment=0.5, objections=["Pricing", "Pricing", "Integration"]
+   |                                                                                         ^^^^^^^^
+54 |     s1_id = uuid.uuid4()
+55 |     async with AsyncSessionLocal() as db:
+   |
+
+E501 Line too long (91 > 88)
+   --> tests\test_client_memory.py:143:89
+    |
+141 |     assert data["last_meeting_date"] == "2026-06-21T14:00:00+00:00"
+142 |     print(
+143 |         "[OK] Second meeting sentiment trend and objection frequency aggregation validated"
+    |                                                                                         ^^^
+144 |     )
+    |
+
+E501 Line too long (95 > 88)
+   --> tests\test_client_memory.py:146:89
+    |
+144 |     )
+145 |
+146 |     # Add 3rd completed session: sentiment=0.5 (declining), objections=["Security", "Security"]
+    |                                                                                         ^^^^^^^
+147 |     s3_id = uuid.uuid4()
+148 |     async with AsyncSessionLocal() as db:
+    |
+
+E501 Line too long (89 > 88)
+  --> tests\test_key_insights.py:45:89
+   |
+43 |     )  # Empty tension
+44 |     print(
+45 |         f"Scenario 2 (Escalation Guardrail): { [i['type'] for i in insights_guardrail] }"
+   |                                                                                         ^
+46 |     )
+47 |     assert "Escalation Required" not in [i["type"] for i in insights_guardrail]
+   |
+
+E501 Line too long (97 > 88)
+  --> tests\test_key_insights.py:60:89
+   |
+59 |     # 3. Test Capping (Max 2)
+60 |     # Scenario: Trigger Risk, Ambiguity, Gap (Unlikely due to collapse, but let's try to force 3)
+   |                                                                                         ^^^^^^^^^
+61 |     # Risk, Gap, and ... maybe Positive? No, Positive needs decision.
+62 |     # Let's try: Risk (weak actions), Gap (all unassigned - wait, Gap requires actions. If Risk (weak actions) usually implies Gap too…
+   |
+
+E501 Line too long (150 > 88)
+  --> tests\test_key_insights.py:62:89
+   |
+60 | …y due to collapse, but let's try to force 3)
+61 | … needs decision.
+62 | …gned - wait, Gap requires actions. If Risk (weak actions) usually implies Gap too if unassigned).
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+63 | …
+64 | …
+   |
+
+E501 Line too long (112 > 88)
+  --> tests\test_meeting_health.py:17:89
+   |
+16 |     # Scenario 1: Decisive Meeting
+17 |     # Conditions: Decisions Made, Actions Assigned, No Blockers. Sentiment is Negative (complaining about bugs).
+   |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^
+18 |     # Expect: Good (Outcome Override)
+19 |     decisions_1 = [{"text": "We will ship."}]
+   |
+
+E501 Line too long (169 > 88)
+  --> tests\test_meeting_health.py:32:89
+   |
+30 | …
+31 | …
+32 | …xecution Risk should not trigger even if actions are weird, though usually assigned actions implies strong)
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+33 | …
+34 | …
+   |
+
+E501 Line too long (98 > 88)
+  --> tests\test_meeting_health.py:49:89
+   |
+47 |     # Scenario 2: Vague Meeting
+48 |     # Conditions: No Decisions, No Actions. Positive Sentiment ("Great chat!").
+49 |     # Expect: Neutral (or Uncertain if sentiment was super negative, but here Positive -> Neutral)
+   |                                                                                         ^^^^^^^^^^
+50 |     decisions_2 = []
+51 |     actions_2 = []
+   |
+
+E501 Line too long (89 > 88)
+  --> tests\test_meeting_health.py:81:89
+   |
+79 |         {"task": "Get QA approval by tomorrow", "owner": "Bob", "timeline": "tomorrow"}
+80 |     ]
+81 |     # Note: Logic checks 'task' text for timestamp if 'timeline' key missing, or the key.
+   |                                                                                         ^
+82 |     # My helpers look for TEMPORAL_KEYWORDS in task.
+83 |     health_5a = evaluate_meeting_health([], actions_5a, [], {}, [])
+   |
+
+E501 Line too long (93 > 88)
+  --> tests\test_meeting_quality_refactor.py:66:89
+   |
+64 |             "start": 15.0,
+65 |             "end": 20.0,
+66 |             "text": "Decision is to proceed with the current approach once we get approval.",
+   |                                                                                         ^^^^^
+67 |             "sentiment": 0.2,
+68 |             "sentiment_label": "Positive",
+   |
+
+E501 Line too long (93 > 88)
+  --> tests\test_meeting_quality_refactor.py:96:89
+   |
+94 |     assert (
+95 |         result["meeting_quality"]["label"] == "High"
+96 |     ), f"FAILED: Expected meeting_quality='High', got '{result['meeting_quality']['label']}'"
+   |                                                                                         ^^^^^
+97 |
+98 |     # Project risk should be Medium or High (due to blockers)
+   |
+
+E501 Line too long (99 > 88)
+   --> tests\test_meeting_quality_refactor.py:102:89
+    |
+100 |         "Medium",
+101 |         "High",
+102 |     ], f"FAILED: Expected project_risk='Medium' or 'High', got '{result['project_risk']['label']}'"
+    |                                                                                         ^^^^^^^^^^^
+103 |
+104 |     # Summary should NOT say "no ownership" or "no decisions"
+    |
+
+E402 Module level import not at top of file
+  --> tests\validate_pipeline.py:39:1
+   |
+37 | WARN = "⚠️  WARN"
+38 |
+39 | from dataclasses import dataclass
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+
+E501 Line too long (98 > 88)
+   --> tests\validate_pipeline.py:198:89
+    |
+196 |             {
+197 |                 "speaker": "Speaker A",
+198 |                 "text": "Thanks for hopping on. I wanted to walk you through our platform today.",
+    |                                                                                         ^^^^^^^^^^
+199 |                 "sentiment": 0.6,
+200 |                 "start": 0.0,
+    |
+
+E501 Line too long (90 > 88)
+   --> tests\validate_pipeline.py:212:89
+    |
+210 |             {
+211 |                 "speaker": "Speaker A",
+212 |                 "text": "Great. So TalkSense is a real-time conversation analytics tool.",
+    |                                                                                         ^^
+213 |                 "sentiment": 0.7,
+214 |                 "start": 8.0,
+    |
+
+E501 Line too long (90 > 88)
+   --> tests\validate_pipeline.py:233:89
+    |
+231 |         ]
+232 |
+233 |         # NOTE: transcript_segments is appended by audio_handler, not by process_segments.
+    |                                                                                         ^^
+234 |         # Simulate what audio_handler does: append before calling engine.
+235 |         for seg in segs:
+    |
+
+E501 Line too long (102 > 88)
+   --> tests\validate_pipeline.py:949:89
+    |
+947 |                 {
+948 |                     "speaker": "Speaker A",
+949 |                     "text": "Thanks for hopping on. I wanted to walk you through our platform today.",
+    |                                                                                         ^^^^^^^^^^^^^^
+950 |                     "sentiment": 0.6,
+951 |                     "start": 0.0,
+    |
+
+E501 Line too long (99 > 88)
+   --> tests\validate_pipeline.py:997:89
+    |
+995 |                 },
+996 |             ],
+997 |             # T+1:10-2:05 — NEGATIVE: objections with exact keywords, budget concerns, long silence
+    |                                                                                         ^^^^^^^^^^^
+998 |             [
+999 |                 {
+    |
+
+E501 Line too long (91 > 88)
+    --> tests\validate_pipeline.py:1001:89
+     |
+ 999 |                 {
+1000 |                     "speaker": "Speaker B",
+1001 |                     "text": "Hmm. The price is a bit high. Our budget is tight right now.",
+     |                                                                                         ^^^
+1002 |                     "sentiment": -0.6,
+1003 |                     "start": 70.0,
+     |
+
+E501 Line too long (93 > 88)
+    --> tests\validate_pipeline.py:1008:89
+     |
+1006 |                 {
+1007 |                     "speaker": "Speaker A",
+1008 |                     "text": "I completely understand. A lot of customers felt the same way.",
+     |                                                                                         ^^^^^
+1009 |                     "sentiment": 0.3,
+1010 |                     "start": 85.0,
+     |
+
+E501 Line too long (95 > 88)
+    --> tests\validate_pipeline.py:1022:89
+     |
+1020 |                 {
+1021 |                     "speaker": "Speaker A",
+1022 |                     "text": "The Whisper model is multilingual and handles most accents well.",
+     |                                                                                         ^^^^^^^
+1023 |                     "sentiment": 0.5,
+1024 |                     "start": 105.0,
+     |
+
+E501 Line too long (93 > 88)
+    --> tests\validate_pipeline.py:1029:89
+     |
+1027 |                 {
+1028 |                     "speaker": "Speaker B",
+1029 |                     "text": "What about data privacy and security? Where does this data go?",
+     |                                                                                         ^^^^^
+1030 |                     "sentiment": -0.3,
+1031 |                     "start": 118.0,
+     |
+
+E501 Line too long (90 > 88)
+    --> tests\validate_pipeline.py:1039:89
+     |
+1037 |                 {
+1038 |                     "speaker": "Speaker A",
+1039 |                     "text": "All data is encrypted at rest and never leaves your region.",
+     |                                                                                         ^^
+1040 |                     "sentiment": 0.6,
+1041 |                     "start": 160.0,
+     |
+
+E501 Line too long (89 > 88)
+    --> tests\validate_pipeline.py:1046:89
+     |
+1044 |                 {
+1045 |                     "speaker": "Speaker B",
+1046 |                     "text": "That is actually really reassuring. I did not expect that.",
+     |                                                                                         ^
+1047 |                     "sentiment": 0.8,
+1048 |                     "start": 172.0,
+     |
+
+E501 Line too long (103 > 88)
+    --> tests\validate_pipeline.py:1084:89
+     |
+1082 |                 {
+1083 |                     "speaker": "Speaker B",
+1084 |                     "text": "Honestly? The real-time alerts look incredible. This makes sense for us.",
+     |                                                                                         ^^^^^^^^^^^^^^^
+1085 |                     "sentiment": 0.85,
+1086 |                     "start": 255.0,
+     |
+
+E501 Line too long (92 > 88)
+    --> tests\validate_pipeline.py:1098:89
+     |
+1096 |                 {
+1097 |                     "speaker": "Speaker B",
+1098 |                     "text": "Would we be able to trial this free for a month? Sounds good.",
+     |                                                                                         ^^^^
+1099 |                     "sentiment": 0.75,
+1100 |                     "start": 290.0,
+     |
+
+E501 Line too long (95 > 88)
+    --> tests\validate_pipeline.py:1112:89
+     |
+1110 |                 {
+1111 |                     "speaker": "Speaker B",
+1112 |                     "text": "I am actually really excited. This looks good. Let us set it up.",
+     |                                                                                         ^^^^^^^
+1113 |                     "sentiment": 0.9,
+1114 |                     "start": 315.0,
+     |
+
+E501 Line too long (101 > 88)
+  --> utils\profiler.py:92:89
+   |
+90 |     """
+91 |     Context manager to profile a stage for a session.
+92 |     If session_id is None, unregistered, or profiling is disabled, operates with negligible overhead.
+   |                                                                                         ^^^^^^^^^^^^^
+93 |     """
+94 |     if not session_id:
+   |
+
+E501 Line too long (99 > 88)
+   --> validate_benchmark_dataset.py:115:89
+    |
+113 |         if start < prev_end - 0.1:  # Allow 100ms tolerance
+114 |             warnings.append(
+115 |                 f"Segment {i}: overlaps with previous (start={start:.2f}, prev_end={prev_end:.2f})"
+    |                                                                                         ^^^^^^^^^^^
+116 |             )
+    |
+
+E501 Line too long (110 > 88)
+   --> validate_benchmark_dataset.py:126:89
+    |
+124 |     if expected != actual:
+125 |         errors.append(
+126 |             f"expected_speakers={expected} but segments have {actual} unique speakers: {speakers_in_segments}"
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^
+127 |         )
+    |
+
+E501 Line too long (93 > 88)
+   --> validate_benchmark_dataset.py:136:89
+    |
+134 |             if last_end > duration + 1.0:
+135 |                 errors.append(
+136 |                     f"Last segment ends at {last_end:.1f}s but audio is only {duration:.1f}s"
+    |                                                                                         ^^^^^
+137 |                 )
+138 |             if abs(last_end - duration) > 5.0:
+    |
+
+E501 Line too long (105 > 88)
+   --> validate_benchmark_dataset.py:140:89
+    |
+138 |             if abs(last_end - duration) > 5.0:
+139 |                 warnings.append(
+140 |                     f"Large gap: last segment ends at {last_end:.1f}s, audio duration is {duration:.1f}s"
+    |                                                                                         ^^^^^^^^^^^^^^^^^
+141 |                 )
+142 |     else:
+    |
+
+F841 Local variable `status_parts` is assigned to but never used
+   --> validate_benchmark_dataset.py:228:13
+    |
+226 |             has_audio = audio_path and os.path.isfile(audio_path)
+227 |
+228 |             status_parts = []
+    |             ^^^^^^^^^^^^
+229 |             sample_errors = []
+230 |             sample_warnings = []
+    |
+help: Remove assignment to unused variable `status_parts`
+
+E501 Line too long (93 > 88)
+   --> validate_benchmark_dataset.py:281:89
+    |
+279 |         status = "PASS" if stats["errors"] == 0 else "FAIL"
+280 |         print(
+281 |             f"    {cat:20s}: {stats['samples']} samples, {stats['errors']} errors [{status}]"
+    |                                                                                         ^^^^^
+282 |         )
+    |
+
+E501 Line too long (90 > 88)
+  --> verify_attribution_with_ui.py:85:89
+   |
+83 |         process.terminate()
+84 |
+85 |     # Wait another 15 seconds to allow the browser to auto-refresh and display "Completed"
+   |                                                                                         ^^
+86 |     print("Waiting 15 seconds for post-processing and frontend auto-refresh...")
+87 |     await asyncio.sleep(15)
+   |
+
+E501 Line too long (102 > 88)
+  --> verify_live_latency.py:48:89
+   |
+47 |                         recv_time = time.time()
+48 |                         # The audio corresponding to the segment ended at session_start_time + end_sec
+   |                                                                                         ^^^^^^^^^^^^^^
+49 |                         audio_end_time = session_start_time + end_sec
+50 |                         latency = recv_time - audio_end_time
+   |
+
+E501 Line too long (113 > 88)
+  --> verify_live_latency.py:53:89
+   |
+51 |                         latencies.append(latency)
+52 |                         print(
+53 |                             f"[Transcript Received] Speaker: {speaker} | Sentiment: {sentiment} | Text: '{text}'"
+   |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^
+54 |                         )
+55 |                         print(
+   |
+
+E501 Line too long (89 > 88)
+  --> verify_live_latency.py:56:89
+   |
+54 |                         )
+55 |                         print(
+56 |                             f"  -> Segment End: {end_sec:.2f}s | Latency: {latency:.3f}s"
+   |                                                                                         ^
+57 |                         )
+58 |                 except websockets.exceptions.ConnectionClosed:
+   |
+
+E722 Do not use bare `except`
+   --> verify_meeting_stability.py:113:21
+    |
+111 |                         parsed = json.loads(msg)
+112 |                         self.messages.append(parsed)
+113 |                     except:
+    |                     ^^^^^^
+114 |                         self.messages.append(msg)
+115 |         except Exception as e:
+    |
+
+E501 Line too long (118 > 88)
+   --> verify_meeting_stability.py:140:89
+    |
+138 |     actual_duration = len(pcm_data) / BYTES_PER_SAMPLE / SAMPLE_RATE
+139 |     logger.info(
+140 |         f"Prepared audio duration: {actual_duration:.1f}s ({actual_duration/60:.2f} mins), size={len(pcm_data)} bytes"
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+141 |     )
+    |
+
+E501 Line too long (96 > 88)
+   --> verify_meeting_stability.py:250:89
+    |
+248 |                         await ws.send(f"inject:{speaker}|{phrase}")
+249 |
+250 |                 # Periodically monitor resources & print progress (every 5 seconds of real-time)
+    |                                                                                         ^^^^^^^^
+251 |                 if i % 100 == 0:
+252 |                     stream_progress = (i / chunk_count) * 100
+    |
+
+E501 Line too long (96 > 88)
+   --> verify_meeting_stability.py:254:89
+    |
+252 |                     stream_progress = (i / chunk_count) * 100
+253 |                     logger.info(
+254 |                         f"Streaming progress: {stream_progress:.1f}% ({i}/{chunk_count} chunks)"
+    |                                                                                         ^^^^^^^^
+255 |                     )
+    |
+
+E501 Line too long (94 > 88)
+   --> verify_meeting_stability.py:265:89
+    |
+263 |                             mem_readings.append(mem_rss_mb)
+264 |                             logger.info(
+265 |                                 f"Resource usage: CPU={cpu_pct:.1f}%, Mem={mem_rss_mb:.1f} MB"
+    |                                                                                         ^^^^^^
+266 |                             )
+267 |                         except Exception as e:
+    |
+
+E501 Line too long (100 > 88)
+   --> verify_meeting_stability.py:285:89
+    |
+283 |     total_realtime = t_end - t_start
+284 |     logger.info(
+285 |         f"Stream completed in {total_realtime:.1f}s (speedup={actual_duration/total_realtime:.2f}x)"
+    |                                                                                         ^^^^^^^^^^^^
+286 |     )
+    |
+
+E501 Line too long (208 > 88)
+   --> verify_meeting_stability.py:453:89
+    |
+451 | …
+452 | …
+453 | …utes of audio streamed in approximately 3 minutes) to verify the core subsystems of TalkSense AI under real-world durations.",
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+454 | …
+455 | …tion:.1f} seconds)",
+    |
+
+E501 Line too long (102 > 88)
+   --> verify_meeting_stability.py:455:89
+    |
+453 | …     "A 15-minute simulated meeting validation was executed at 5x speed (15 minutes of audio streamed in approximately 3 minutes) to…
+454 | …     "\n### Performance Metrics",
+455 | …     f"- **Simulated Duration:** {actual_duration/60:.1f} minutes ({actual_duration:.1f} seconds)",
+    |                                                                                       ^^^^^^^^^^^^^^
+456 | …     f"- **Actual Execution Time:** {total_realtime:.1f} seconds (speedup ratio: {actual_duration/total_realtime:.2f}x)",
+457 | …     "\n#### CPU & Memory Profile",
+    |
+
+E501 Line too long (124 > 88)
+   --> verify_meeting_stability.py:456:89
+    |
+454 |         "\n### Performance Metrics",
+455 |         f"- **Simulated Duration:** {actual_duration/60:.1f} minutes ({actual_duration:.1f} seconds)",
+456 |         f"- **Actual Execution Time:** {total_realtime:.1f} seconds (speedup ratio: {actual_duration/total_realtime:.2f}x)",
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+457 |         "\n#### CPU & Memory Profile",
+458 |         f"- **CPU Usage:** Min={cpu_stats['min']:.1f}%, Max={cpu_stats['max']:.1f}%, Avg={cpu_stats['avg']:.1f}%",
+    |
+
+E501 Line too long (114 > 88)
+   --> verify_meeting_stability.py:458:89
+    |
+456 |         f"- **Actual Execution Time:** {total_realtime:.1f} seconds (speedup ratio: {actual_duration/total_realtime:.2f}x)",
+457 |         "\n#### CPU & Memory Profile",
+458 |         f"- **CPU Usage:** Min={cpu_stats['min']:.1f}%, Max={cpu_stats['max']:.1f}%, Avg={cpu_stats['avg']:.1f}%",
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+459 |         f"- **Memory Usage:** Start={mem_stats['start']:.1f} MB, End={mem_stats['end']:.1f} MB, Peak={mem_stats['max']:.1f} MB",
+460 |         f"- **Memory Leak Delta:** {mem_stats['leak']:.1f} MB",
+    |
+
+E501 Line too long (128 > 88)
+   --> verify_meeting_stability.py:459:89
+    |
+457 |         "\n#### CPU & Memory Profile",
+458 |         f"- **CPU Usage:** Min={cpu_stats['min']:.1f}%, Max={cpu_stats['max']:.1f}%, Avg={cpu_stats['avg']:.1f}%",
+459 |         f"- **Memory Usage:** Start={mem_stats['start']:.1f} MB, End={mem_stats['end']:.1f} MB, Peak={mem_stats['max']:.1f} MB",
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+460 |         f"- **Memory Leak Delta:** {mem_stats['leak']:.1f} MB",
+461 |         "\n#### WebSocket Subscriptions Events Received",
+    |
+
+E501 Line too long (194 > 88)
+   --> verify_meeting_stability.py:478:89
+    |
+476 | …
+477 | …
+478 | …ce consumption (O(1) memory profile) and 100% telemetry persistence without any unhandled WebSocket drops or failures."
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+479 | …
+480 | …
+    |
+
+E501 Line too long (179 > 88)
+   --> verify_meeting_stability.py:488:89
+    |
+486 | …
+487 | …
+488 | …ria met. No resource leaks detected, and WebSocket reconnect and restart recovery pipelines are highly stable."
+    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+489 | …
+490 | …
+    |
+
+E501 Line too long (111 > 88)
+   --> verify_meeting_stability.py:492:89
+    |
+490 |     else:
+491 |         report_lines.append(
+492 |             "**NOT READY FOR RELEASE.** Stability failures detected. Address listed defects before proceeding."
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^
+493 |         )
+    |
+
+E501 Line too long (110 > 88)
+   --> verify_post_session_attribution.py:152:89
+    |
+150 |             result = await db.execute(
+151 |                 text(
+152 |                     "SELECT status, speaker_attribution_status, audio_file_path FROM sessions WHERE id = :sid"
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^
+153 |                 ),
+154 |                 {"sid": session_id},
+    |
+
+E501 Line too long (135 > 88)
+   --> verify_post_session_attribution.py:167:89
+    |
+165 | …     )
+166 | …     print(
+167 | …         f"    Time +{step}s | Session Status: {row.status:12s} | Attribution Status: {str(row.speaker_attribution_status)}"
+    |                                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+168 | …     )
+169 | …     if row.speaker_attribution_status in ["completed", "failed"]:
+    |
+
+E501 Line too long (119 > 88)
+   --> verify_post_session_attribution.py:191:89
+    |
+189 |                 duration = nframes / framerate
+190 |                 print(
+191 |                     f"    WAV Properties: Channels={nchannels}, SampleWidth={sampwidth} bytes, FrameRate={framerate}Hz"
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+192 |                 )
+193 |                 print(f"    WAV Duration: {duration:.2f} seconds")
+    |
+
+E501 Line too long (89 > 88)
+   --> verify_post_session_attribution.py:216:88
+    |
+214 |     else:
+215 |         print(
+216 |             "    ❌ TEST 2 FAILED: Attribution status did not transition to 'completed'."
+    |                                                                                         ^
+217 |         )
+    |
+
+E501 Line too long (132 > 88)
+   --> verify_post_session_attribution.py:224:89
+    |
+222 |         result = await db.execute(
+223 |             text(
+224 |                 "SELECT speaker_id, text, start_time, end_time FROM transcript_segments WHERE session_id = :sid ORDER BY start_time"
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+225 |             ),
+226 |             {"sid": session_id},
+    |
+
+E501 Line too long (143 > 88)
+   --> verify_post_session_attribution.py:235:89
+    |
+233 | …
+234 | …
+235 | …: {s.start_time:.2f}s - {s.end_time:.2f}s | Speaker: {s.speaker_id:12s} | '{s.text[:40]}...'"
+    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+236 | …
+    |
+
+E501 Line too long (94 > 88)
+   --> verify_post_session_attribution.py:239:89
+    |
+238 |         print(
+239 |             f"    Distinct speakers found after post-session diarization: {distinct_speakers}"
+    |                                                                                         ^^^^^^
+240 |         )
+241 |         if len(distinct_speakers) >= 2:
+    |
+
+E501 Line too long (100 > 88)
+   --> verify_post_session_attribution.py:243:88
+    |
+241 |         if len(distinct_speakers) >= 2:
+242 |             print(
+243 |                 f"    ✅ TEST 4 PASSED: DB updated with {len(distinct_speakers)} distinct speakers."
+    |                                                                                         ^^^^^^^^^^^^
+244 |             )
+245 |         else:
+    |
+
+E501 Line too long (101 > 88)
+   --> verify_post_session_attribution.py:285:88
+    |
+283 |         if row is None:
+284 |             print(
+285 |                 "    ❌ TEST 6 FAILED: No 'speaker_attribution' metric row found in session_metrics."
+    |                                                                                         ^^^^^^^^^^^^^
+286 |             )
+287 |         else:
+    |
+
+E501 Line too long (132 > 88)
+   --> verify_post_session_attribution.py:313:88
+    |
+311 |                 if diag["coverage_percent"] == expected_coverage:
+312 |                     print(
+313 |                         f"    ✅ TEST 6 PASSED: Attribution diagnostics persisted correctly (coverage={diag['coverage_percent']}%)."
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+314 |                     )
+315 |                 else:
+    |
+
+E501 Line too long (138 > 88)
+   --> verify_post_session_attribution.py:317:88
+    |
+315 | …     else:
+316 | …         print(
+317 | …             f"    ❌ TEST 6 FAILED: coverage_percent mismatch (expected {expected_coverage}, got {diag['coverage_percent']})."
+    |                                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+318 | …         )
+    |
+
+E501 Line too long (102 > 88)
+   --> verify_post_session_attribution.py:331:88
+    |
+329 |             if sa is None:
+330 |                 print(
+331 |                     "    ❌ TEST 7 FAILED: 'speaker_attribution' key missing from dashboard response."
+    |                                                                                         ^^^^^^^^^^^^^^
+332 |                 )
+333 |             else:
+    |
+
+E501 Line too long (95 > 88)
+   --> verify_post_session_attribution.py:341:88
+    |
+339 |                 if missing:
+340 |                     print(
+341 |                         f"    ❌ TEST 7 FAILED: Missing keys in speaker_attribution: {missing}"
+    |                                                                                         ^^^^^^^
+342 |                     )
+343 |                 elif sa.get("status") != "completed":
+    |
+
+E501 Line too long (102 > 88)
+   --> verify_post_session_attribution.py:345:88
+    |
+343 |                 elif sa.get("status") != "completed":
+344 |                     print(
+345 |                         f"    ❌ TEST 7 FAILED: Expected status='completed', got {sa.get('status')!r}"
+    |                                                                                         ^^^^^^^^^^^^^^
+346 |                     )
+347 |                 elif sa.get("coverage") is None:
+    |
+
+E501 Line too long (95 > 88)
+   --> verify_post_session_attribution.py:349:88
+    |
+347 |                 elif sa.get("coverage") is None:
+348 |                     print(
+349 |                         "    ❌ TEST 7 FAILED: 'coverage' is None — diagnostics not populated."
+    |                                                                                         ^^^^^^^
+350 |                     )
+351 |                 else:
+    |
+
+E501 Line too long (123 > 88)
+   --> verify_post_session_attribution.py:353:88
+    |
+351 |                 else:
+352 |                     print(
+353 |                         f"    ✅ TEST 7 PASSED: Dashboard speaker_attribution has all fields (coverage={sa['coverage']}%)."
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+354 |                     )
+355 |         else:
+    |
+
+E501 Line too long (92 > 88)
+  --> verify_restart_recovery.py:83:89
+   |
+81 |     build_dummy_wav(wav_path, dummy_data_size)
+82 |     logger.info(
+83 |         f"Created unfinalized WAV at {wav_path} with size {os.path.getsize(wav_path)} bytes"
+   |                                                                                         ^^^^
+84 |     )
+   |
+
+E501 Line too long (91 > 88)
+   --> verify_restart_recovery.py:128:89
+    |
+126 |     final_chunk, final_subchunk = parse_wav_header(wav_path)
+127 |     logger.info(
+128 |         f"Finalized header values: ChunkSize={final_chunk}, Subchunk2Size={final_subchunk}"
+    |                                                                                         ^^^
+129 |     )
+130 |     expected_chunk_size = 36 + dummy_data_size
+    |
+
+E501 Line too long (90 > 88)
+   --> ws\audio_handler.py:116:89
+    |
+114 |                     phrase = parts[1] if len(parts) > 1 else parts[0]
+115 |                     logger.info(
+116 |                         f"Session {session_id[:8]}…: injecting text: [{speaker}] {phrase}"
+    |                                                                                         ^^
+117 |                     )
+118 |                     await _inject_phrase(session_id, speaker, phrase, manager)
+    |
+
+E501 Line too long (95 > 88)
+   --> ws\audio_handler.py:129:89
+    |
+127 |             if len(pcm_bytes) > MAX_CHUNK_BYTES:
+128 |                 logger.warning(
+129 |                     f"Session {session_id[:8]}…: chunk too large ({len(pcm_bytes)}B) — dropped"
+    |                                                                                         ^^^^^^^
+130 |                 )
+131 |                 continue
+    |
+
+E501 Line too long (112 > 88)
+   --> ws\audio_handler.py:222:89
+    |
+221 |     logger.info(
+222 |         f"Session {session_id[:8]}…: buffer flushed {len(flushed)}B → sending to Whisper (partial={is_partial})"
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^
+223 |     )
+    |
+
+E501 Line too long (97 > 88)
+   --> ws\audio_handler.py:243:89
+    |
+241 |     diarizer,
+242 | ) -> None:
+243 |     """Transcribe audio bytes, perform speaker diarization, enrichment, and broadcast updates."""
+    |                                                                                         ^^^^^^^^^
+244 |     # 4. Transcribe (GPU, async via thread pool)
+245 |     _settings = get_settings()
+    |
+
+E501 Line too long (107 > 88)
+   --> ws\session_manager.py:421:89
+    |
+419 |         logger.info("Session %s…: final flush completed", session_id[:8])
+420 |
+421 |         # ── Step 4: persist session status, duration, WAV path, and trigger post-session diarization ─────
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^
+422 |         try:
+423 |             from db import crud
+    |
+
+E501 Line too long (98 > 88)
+   --> ws\session_manager.py:447:89
+    |
+445 |         except Exception:  # noqa: BLE001
+446 |             logger.exception(
+447 |                 "Session %s…: failed to persist session terminal status/duration/audio_file_path",
+    |                                                                                         ^^^^^^^^^^
+448 |                 session_id[:8],
+449 |             )
+    |
+
+E501 Line too long (135 > 88)
+   --> ws\session_manager.py:627:89
+    |
+625 | …
+626 | …
+627 | …s in DB to prevent foreign key violations (e.g. if DB was reset or session was test-only)
+    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+628 | …on(db, session.session_id)
+629 | …
+    |
+
+E501 Line too long (123 > 88)
+   --> ws\session_manager.py:631:89
+    |
+629 |                 if db_sess is None:
+630 |                     logger.warning(
+631 |                         "Flusher — session %s not found in DB. Re-creating session row to prevent foreign key violations.",
+    |                                                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+632 |                         session.session_id[:8],
+633 |                     )
+    |
+
+E501 Line too long (89 > 88)
+   --> ws\session_manager.py:953:89
+    |
+951 |             except asyncio.TimeoutError:
+952 |                 logger.error(
+953 |                     "Flusher — %d straggler(s) did not honour cancellation within %.1fs;"
+    |                                                                                         ^
+954 |                     " proceeding to secondary drain.",
+955 |                     straggler_count,
+    |
+
+E501 Line too long (92 > 88)
+   --> ws\session_manager.py:985:89
+    |
+983 |         except asyncio.TimeoutError:
+984 |             logger.error(
+985 |                 "Flusher — %d late worker(s) exceeded secondary drain timeout; cancelling.",
+    |                                                                                         ^^^^
+986 |                 len(late_workers),
+987 |             )
+    |
+
+E501 Line too long (99 > 88)
+   --> ws\session_manager.py:998:89
+    |
+996 |             except asyncio.TimeoutError:
+997 |                 logger.error(
+998 |                     "Flusher — late workers did not honour cancellation; proceeding with disposal."
+    |                                                                                         ^^^^^^^^^^^
+999 |                 )
+    |
+
+E501 Line too long (89 > 88)
+  --> ws\subscriptions.py:90:89
+   |
+88 |                 logger.info(
+89 |                     f"Session {session_id[:8]}…: /transcript subscriber closed "
+90 |                     f"(ws_id={id(websocket)}) — stale close, active reference preserved "
+   |                                                                                         ^
+91 |                     f"(active_ws_id={id(session.ws_transcript)})"
+92 |                 )
+   |
+
+E501 Line too long (89 > 88)
+   --> ws\subscriptions.py:132:89
+    |
+130 |                 logger.info(
+131 |                     f"Session {session_id[:8]}…: /metrics subscriber closed "
+132 |                     f"(ws_id={id(websocket)}) — stale close, active reference preserved "
+    |                                                                                         ^
+133 |                     f"(active_ws_id={id(session.ws_metrics)})"
+134 |                 )
+    |
+
+E501 Line too long (89 > 88)
+   --> ws\subscriptions.py:174:89
+    |
+172 |                 logger.info(
+173 |                     f"Session {session_id[:8]}…: /alerts subscriber closed "
+174 |                     f"(ws_id={id(websocket)}) — stale close, active reference preserved "
+    |                                                                                         ^
+175 |                     f"(active_ws_id={id(session.ws_alerts)})"
+176 |                 )
+    |
+
+E501 Line too long (89 > 88)
+   --> ws\subscriptions.py:216:89
+    |
+214 |                 logger.info(
+215 |                     f"Session {session_id[:8]}…: /status subscriber closed "
+216 |                     f"(ws_id={id(websocket)}) — stale close, active reference preserved "
+    |                                                                                         ^
+217 |                     f"(active_ws_id={id(session.ws_status)})"
+218 |                 )
+    |
+
+Found 217 errors.
+No fixes available (2 hidden fixes can be enabled with the `--unsafe-fixes` option).

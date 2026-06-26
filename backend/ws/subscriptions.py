@@ -37,6 +37,7 @@ Race condition fixed (2026-06-11):
 
 The actual push is done by broadcast.py, triggered by audio_handler.py.
 """
+
 import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -71,7 +72,9 @@ async def transcript_ws(websocket: WebSocket, session_id: str) -> None:
             # Keep-alive: accept and discard any incoming messages
             await websocket.receive_text()
     except (WebSocketDisconnect, RuntimeError) as exc:
-        if isinstance(exc, RuntimeError) and not ("Cannot call" in str(exc) and "disconnect" in str(exc)):
+        if isinstance(exc, RuntimeError) and not (
+            "Cannot call" in str(exc) and "disconnect" in str(exc)
+        ):
             raise exc
     finally:
         async with session.lock:
@@ -84,7 +87,7 @@ async def transcript_ws(websocket: WebSocket, session_id: str) -> None:
             else:
                 logger.info(
                     f"Session {session_id[:8]}…: /transcript subscriber closed "
-                    f"(ws_id={id(websocket)}) — stale close, active reference preserved "
+                    f"(ws_id={id(websocket)}) — stale close, active reference preserved "  # noqa: E501
                     f"(active_ws_id={id(session.ws_transcript)})"
                 )
 
@@ -111,7 +114,9 @@ async def metrics_ws(websocket: WebSocket, session_id: str) -> None:
         while True:
             await websocket.receive_text()
     except (WebSocketDisconnect, RuntimeError) as exc:
-        if isinstance(exc, RuntimeError) and not ("Cannot call" in str(exc) and "disconnect" in str(exc)):
+        if isinstance(exc, RuntimeError) and not (
+            "Cannot call" in str(exc) and "disconnect" in str(exc)
+        ):
             raise exc
     finally:
         async with session.lock:
@@ -124,7 +129,7 @@ async def metrics_ws(websocket: WebSocket, session_id: str) -> None:
             else:
                 logger.info(
                     f"Session {session_id[:8]}…: /metrics subscriber closed "
-                    f"(ws_id={id(websocket)}) — stale close, active reference preserved "
+                    f"(ws_id={id(websocket)}) — stale close, active reference preserved "  # noqa: E501
                     f"(active_ws_id={id(session.ws_metrics)})"
                 )
 
@@ -151,7 +156,9 @@ async def alerts_ws(websocket: WebSocket, session_id: str) -> None:
         while True:
             await websocket.receive_text()
     except (WebSocketDisconnect, RuntimeError) as exc:
-        if isinstance(exc, RuntimeError) and not ("Cannot call" in str(exc) and "disconnect" in str(exc)):
+        if isinstance(exc, RuntimeError) and not (
+            "Cannot call" in str(exc) and "disconnect" in str(exc)
+        ):
             raise exc
     finally:
         async with session.lock:
@@ -164,7 +171,7 @@ async def alerts_ws(websocket: WebSocket, session_id: str) -> None:
             else:
                 logger.info(
                     f"Session {session_id[:8]}…: /alerts subscriber closed "
-                    f"(ws_id={id(websocket)}) — stale close, active reference preserved "
+                    f"(ws_id={id(websocket)}) — stale close, active reference preserved "  # noqa: E501
                     f"(active_ws_id={id(session.ws_alerts)})"
                 )
 
@@ -191,7 +198,9 @@ async def status_ws(websocket: WebSocket, session_id: str) -> None:
         while True:
             await websocket.receive_text()
     except (WebSocketDisconnect, RuntimeError) as exc:
-        if isinstance(exc, RuntimeError) and not ("Cannot call" in str(exc) and "disconnect" in str(exc)):
+        if isinstance(exc, RuntimeError) and not (
+            "Cannot call" in str(exc) and "disconnect" in str(exc)
+        ):
             raise exc
     finally:
         async with session.lock:
@@ -204,6 +213,6 @@ async def status_ws(websocket: WebSocket, session_id: str) -> None:
             else:
                 logger.info(
                     f"Session {session_id[:8]}…: /status subscriber closed "
-                    f"(ws_id={id(websocket)}) — stale close, active reference preserved "
+                    f"(ws_id={id(websocket)}) — stale close, active reference preserved "  # noqa: E501
                     f"(active_ws_id={id(session.ws_status)})"
                 )

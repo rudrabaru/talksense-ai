@@ -17,19 +17,27 @@ Pipeline per sample:
 Outputs:
     backend/benchmark_results.json — per-sample and aggregate metrics
 """
+
 import json
 import os
 import subprocess
 import sys
 import time
+
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 SAMPLE_RATE = 16000
-DATASET_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "benchmark_dataset")
-AUDIO_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sample_audio"))
-OUTPUT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "benchmark_results.json")
+DATASET_ROOT = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "benchmark_dataset"
+)
+AUDIO_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "sample_audio")
+)
+OUTPUT_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "benchmark_results.json"
+)
 CATEGORIES = ["2_speaker", "3_speaker", "4_speaker", "noisy", "long_form"]
 
 # Thresholds
@@ -39,7 +47,19 @@ THRESHOLD_SCDR = 0.70
 
 
 def decode_audio(path):
-    cmd = ["ffmpeg", "-y", "-i", path, "-f", "s16le", "-ac", "1", "-ar", str(SAMPLE_RATE), "-"]
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        path,
+        "-f",
+        "s16le",
+        "-ac",
+        "1",
+        "-ar",
+        str(SAMPLE_RATE),
+        "-",
+    ]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     pcm = proc.stdout.read()
     proc.wait()
@@ -49,10 +69,17 @@ def decode_audio(path):
 def run_sample(pipeline, transcriber, sample_dir, audio_dir):
     """Run diarization + evaluation for a single benchmark sample."""
     import torch
+
     from evaluate_speaker_accuracy import (
-        Segment as EvalSegment, match_segments, resolve_label_mapping,
-        compute_accuracy, compute_precision_recall_f1, compute_scdr,
+        Segment as EvalSegment,
+    )
+    from evaluate_speaker_accuracy import (
         collect_failures,
+        compute_accuracy,
+        compute_precision_recall_f1,
+        compute_scdr,
+        match_segments,
+        resolve_label_mapping,
     )
 
     gt_path = os.path.join(sample_dir, "ground_truth.json")
@@ -68,7 +95,10 @@ def run_sample(pipeline, transcriber, sample_dir, audio_dir):
     expected_speakers = gt.get("expected_speakers", 2)
 
     if not os.path.isfile(audio_path):
-        return {"error": f"Audio not found: {audio_path}", "sample": os.path.basename(sample_dir)}
+        return {
+            "error": f"Audio not found: {audio_path}",
+            "sample": os.path.basename(sample_dir),
+        }
 
     # Decode
     pcm = decode_audio(audio_path)
@@ -80,7 +110,10 @@ def run_sample(pipeline, transcriber, sample_dir, audio_dir):
     whisper_time = time.monotonic() - t0
 
     if not raw_segments:
-        return {"error": "Whisper returned no segments", "sample": os.path.basename(sample_dir)}
+        return {
+            "error": "Whisper returned no segments",
+            "sample": os.path.basename(sample_dir),
+        }
 
     # Diarize
     audio_int16 = np.frombuffer(pcm, dtype=np.int16)
@@ -90,7 +123,7 @@ def run_sample(pipeline, transcriber, sample_dir, audio_dir):
 
     step_val = os.environ.get("PYANNOTE_STEP")
     batch_val = os.environ.get("PYANNOTE_BATCH_SIZE")
-    
+
     if step_val:
         pipeline.segmentation_step = float(step_val)
     if batch_val:
@@ -126,16 +159,22 @@ def run_sample(pipeline, transcriber, sample_dir, audio_dir):
             if ov > best_ov:
                 best_ov = ov
                 best_speaker = spk
-        predicted.append(EvalSegment(start=seg.start, end=seg.end, speaker=best_speaker, text=seg.text))
+        predicted.append(
+            EvalSegment(
+                start=seg.start, end=seg.end, speaker=best_speaker, text=seg.text
+            )
+        )
 
     # Post-processing: fix speaker fragmentation
     from config.diarization_postprocessing import apply_postprocessing
-    predicted = apply_postprocessing(predicted)
 
+    predicted = apply_postprocessing(predicted)
 
     # Build GT segments
     annotated = [
-        EvalSegment(start=s["start"], end=s["end"], speaker=s["speaker"], text=s.get("text", ""))
+        EvalSegment(
+            start=s["start"], end=s["end"], speaker=s["speaker"], text=s.get("text", "")
+        )
         for s in gt["segments"]
     ]
 
@@ -149,7 +188,9 @@ def run_sample(pipeline, transcriber, sample_dir, audio_dir):
             "duration_s": round(duration, 1),
             "segments_matched": 0,
             "total_annotated": len(annotated),
-            "macro_f1": 0.0, "scdr": 0.0, "accuracy": 0.0,
+            "macro_f1": 0.0,
+            "scdr": 0.0,
+            "accuracy": 0.0,
             "speakers_expected": expected_speakers,
             "speakers_detected": len(set(s.speaker for s in predicted)),
             "whisper_time_s": round(whisper_time, 1),
@@ -160,7 +201,11 @@ def run_sample(pipeline, transcriber, sample_dir, audio_dir):
     accuracy, correct, total = compute_accuracy(pairs, label_map)
     per_speaker = compute_precision_recall_f1(pairs, label_map)
     scdr, scdr_det, scdr_total = compute_scdr(predicted, annotated, label_map)
-    macro_f1 = sum(v["f1"] for v in per_speaker.values()) / len(per_speaker) if per_speaker else 0.0
+    macro_f1 = (
+        sum(v["f1"] for v in per_speaker.values()) / len(per_speaker)
+        if per_speaker
+        else 0.0
+    )
     failures = collect_failures(pairs, label_map)
 
     return {
@@ -178,7 +223,13 @@ def run_sample(pipeline, transcriber, sample_dir, audio_dir):
         "scdr_total": scdr_total,
         "speakers_expected": expected_speakers,
         "speakers_detected": len(set(s.speaker for s in predicted)),
-        "per_speaker": {k: {kk: round(vv, 4) if isinstance(vv, float) else vv for kk, vv in v.items()} for k, v in per_speaker.items()},
+        "per_speaker": {
+            k: {
+                kk: round(vv, 4) if isinstance(vv, float) else vv
+                for kk, vv in v.items()
+            }
+            for k, v in per_speaker.items()
+        },
         "label_map": {k: v for k, v in label_map.items()},
         "failures": failures[:5],  # First 5 only
         "whisper_time_s": round(whisper_time, 1),
@@ -192,7 +243,9 @@ def generate_report(results, output_path):
     lines = []
     lines.append("# TalkSense AI — Speaker Attribution Benchmark Report")
     lines.append(f"\n> Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}")
-    lines.append(f"> Thresholds: F1 >= {THRESHOLD_F1}, Accuracy >= {THRESHOLD_ACCURACY*100}%, SCDR >= {THRESHOLD_SCDR*100}%")
+    lines.append(
+        f"> Thresholds: F1 >= {THRESHOLD_F1}, Accuracy >= {THRESHOLD_ACCURACY*100}%, SCDR >= {THRESHOLD_SCDR*100}%"  # noqa: E501
+    )
     lines.append("")
 
     # Overall metrics
@@ -207,14 +260,26 @@ def generate_report(results, output_path):
         lines.append("")
         lines.append("| Metric | Value | Threshold | Status |")
         lines.append("|--------|-------|-----------|--------|")
-        lines.append(f"| Average Macro F1 | **{avg_f1:.4f}** | {THRESHOLD_F1} | {'PASS' if avg_f1 >= THRESHOLD_F1 else 'FAIL'} |")
-        lines.append(f"| Average Accuracy | **{avg_acc:.1f}%** | {THRESHOLD_ACCURACY*100}% | {'PASS' if avg_acc/100 >= THRESHOLD_ACCURACY else 'FAIL'} |")
-        lines.append(f"| Average SCDR | **{avg_scdr:.1f}%** | {THRESHOLD_SCDR*100}% | {'PASS' if avg_scdr/100 >= THRESHOLD_SCDR else 'FAIL'} |")
+        lines.append(
+            f"| Average Macro F1 | **{avg_f1:.4f}** | {THRESHOLD_F1} | {'PASS' if avg_f1 >= THRESHOLD_F1 else 'FAIL'} |"  # noqa: E501
+        )
+        lines.append(
+            f"| Average Accuracy | **{avg_acc:.1f}%** | {THRESHOLD_ACCURACY*100}% | {'PASS' if avg_acc/100 >= THRESHOLD_ACCURACY else 'FAIL'} |"  # noqa: E501
+        )
+        lines.append(
+            f"| Average SCDR | **{avg_scdr:.1f}%** | {THRESHOLD_SCDR*100}% | {'PASS' if avg_scdr/100 >= THRESHOLD_SCDR else 'FAIL'} |"  # noqa: E501
+        )
         lines.append(f"| Samples Tested | {len(valid)} | - | - |")
-        lines.append(f"| Total Audio | {total_duration:.0f}s ({total_duration/60:.1f} min) | - | - |")
+        lines.append(
+            f"| Total Audio | {total_duration:.0f}s ({total_duration/60:.1f} min) | - | - |"  # noqa: E501
+        )
         lines.append("")
 
-        all_pass = avg_f1 >= THRESHOLD_F1 and avg_acc/100 >= THRESHOLD_ACCURACY and avg_scdr/100 >= THRESHOLD_SCDR
+        all_pass = (
+            avg_f1 >= THRESHOLD_F1
+            and avg_acc / 100 >= THRESHOLD_ACCURACY
+            and avg_scdr / 100 >= THRESHOLD_SCDR
+        )
         if all_pass:
             lines.append("> **PRODUCTION READY**")
         else:
@@ -242,8 +307,16 @@ def generate_report(results, output_path):
         cf1 = sum(r["macro_f1"] for r in cat_results) / len(cat_results)
         cacc = sum(r["accuracy"] for r in cat_results) / len(cat_results)
         cscdr = sum(r["scdr"] for r in cat_results) / len(cat_results)
-        status = "PASS" if cf1 >= THRESHOLD_F1 and cacc/100 >= THRESHOLD_ACCURACY and cscdr/100 >= THRESHOLD_SCDR else "FAIL"
-        lines.append(f"| {cat} | {len(cat_results)} | {cf1:.4f} | {cacc:.1f}% | {cscdr:.1f}% | {status} |")
+        status = (
+            "PASS"
+            if cf1 >= THRESHOLD_F1
+            and cacc / 100 >= THRESHOLD_ACCURACY
+            and cscdr / 100 >= THRESHOLD_SCDR
+            else "FAIL"
+        )
+        lines.append(
+            f"| {cat} | {len(cat_results)} | {cf1:.4f} | {cacc:.1f}% | {cscdr:.1f}% | {status} |"  # noqa: E501
+        )
 
     lines.append("")
 
@@ -252,15 +325,25 @@ def generate_report(results, output_path):
     lines.append("")
     lines.append("## Per-Sample Metrics")
     lines.append("")
-    lines.append("| Sample | Category | Duration | Spk Expected | Spk Detected | F1 | SCDR | Acc | Status |")
-    lines.append("|--------|----------|----------|-------------|-------------|------|------|------|--------|")
+    lines.append(
+        "| Sample | Category | Duration | Spk Expected | Spk Detected | F1 | SCDR | Acc | Status |"  # noqa: E501
+    )
+    lines.append(
+        "|--------|----------|----------|-------------|-------------|------|------|------|--------|"
+    )
 
     for r in sorted(valid, key=lambda x: x.get("category", "")):
-        status = "PASS" if r["macro_f1"] >= THRESHOLD_F1 and r["accuracy"]/100 >= THRESHOLD_ACCURACY and r["scdr"]/100 >= THRESHOLD_SCDR else "FAIL"
+        status = (
+            "PASS"
+            if r["macro_f1"] >= THRESHOLD_F1
+            and r["accuracy"] / 100 >= THRESHOLD_ACCURACY
+            and r["scdr"] / 100 >= THRESHOLD_SCDR
+            else "FAIL"
+        )
         lines.append(
-            f"| {r['sample']} | {r.get('category','-')} | {r.get('duration_s',0):.0f}s | "
+            f"| {r['sample']} | {r.get('category','-')} | {r.get('duration_s',0):.0f}s | "  # noqa: E501
             f"{r.get('speakers_expected','?')} | {r.get('speakers_detected','?')} | "
-            f"{r['macro_f1']:.3f} | {r['scdr']:.0f}% | {r['accuracy']:.0f}% | {status} |"
+            f"{r['macro_f1']:.3f} | {r['scdr']:.0f}% | {r['accuracy']:.0f}% | {status} |"  # noqa: E501
         )
 
     # Errors
@@ -284,6 +367,7 @@ def generate_report(results, output_path):
 
 def main():
     import warnings
+
     print("=" * 70)
     print("  TALKSENSE AI — FULL BENCHMARK RUNNER")
     print("=" * 70)
@@ -294,21 +378,28 @@ def main():
         sys.exit(1)
 
     # Load models
-    from core.config import get_settings
-    from audio.transcriber import get_transcriber
     import torch
+
+    from audio.transcriber import get_transcriber
+    from core.config import get_settings
 
     settings = get_settings()
 
     print("\n[1/3] Loading Whisper...")
     transcriber = get_transcriber()
-    transcriber.load(settings.whisper_model, settings.whisper_compute_type, settings.whisper_device)
+    transcriber.load(
+        settings.whisper_model, settings.whisper_compute_type, settings.whisper_device
+    )
 
     print("[2/3] Loading Pyannote...")
     with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", message=".*torchcodec.*", category=UserWarning)
+        warnings.filterwarnings(
+            "ignore", message=".*torchcodec.*", category=UserWarning
+        )
         from pyannote.audio import Pipeline
-    pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1", token=settings.hf_token)
+    pipeline = Pipeline.from_pretrained(
+        "pyannote/speaker-diarization-3.1", token=settings.hf_token
+    )
     pipeline.to(torch.device(settings.pyannote_device))
 
     print("[3/3] Scanning dataset...")
@@ -321,7 +412,9 @@ def main():
             continue
         for name in sorted(os.listdir(cat_dir)):
             sample_dir = os.path.join(cat_dir, name)
-            if os.path.isdir(sample_dir) and os.path.isfile(os.path.join(sample_dir, "ground_truth.json")):
+            if os.path.isdir(sample_dir) and os.path.isfile(
+                os.path.join(sample_dir, "ground_truth.json")
+            ):
                 samples.append(sample_dir)
 
     print(f"  Found {len(samples)} samples across {len(CATEGORIES)} categories")
@@ -350,8 +443,16 @@ def main():
                 scdr = result.get("scdr", 0)
                 acc = result.get("accuracy", 0)
                 spk = result.get("speakers_detected", "?")
-                status = "PASS" if f1 >= THRESHOLD_F1 and acc/100 >= THRESHOLD_ACCURACY and scdr/100 >= THRESHOLD_SCDR else "FAIL"
-                print(f"    F1={f1:.3f}  SCDR={scdr:.0f}%  Acc={acc:.0f}%  Spk={spk}  [{status}]")
+                status = (
+                    "PASS"
+                    if f1 >= THRESHOLD_F1
+                    and acc / 100 >= THRESHOLD_ACCURACY
+                    and scdr / 100 >= THRESHOLD_SCDR
+                    else "FAIL"
+                )
+                print(
+                    f"    F1={f1:.3f}  SCDR={scdr:.0f}%  Acc={acc:.0f}%  Spk={spk}  [{status}]"  # noqa: E501
+                )
 
         except Exception as e:
             print(f"    EXCEPTION: {e}")
@@ -383,10 +484,14 @@ def main():
             "accuracy_pass": avg_acc / 100 >= THRESHOLD_ACCURACY if valid else False,
             "scdr_pass": avg_scdr / 100 >= THRESHOLD_SCDR if valid else False,
             "production_ready": (
-                avg_f1 >= THRESHOLD_F1 and
-                avg_acc / 100 >= THRESHOLD_ACCURACY and
-                avg_scdr / 100 >= THRESHOLD_SCDR
-            ) if valid else False,
+                (
+                    avg_f1 >= THRESHOLD_F1
+                    and avg_acc / 100 >= THRESHOLD_ACCURACY
+                    and avg_scdr / 100 >= THRESHOLD_SCDR
+                )
+                if valid
+                else False
+            ),
         },
         "per_sample": all_results,
     }
@@ -399,7 +504,7 @@ def main():
 
     # Print summary
     print(f"\n{'=' * 70}")
-    print(f"  BENCHMARK COMPLETE")
+    print("  BENCHMARK COMPLETE")
     print(f"{'=' * 70}")
     print(f"  Samples:     {len(valid)} valid / {len(all_results)} total")
     print(f"  Total time:  {total_time:.1f}s")
@@ -407,8 +512,14 @@ def main():
     print(f"  Avg Accuracy:{avg_acc:.1f}% (threshold: {THRESHOLD_ACCURACY*100}%)")
     print(f"  Avg SCDR:    {avg_scdr:.1f}% (threshold: {THRESHOLD_SCDR*100}%)")
 
-    all_pass = avg_f1 >= THRESHOLD_F1 and avg_acc/100 >= THRESHOLD_ACCURACY and avg_scdr/100 >= THRESHOLD_SCDR
-    print(f"\n  VERDICT: {'[PRODUCTION READY]' if all_pass else '[NOT PRODUCTION READY]'}")
+    all_pass = (
+        avg_f1 >= THRESHOLD_F1
+        and avg_acc / 100 >= THRESHOLD_ACCURACY
+        and avg_scdr / 100 >= THRESHOLD_SCDR
+    )
+    print(
+        f"\n  VERDICT: {'[PRODUCTION READY]' if all_pass else '[NOT PRODUCTION READY]'}"
+    )
     print(f"\n  Results: {OUTPUT_PATH}")
     print(f"  Report:  {report_path}")
     print(f"{'=' * 70}")

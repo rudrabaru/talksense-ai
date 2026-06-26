@@ -1,18 +1,19 @@
 import asyncio
+import os
+import subprocess
+import sys
 import time
+
 import httpx
 import websockets
-import json
-import subprocess
-import os
-import sys
 
-sys.stdout.reconfigure(encoding='utf-8')
+sys.stdout.reconfigure(encoding="utf-8")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 BACKEND_HTTP = "http://localhost:8000"
 BACKEND_WS = "ws://localhost:8000"
 AUDIO_FILE = "sample_audio/meeting_short.mp3"
+
 
 async def run_ui_verification():
     print("=" * 70)
@@ -33,12 +34,25 @@ async def run_ui_verification():
     await asyncio.sleep(8)
 
     # 3. Stream audio file
-    audio_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", AUDIO_FILE))
+    audio_path = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", AUDIO_FILE)
+    )
     ffmpeg_cmd = [
-        "ffmpeg", "-y", "-i", audio_path,
-        "-f", "s16le", "-ac", "1", "-ar", "16000", "-"
+        "ffmpeg",
+        "-y",
+        "-i",
+        audio_path,
+        "-f",
+        "s16le",
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        "-",
     ]
-    process = subprocess.Popen(ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    process = subprocess.Popen(
+        ffmpeg_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
+    )
 
     ws_audio_url = f"{BACKEND_WS}/ws/audio/{session_id}"
     chunk_size = 8000  # 250ms of PCM
@@ -55,7 +69,7 @@ async def run_ui_verification():
                 if not chunk:
                     break
                 await ws.send(chunk)
-                
+
                 elapsed = time.time() - t_loop
                 sleep_time = max(0.0, chunk_interval - elapsed)
                 await asyncio.sleep(sleep_time)
@@ -68,10 +82,12 @@ async def run_ui_verification():
     finally:
         process.terminate()
 
-    # Wait another 15 seconds to allow the browser to auto-refresh and display "Completed"
+    # Wait another 15 seconds to allow the browser to auto-refresh and display
+    # "Completed"
     print("Waiting 15 seconds for post-processing and frontend auto-refresh...")
     await asyncio.sleep(15)
     print("Runner completed.")
+
 
 if __name__ == "__main__":
     asyncio.run(run_ui_verification())

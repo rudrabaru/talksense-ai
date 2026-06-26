@@ -100,23 +100,22 @@ Audio Upload → Speech-to-Text → NLP Enrichment → Context Analysis → Stru
 ## Tech Stack
 
 ### Backend
-- **Framework**: FastAPI (async, high-performance API)
-- **Speech-to-Text**: OpenAI Whisper (`openai-whisper`)
-- **NLP**: Hugging Face Transformers (`transformers`, `torch`)
-- **Sentiment Model**: `tabularisai/multilingual-sentiment-analysis`
+- **Framework**: FastAPI (async ASGI API)
+- **Database**: PostgreSQL (with SQLAlchemy ORM & `asyncpg` driver)
+- **Speech-to-Text**: Faster Whisper (`faster-whisper`)
+- **Voice Activity Detection**: Silero VAD (`silero-vad`)
+- **Speaker Diarization**: Pyannote Speaker Diarization (`pyannote.audio`)
+- **NLP Processing**: Hugging Face Transformers (`transformers`, `torch`) for sentiment analysis and keyphrase extraction
 - **Server**: Uvicorn (ASGI server)
+- **Migrations**: Alembic (`alembic`)
 
 ### Frontend
 - **Framework**: React 19
-- **Build Tool**: Vite (Rolldown-based for fast builds)
+- **Build Tool**: Vite
 - **Routing**: React Router DOM
 - **Styling**: Tailwind CSS
+- **Communication**: WebSockets (for real-time streaming audio metrics) and HTTP REST APIs
 - **PDF Export**: jsPDF + html2canvas
-
-### Tooling
-- **Package Manager**: npm
-- **Python Environment**: venv
-- **Testing**: pytest (backend unit tests)
 
 ---
 
@@ -125,15 +124,22 @@ Audio Upload → Speech-to-Text → NLP Enrichment → Context Analysis → Stru
 ```
 talksense-ai/
 ├── backend/
-│   ├── main.py                    # FastAPI app + /analyze endpoint
+│   ├── main.py                    # FastAPI app + WebSocket & HTTP endpoints
+│   ├── core/
+│   │   └── config.py              # Settings definition (Pydantic Settings)
+│   ├── db/
+│   │   ├── database.py            # PostgreSQL async connection pool & session
+│   │   ├── models.py              # SQLAlchemy ORM models
+│   │   └── crud.py                # Database queries and session flushes
 │   ├── services/
-│   │   ├── speech_to_text.py      # Whisper transcription
+│   │   ├── speech_to_text.py      # Whisper transcription pipeline
 │   │   ├── nlp_engine.py          # Sentiment + keyword extraction
-│   │   └── context_analyzer.py    # Meeting/Sales intelligence logic
-│   ├── utils/
-│   │   └── config_loader.py       # Keyword configurations
-│   ├── tests/                     # Unit tests
-│   └── requirements.txt           # Python dependencies
+│   │   └── context_analyzer.py    # Meeting/Sales intelligence rules
+│   ├── tests/                     # Unit and integration tests
+│   ├── requirements.txt           # Production dependencies
+│   ├── requirements-dev.txt       # Dev & CI dependencies
+│   ├── pyproject.toml             # Dev tools (Black, Ruff, Pyright) configuration
+│   └── pytest.ini                 # Pytest configuration
 │
 ├── talksense-ui/
 │   ├── src/
@@ -154,44 +160,23 @@ talksense-ai/
 
 ---
 
-## How It Works
+## System Architecture
 
-### Step-by-Step Processing Flow
+TalkSense AI leverages a **3-stage processing pipeline** with real-time feedback mechanisms:
 
-1. **Audio Upload**
-   - User uploads audio file (MP3, WAV, M4A, max 50MB)
-   - Selects conversation mode: **Meeting** or **Sales**
-
-2. **Speech-to-Text Transcription**
-   - Whisper model processes audio file
-   - Generates timestamped transcript segments
-   - Extracts full text and segment-level timestamps
-
-3. **NLP Enrichment**
-   - Semantic merging combines fragmented segments
-   - Sentiment analysis runs on each segment (batch inference)
-   - Keywords extracted using domain-specific pattern matching
-   - Output: Enriched segments with sentiment labels and confidence scores
-
-4. **Context-Aware Analysis**
-   - **Meeting Mode**: Detects decisions, action items, ownership, blockers
-   - **Sales Mode**: Detects objections, buying signals, commitments, deal risk
-   - Quality scoring based on binary signals (not sentiment-driven)
-   - Generates executive summary and key insights
-
-5. **Results Display**
-   - Structured JSON response sent to frontend
-   - Interactive dashboard displays insights
-   - Exportable as PDF report
-
-### Mode-Specific Interpretation Example
-
-**Transcript Segment**: *"I'll send the proposal by Friday"*
-
-| Mode    | Interpretation                                      |
-|---------|-----------------------------------------------------|
-| Meeting | Action Item: "Send proposal" (Owner: Speaker, Deadline: Friday) |
-| Sales   | Hard Commitment + Buying Signal + Follow-Up Action |
+1. **Audio Upload & Streaming (HTTP & WebSockets)**:
+   - High-throughput endpoint handles standard audio uploads.
+   - WebSockets support live/streaming metric updates and real-time state synchronization.
+2. **Audio Processing (VAD, Whisper, Pyannote)**:
+   - **Voice Activity Detection**: Silero VAD filters non-speech segments.
+   - **Speech-to-Text**: Faster Whisper transcribes speech into text.
+   - **Speaker Diarization**: Pyannote Speaker Diarization tags who spoke when.
+3. **NLP Processing & Context Analysis**:
+   - Sentiment analysis is done at a segment level using pretrained Hugging Face Transformers.
+   - Rule-based contextual intelligence categorizes data depending on the selected mode (**Meeting** or **Sales**).
+4. **Session Management & Database (PostgreSQL)**:
+   - Metadata, transcripts, speaker metrics, and summaries are persisted in PostgreSQL.
+   - Alembic manages database versioning and migrations.
 
 ---
 
@@ -199,58 +184,126 @@ talksense-ai/
 
 ### Prerequisites
 
-- **Python**: 3.8+ (tested on 3.10)
-- **Node.js**: 16+ (tested on 18.x)
+- **Python**: 3.10+
+- **Node.js**: 18.x+
 - **FFmpeg**: Required by Whisper for audio processing
   - Windows: `choco install ffmpeg` or download from [ffmpeg.org](https://ffmpeg.org)
   - macOS: `brew install ffmpeg`
   - Linux: `sudo apt install ffmpeg`
 
-### Backend Setup
+### Environment Variables
 
+Before running the application, you must configure the backend environment variables.
+
+1. Navigate to the backend directory and copy the environment example template:
+   ```bash
+   cp backend/.env.example backend/.env
+   ```
+2. Open `backend/.env` and fill in the required variables (e.g., your database connection string, Hugging Face Token for speaker diarization, Gemini API Key if using LLM classification features).
+
+### Backend Setup & Run
+
+1. Navigate to the project root and create a virtual environment:
+   ```bash
+   python -m venv venv
+   ```
+2. Activate the virtual environment:
+   - **Windows (PowerShell)**: `venv\Scripts\Activate.ps1`
+   - **macOS/Linux**: `source venv/bin/activate`
+3. Install production/runtime dependencies:
+   ```bash
+   pip install -r backend/requirements.txt
+   ```
+4. Run Alembic database migrations to set up the PostgreSQL schema:
+   ```bash
+   cd backend
+   alembic upgrade head
+   ```
+5. Start the FastAPI development server:
+   ```bash
+   uvicorn backend.main:app --reload
+   ```
+   The backend will run at: `http://localhost:8000`
+
+### Frontend Setup & Run
+
+1. Navigate to the frontend directory:
+   ```bash
+   cd talksense-ui
+   ```
+2. Install npm dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+   The frontend will run at: `http://localhost:5173`
+
+---
+
+## Development & Testing
+
+For local development, testing, and CI/CD validation, follow the guidelines below.
+
+### Backend Verification
+
+First, install the development dependencies:
 ```bash
-# Navigate to project root
-cd talksense-ai
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# Windows:
-venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
-
-# Install dependencies
-pip install -r backend/requirements.txt
-
-# Run backend server
-uvicorn backend.main:app --reload
+pip install -r backend/requirements-dev.txt
 ```
 
-Backend will run at: `http://localhost:8000`
-
-### Frontend Setup
-
+**Running Tests**
+Run the pytest suite from the `backend/` directory:
 ```bash
-# Navigate to frontend directory
+cd backend
+pytest
+```
+
+**Code Formatting**
+Ensure code follows Black style guidelines:
+```bash
+cd backend
+black --check .
+```
+
+**Linting**
+Run Ruff to check for syntax and stylistic issues:
+```bash
+cd backend
+ruff check .
+```
+
+**Type Checking**
+Run Pyright to perform static type analysis:
+```bash
+cd backend
+pyright
+```
+
+### Frontend Verification
+
+**CI Installation**
+Perform a clean installation of node dependencies:
+```bash
 cd talksense-ui
-
-# Install dependencies
-npm install
-
-# Run development server
-npm run dev
+npm ci
 ```
 
-Frontend will run at: `http://localhost:5173`
+**Building for Production**
+Verify the production build succeeds:
+```bash
+cd talksense-ui
+npm run build
+```
 
-### Running the Application
-
-1. Start backend: `uvicorn backend.main:app --reload` (from project root)
-2. Start frontend: `npm run dev` (from `talksense-ui/`)
-3. Open browser: `http://localhost:5173`
-4. Upload audio file or try demo data
+**Linting**
+Run ESLint to check for frontend code issues:
+```bash
+cd talksense-ui
+npm run lint
+```
 
 ---
 

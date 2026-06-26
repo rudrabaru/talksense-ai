@@ -33,22 +33,23 @@ Design:
   - Label mapping: greedy majority-vote permutation to align Pyannote labels
     (e.g. "Speaker 3") to canonical annotator labels (e.g. "A").
 """
+
 import argparse
 import asyncio
 import json
 import sys
-import os
-from collections import defaultdict, Counter
-from typing import Dict, List, Tuple, Any, Optional
+from collections import Counter, defaultdict
+from typing import Dict, List, Optional, Tuple
 
-from db.database import AsyncSessionLocal
 from db import crud
-
+from db.database import AsyncSessionLocal
 
 # ── Data types ────────────────────────────────────────────────────────────────
 
+
 class Segment:
     """Unified segment representation for both predicted and annotated data."""
+
     def __init__(self, start: float, end: float, speaker: str, text: str = ""):
         self.start = start
         self.end = end
@@ -67,6 +68,7 @@ class Segment:
 
 # ── Ground truth loading ───────────────────────────────────────────────────────
 
+
 def load_ground_truth(path: str) -> Tuple[List[Segment], Dict]:
     """Parse the ground truth annotation JSON file."""
     with open(path, "r", encoding="utf-8") as f:
@@ -74,12 +76,14 @@ def load_ground_truth(path: str) -> Tuple[List[Segment], Dict]:
 
     segments = []
     for raw in data.get("segments", []):
-        segments.append(Segment(
-            start=float(raw["start"]),
-            end=float(raw["end"]),
-            speaker=str(raw["speaker"]),
-            text=raw.get("text", ""),
-        ))
+        segments.append(
+            Segment(
+                start=float(raw["start"]),
+                end=float(raw["end"]),
+                speaker=str(raw["speaker"]),
+                text=raw.get("text", ""),
+            )
+        )
 
     # Sort by start time
     segments.sort(key=lambda s: s.start)
@@ -92,18 +96,21 @@ def load_ground_truth(path: str) -> Tuple[List[Segment], Dict]:
 
 # ── DB fetching ───────────────────────────────────────────────────────────────
 
+
 async def fetch_predicted_segments(session_id: str) -> List[Segment]:
     """Fetch all transcript segments from DB for a session."""
     async with AsyncSessionLocal() as db:
         rows = await crud.get_all_transcript_segments(db, session_id)
     segments = []
     for r in rows:
-        segments.append(Segment(
-            start=r.start_time,
-            end=r.end_time,
-            speaker=r.speaker_id or "Unknown",
-            text=r.text or "",
-        ))
+        segments.append(
+            Segment(
+                start=r.start_time,
+                end=r.end_time,
+                speaker=r.speaker_id or "Unknown",
+                text=r.text or "",
+            )
+        )
     segments.sort(key=lambda s: s.start)
     return segments
 
@@ -119,6 +126,7 @@ async def fetch_coverage(session_id: str) -> Optional[float]:
 
 
 # ── Segment matching ──────────────────────────────────────────────────────────
+
 
 def match_segments(
     predicted: List[Segment],
@@ -160,9 +168,8 @@ def match_segments(
 
 # ── Label permutation mapping ─────────────────────────────────────────────────
 
-def resolve_label_mapping(
-    pairs: List[Tuple[Segment, Segment]]
-) -> Dict[str, str]:
+
+def resolve_label_mapping(pairs: List[Tuple[Segment, Segment]]) -> Dict[str, str]:
     """
     Greedy majority-vote permutation to map Pyannote labels → canonical labels.
 
@@ -182,7 +189,9 @@ def resolve_label_mapping(
     mapping: Dict[str, str] = {}
     assigned_canonical: set = set()
 
-    pred_labels = sorted(cooc.keys(), key=lambda l: sum(cooc[l].values()), reverse=True)
+    pred_labels = sorted(
+        cooc.keys(), key=lambda label: sum(cooc[label].values()), reverse=True
+    )
     for pred_label in pred_labels:
         best_canonical = None
         best_count = 0
@@ -202,6 +211,7 @@ def resolve_label_mapping(
 
 # ── Metrics computation ───────────────────────────────────────────────────────
 
+
 def compute_accuracy(
     pairs: List[Tuple[Segment, Segment]],
     label_map: Dict[str, str],
@@ -212,7 +222,8 @@ def compute_accuracy(
     Returns: (accuracy_pct, correct_count, total_count)
     """
     correct = sum(
-        1 for pred_seg, ann_seg in pairs
+        1
+        for pred_seg, ann_seg in pairs
         if label_map.get(pred_seg.speaker) == ann_seg.speaker
     )
     total = len(pairs)
@@ -251,7 +262,11 @@ def compute_precision_recall_f1(
         r_count = t + fn[spk]
         precision = (t / p_count) if p_count > 0 else 0.0
         recall = (t / r_count) if r_count > 0 else 0.0
-        f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
+        f1 = (
+            (2 * precision * recall / (precision + recall))
+            if (precision + recall) > 0
+            else 0.0
+        )
         results[spk] = {
             "precision": round(precision, 4),
             "recall": round(recall, 4),
@@ -278,17 +293,18 @@ def compute_scdr(
 
     Returns: (scdr_pct, correctly_detected, total_annotated_changes)
     """
+
     def get_changes(segs: List[Segment], use_map: bool = False) -> List[float]:
         """Return timestamps of speaker changes (midpoint between consecutive segs)."""
         changes = []
         for i in range(1, len(segs)):
-            prev_spk = segs[i-1].speaker
+            prev_spk = segs[i - 1].speaker
             curr_spk = segs[i].speaker
             if use_map:
                 prev_spk = label_map.get(prev_spk, prev_spk)
                 curr_spk = label_map.get(curr_spk, curr_spk)
             if prev_spk != curr_spk:
-                midpoint = (segs[i-1].end + segs[i].start) / 2
+                midpoint = (segs[i - 1].end + segs[i].start) / 2
                 changes.append(midpoint)
         return changes
 
@@ -301,7 +317,10 @@ def compute_scdr(
 
     for ann_change in annotated_changes:
         for j, pred_change in enumerate(predicted_changes):
-            if j not in used_predicted_changes and abs(pred_change - ann_change) <= tolerance_sec:
+            if (
+                j not in used_predicted_changes
+                and abs(pred_change - ann_change) <= tolerance_sec
+            ):
                 correctly_detected += 1
                 used_predicted_changes.add(j)
                 break
@@ -313,6 +332,7 @@ def compute_scdr(
 
 # ── Failure analysis ──────────────────────────────────────────────────────────
 
+
 def collect_failures(
     pairs: List[Tuple[Segment, Segment]],
     label_map: Dict[str, str],
@@ -323,18 +343,21 @@ def collect_failures(
     for pred_seg, ann_seg in pairs:
         mapped = label_map.get(pred_seg.speaker, pred_seg.speaker)
         if mapped != ann_seg.speaker:
-            failures.append({
-                "start": pred_seg.start,
-                "end": pred_seg.end,
-                "predicted_raw": pred_seg.speaker,
-                "predicted_mapped": mapped,
-                "expected": ann_seg.speaker,
-                "text": pred_seg.text[:60],
-            })
+            failures.append(
+                {
+                    "start": pred_seg.start,
+                    "end": pred_seg.end,
+                    "predicted_raw": pred_seg.speaker,
+                    "predicted_mapped": mapped,
+                    "expected": ann_seg.speaker,
+                    "text": pred_seg.text[:60],
+                }
+            )
     return failures[:limit]
 
 
 # ── Report generation ─────────────────────────────────────────────────────────
+
 
 def generate_report(
     session_id: str,
@@ -353,30 +376,50 @@ def generate_report(
     annotated_count: int,
 ) -> str:
     """Generate the full markdown accuracy report."""
-    macro_f1 = (sum(v["f1"] for v in per_speaker.values()) / len(per_speaker)) if per_speaker else 0.0
+    macro_f1 = (
+        (sum(v["f1"] for v in per_speaker.values()) / len(per_speaker))
+        if per_speaker
+        else 0.0
+    )
 
     # Recommendation thresholds
     is_safe = macro_f1 >= 0.75 and scdr >= 70.0
-    recommendation = "**Role Classification Safe**" if is_safe else "**Role Classification Not Yet Safe**"
+    recommendation = (
+        "**Role Classification Safe**"
+        if is_safe
+        else "**Role Classification Not Yet Safe**"
+    )
 
     lines = []
     lines.append("# Speaker Attribution Accuracy Report")
     lines.append(f"\nGenerated for session `{session_id}` | Recording: `{recording}`")
 
     lines.append("\n---\n## Summary")
-    lines.append(f"| Metric | Value |")
-    lines.append(f"|--------|-------|")
-    lines.append(f"| Coverage | {coverage:.1f}% |" if coverage is not None else "| Coverage | N/A |")
-    lines.append(f"| Segments Matched | {matched_count} / {annotated_count} annotated |")
-    lines.append(f"| Attribution Accuracy | {accuracy:.1f}% ({correct}/{total_matched}) |")
+    lines.append("| Metric | Value |")
+    lines.append("|--------|-------|")
+    lines.append(
+        f"| Coverage | {coverage:.1f}% |"
+        if coverage is not None
+        else "| Coverage | N/A |"
+    )
+    lines.append(
+        f"| Segments Matched | {matched_count} / {annotated_count} annotated |"
+    )
+    lines.append(
+        f"| Attribution Accuracy | {accuracy:.1f}% ({correct}/{total_matched}) |"
+    )
     lines.append(f"| Macro F1 | {macro_f1:.3f} |")
     lines.append(f"| SCDR | {scdr:.1f}% ({scdr_detected}/{scdr_total} changes) |")
 
     lines.append("\n## Recommendation")
     lines.append(f"> {recommendation}")
     if is_safe:
-        lines.append("\nAttribution quality meets the threshold (Macro F1 ≥ 0.75 and SCDR ≥ 70%).")
-        lines.append("Role classification can be reliably layered on top of the current pipeline.")
+        lines.append(
+            "\nAttribution quality meets the threshold (Macro F1 ≥ 0.75 and SCDR ≥ 70%)."  # noqa: E501
+        )
+        lines.append(
+            "Role classification can be reliably layered on top of the current pipeline."  # noqa: E501
+        )
     else:
         lines.append("\nAttribution quality is below threshold.")
         rationale = []
@@ -414,13 +457,16 @@ def generate_report(
                 f"| {f['expected']} | {text_safe} |"
             )
     else:
-        lines.append("\n## Failure Analysis\nNo misattributions detected in matched segments.")
+        lines.append(
+            "\n## Failure Analysis\nNo misattributions detected in matched segments."
+        )
 
     lines.append("\n---\n*Generated by `evaluate_speaker_accuracy.py`*")
     return "\n".join(lines)
 
 
 # ── Main entry point ──────────────────────────────────────────────────────────
+
 
 async def run_evaluation(
     session_id: str,
@@ -429,7 +475,9 @@ async def run_evaluation(
 ) -> None:
     print(f"Loading ground truth from: {gt_path}")
     annotated_segs, metadata = load_ground_truth(gt_path)
-    print(f"  Recording: {metadata['recording']}, {len(annotated_segs)} annotated segments")
+    print(
+        f"  Recording: {metadata['recording']}, {len(annotated_segs)} annotated segments"  # noqa: E501
+    )
 
     print(f"\nFetching predicted segments for session {session_id[:8]}...")
     predicted_segs = await fetch_predicted_segments(session_id)
@@ -446,7 +494,9 @@ async def run_evaluation(
     print(f"  {len(pairs)} / {len(annotated_segs)} annotated segments matched")
 
     if not pairs:
-        print("ERROR: No segments could be matched. Check timestamps in ground truth file.")
+        print(
+            "ERROR: No segments could be matched. Check timestamps in ground truth file."  # noqa: E501
+        )
         sys.exit(1)
 
     print("\nResolving label mapping...")
@@ -457,10 +507,16 @@ async def run_evaluation(
     print("\nComputing metrics...")
     accuracy, correct, total_matched = compute_accuracy(pairs, label_map)
     per_speaker = compute_precision_recall_f1(pairs, label_map)
-    scdr, scdr_detected, scdr_total = compute_scdr(predicted_segs, annotated_segs, label_map)
+    scdr, scdr_detected, scdr_total = compute_scdr(
+        predicted_segs, annotated_segs, label_map
+    )
     failures = collect_failures(pairs, label_map)
 
-    macro_f1 = sum(v["f1"] for v in per_speaker.values()) / len(per_speaker) if per_speaker else 0.0
+    macro_f1 = (
+        sum(v["f1"] for v in per_speaker.values()) / len(per_speaker)
+        if per_speaker
+        else 0.0
+    )
 
     print(f"\n{'='*50}")
     print(f"  Attribution Accuracy : {accuracy:.1f}%  ({correct}/{total_matched})")
@@ -492,22 +548,28 @@ async def run_evaluation(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Evaluate speaker attribution accuracy against a hand-annotated ground truth."
+        description="Evaluate speaker attribution accuracy against a hand-annotated ground truth."  # noqa: E501
     )
-    parser.add_argument("--session-id", required=True, help="UUID of the session to evaluate")
-    parser.add_argument("--ground-truth", required=True, help="Path to ground truth JSON file")
+    parser.add_argument(
+        "--session-id", required=True, help="UUID of the session to evaluate"
+    )
+    parser.add_argument(
+        "--ground-truth", required=True, help="Path to ground truth JSON file"
+    )
     parser.add_argument(
         "--output",
         default="speaker_attribution_accuracy_report.md",
-        help="Output markdown report path (default: speaker_attribution_accuracy_report.md)",
+        help="Output markdown report path (default: speaker_attribution_accuracy_report.md)",  # noqa: E501
     )
     args = parser.parse_args()
 
-    asyncio.run(run_evaluation(
-        session_id=args.session_id,
-        gt_path=args.ground_truth,
-        output_path=args.output,
-    ))
+    asyncio.run(
+        run_evaluation(
+            session_id=args.session_id,
+            gt_path=args.ground_truth,
+            output_path=args.output,
+        )
+    )
 
 
 if __name__ == "__main__":

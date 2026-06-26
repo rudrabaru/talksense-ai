@@ -8,6 +8,7 @@ Public API:
     build_comparison(db, session_id_a, session_id_b) -> dict
         Returns a ComparisonResult dict (see schema at bottom of file).
 """
+
 import logging
 import uuid
 from typing import Any
@@ -17,7 +18,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.models import (
     AnalysisResult as DBAnalysisResult,
+)
+from db.models import (
     Session as DBSession,
+)
+from db.models import (
     SessionMetric as DBSessionMetric,
 )
 
@@ -25,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
+
 
 def _safe_uuid(val: str) -> uuid.UUID:
     """Convert a string to UUID; raises ValueError on invalid input."""
@@ -143,6 +149,7 @@ def _delta(val_a: Any, val_b: Any) -> float | None:
 
 # ── Session snapshot builder ──────────────────────────────────────────────────
 
+
 async def _build_session_snapshot(
     db: AsyncSession,
     session_id: str,
@@ -213,9 +220,7 @@ async def _build_session_snapshot(
 
     # Action items / decisions
     actions_raw = (
-        report_json.get("action_items")
-        or report_json.get("recommended_actions")
-        or []
+        report_json.get("action_items") or report_json.get("recommended_actions") or []
     )
     action_list = _extract_action_items(actions_raw)
 
@@ -231,7 +236,9 @@ async def _build_session_snapshot(
         "title": session_row.title or f"Session {str(session_row.id)[:8]}",
         "mode": session_row.mode,
         "status": session_row.status,
-        "started_at": session_row.started_at.isoformat() if session_row.started_at else None,
+        "started_at": (
+            session_row.started_at.isoformat() if session_row.started_at else None
+        ),
         "ended_at": session_row.ended_at.isoformat() if session_row.ended_at else None,
         "duration": duration,
         "health_score": health_score,
@@ -241,11 +248,13 @@ async def _build_session_snapshot(
         "objections": objection_list,
         "buying_signals": signal_list,
         "action_items": action_list,
-        "summary": (analysis.summary if analysis else None) or report_json.get("summary"),
+        "summary": (analysis.summary if analysis else None)
+        or report_json.get("summary"),
     }
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
+
 
 async def build_comparison(
     db: AsyncSession,
@@ -261,7 +270,8 @@ async def build_comparison(
     Returns a ComparisonResult dict with the following top-level keys:
         session_a       — snapshot dict for the first session
         session_b       — snapshot dict for the second session
-        delta           — numeric deltas (b - a) for health_score, sentiment_score, duration
+        delta           — numeric deltas (b - a) for health_score,
+                          sentiment_score, duration
         shared_objections
         unique_to_a_objections
         unique_to_b_objections

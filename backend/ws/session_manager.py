@@ -1,4 +1,4 @@
-"""
+r"""
 TalkSense AI — Session Manager
 
 Owns the lifecycle of every active session.
@@ -91,6 +91,7 @@ Background Flusher:
       MUST complete before engine.dispose() to prevent pool disposal
       racing with active DB connections.
 """
+
 import asyncio
 import hashlib
 import json
@@ -159,10 +160,13 @@ class SessionStatus(str, Enum):
 @dataclass
 class ConversationState:
     """Running metrics for an active session — updated by ConversationEngine."""
+
     health_score: int = 50
     sentiment: str = "neutral"
     sentiment_score: float = 0.0
-    speaking_ratio: dict = field(default_factory=dict)   # {"Speaker 1": 60, "Speaker 2": 40}
+    speaking_ratio: dict = field(
+        default_factory=dict
+    )  # {"Speaker 1": 60, "Speaker 2": 40}
     participation: dict = field(default_factory=dict)
     filler_count: int = 0
     objections: list = field(default_factory=list)
@@ -175,8 +179,9 @@ class ConversationState:
 @dataclass
 class SessionState:
     """Full state of an active session."""
+
     session_id: str
-    mode: str                              # "meeting" | "sales" | "interview"
+    mode: str  # "meeting" | "sales" | "interview"
     client_id: str | None
     user_id: int | None
     status: SessionStatus = SessionStatus.CREATED
@@ -186,7 +191,7 @@ class SessionState:
     conversation: ConversationState = field(default_factory=ConversationState)
 
     # WebSocket connections (one per channel per session)
-    ws_audio: "WebSocket | None" = None   # receives binary audio
+    ws_audio: "WebSocket | None" = None  # receives binary audio
     ws_transcript: "WebSocket | None" = None
     ws_metrics: "WebSocket | None" = None
     ws_alerts: "WebSocket | None" = None
@@ -223,8 +228,8 @@ class SessionState:
     #
     # Every alert dict added to active_alerts MUST carry an "id" key
     # (UUID string) set by the alert engine.
-    alert_log: dict = field(default_factory=dict)          # id → alert_dict
-    flushed_alert_ids: set = field(default_factory=set)    # persisted IDs
+    alert_log: dict = field(default_factory=dict)  # id → alert_dict
+    flushed_alert_ids: set = field(default_factory=set)  # persisted IDs
 
     # MD5 hash of the last successfully flushed metrics snapshot.
     # A new session_metrics row is written only when the current hash differs.
@@ -321,8 +326,12 @@ class SessionManager:
 
     def list_active(self) -> list[SessionState]:
         """Return all sessions that are not in a terminal state."""
-        terminal = {SessionStatus.COMPLETED, SessionStatus.FAILED,
-                    SessionStatus.INTERRUPTED, SessionStatus.EXPIRED}
+        terminal = {
+            SessionStatus.COMPLETED,
+            SessionStatus.FAILED,
+            SessionStatus.INTERRUPTED,
+            SessionStatus.EXPIRED,
+        }
         return [s for s in self._sessions.values() if s.status not in terminal]
 
     async def end(
@@ -406,14 +415,16 @@ class SessionManager:
             asyncio.shield(final_task),
             timeout=END_TIMEOUT_SECONDS,
         )
-        
+
         logger.info("Session %s…: final flush completed", session_id[:8])
 
-        # ── Step 4: persist session status, duration, WAV path, and trigger post-session diarization ─────
+        # ── Step 4: persist session status, duration, WAV path, and trigger post-
+        # session diarization ─────
         try:
-            from db.database import AsyncSessionLocal
             from db import crud
+            from db.database import AsyncSessionLocal
             from utils.profiler import profile_stage
+
             with profile_stage(session_id, "Session persistence"):
                 async with AsyncSessionLocal() as db:
                     await crud.update_session_status(
@@ -426,13 +437,15 @@ class SessionManager:
                         wav_path = session.audio_buffer.get_audio_file_path()
                         if wav_path:
                             session.audio_file_path = wav_path
-                            await crud.update_session_audio_path(db, session_id, wav_path)
+                            await crud.update_session_audio_path(
+                                db, session_id, wav_path
+                            )
                     with profile_stage(session_id, "Database writes"):
                         await db.commit()
 
         except Exception:  # noqa: BLE001
             logger.exception(
-                "Session %s…: failed to persist session terminal status/duration/audio_file_path",
+                "Session %s…: failed to persist session terminal status/duration/audio_file_path",  # noqa: E501
                 session_id[:8],
             )
 
@@ -487,12 +500,14 @@ def get_session_manager() -> SessionManager:
 
 # ── Background Flusher ────────────────────────────────────────────────────────
 
-_TERMINAL_STATUSES = frozenset({
-    SessionStatus.COMPLETED,
-    SessionStatus.FAILED,
-    SessionStatus.INTERRUPTED,
-    SessionStatus.EXPIRED,
-})
+_TERMINAL_STATUSES = frozenset(
+    {
+        SessionStatus.COMPLETED,
+        SessionStatus.FAILED,
+        SessionStatus.INTERRUPTED,
+        SessionStatus.EXPIRED,
+    }
+)
 
 
 def _compute_metric_hash(conv: ConversationState) -> str:
@@ -508,11 +523,11 @@ def _compute_metric_hash(conv: ConversationState) -> str:
         session.last_flushed_metric_hash to decide whether a new row is needed.
     """
     payload = {
-        "health_score":   conv.health_score,
+        "health_score": conv.health_score,
         "sentiment_score": conv.sentiment_score,
-        "filler_count":   conv.filler_count,
+        "filler_count": conv.filler_count,
         "speaking_ratio": conv.speaking_ratio,
-        "participation":  conv.participation,
+        "participation": conv.participation,
     }
     serialised = json.dumps(payload, sort_keys=True, default=str)
     return hashlib.md5(serialised.encode()).hexdigest()
@@ -540,14 +555,12 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
         # Final path: skip this guard — termination is exactly why we're here.
         if not is_final and session.status in _TERMINAL_STATUSES:
             session.is_flushing = False
-            session._flush_idle.set()   # restore idle signal — flush aborted
+            session._flush_idle.set()  # restore idle signal — flush aborted
             return
 
         # ── Segments — append-only list; index watermark is valid ────────────
         seg_start = session.last_flushed_segment_index
-        seg_delta = list(
-            session.conversation.transcript_segments[seg_start:]
-        )
+        seg_delta = list(session.conversation.transcript_segments[seg_start:])
 
         # ── Alerts — eviction-safe: merge active_alerts into alert_log ───────
         # active_alerts is a sliding window (max 3); alerts can be evicted
@@ -562,32 +575,35 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
             elif not aid:
                 logger.warning(
                     "Flusher — session %s: alert missing 'id' key, skipping: %r",
-                    session.session_id[:8], a,
+                    session.session_id[:8],
+                    a,
                 )
 
         # Compute delta: all log entries not yet committed to the DB.
         already_flushed = session.flushed_alert_ids
         alert_delta = [
-            d for aid, d in session.alert_log.items()
-            if aid not in already_flushed
+            d for aid, d in session.alert_log.items() if aid not in already_flushed
         ]
         # Capture IDs under lock — watermark update after commit must match
         # exactly what was sent to the DB.
         alert_delta_ids = {a["id"] for a in alert_delta}
 
         # ── Metrics — hash-based change detection ─────────────────────────────
-        current_hash    = _compute_metric_hash(session.conversation)
+        current_hash = _compute_metric_hash(session.conversation)
         metrics_changed = current_hash != session.last_flushed_metric_hash
 
         conv = session.conversation
         metric_dicts: list[dict] = []
         if metrics_changed:
             metric_dicts = [
-                {"metric_name": "health_score",    "metric_value": conv.health_score},
-                {"metric_name": "sentiment_score", "metric_value": conv.sentiment_score},
-                {"metric_name": "filler_count",    "metric_value": conv.filler_count},
-                {"metric_name": "speaking_ratio",  "metric_value": conv.speaking_ratio},
-                {"metric_name": "participation",   "metric_value": conv.participation},
+                {"metric_name": "health_score", "metric_value": conv.health_score},
+                {
+                    "metric_name": "sentiment_score",
+                    "metric_value": conv.sentiment_score,
+                },
+                {"metric_name": "filler_count", "metric_value": conv.filler_count},
+                {"metric_name": "speaking_ratio", "metric_value": conv.speaking_ratio},
+                {"metric_name": "participation", "metric_value": conv.participation},
             ]
     # ── Lock released — DB IO begins ──────────────────────────────────────────
 
@@ -595,7 +611,7 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
     if not seg_delta and not alert_delta and not metrics_changed:
         if not is_final:
             session.is_flushing = False
-            session._flush_idle.set()   # restore idle signal
+            session._flush_idle.set()  # restore idle signal
         logger.debug(
             "Flusher — session %s: nothing to flush, skipping.",
             session.session_id[:8],
@@ -604,17 +620,18 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
 
     # ── 2. Execute DB writes in one atomic transaction ────────────────────────
     try:
-        from db.database import AsyncSessionLocal
         from db import crud
+        from db.database import AsyncSessionLocal
 
         async with AsyncSessionLocal() as db:
             try:
-                # Ensure the session row exists in DB to prevent foreign key violations (e.g. if DB was reset or session was test-only)
+                # Ensure the session row exists in DB to prevent foreign key violations
+                # (e.g. if DB was reset or session was test-only)
                 db_sess = await crud.get_session(db, session.session_id)
                 if db_sess is None:
                     logger.warning(
-                        "Flusher — session %s not found in DB. Re-creating session row to prevent foreign key violations.",
-                        session.session_id[:8]
+                        "Flusher — session %s not found in DB. Re-creating session row to prevent foreign key violations.",  # noqa: E501
+                        session.session_id[:8],
                     )
                     await crud.create_session(
                         db,
@@ -635,9 +652,7 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
                     )
 
                 if alert_delta:
-                    await crud.save_alerts_batch(
-                        db, session.session_id, alert_delta
-                    )
+                    await crud.save_alerts_batch(db, session.session_id, alert_delta)
 
                 # Single commit covers all three telemetry types
                 await db.commit()
@@ -659,7 +674,9 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
         logger.debug(
             "Flusher — session %s: flushed %d seg(s), %d metric(s), %d alert(s)%s.",
             session.session_id[:8],
-            len(seg_delta), len(metric_dicts), len(alert_delta),
+            len(seg_delta),
+            len(metric_dicts),
+            len(alert_delta),
             " [final]" if is_final else "",
         )
 
@@ -717,8 +734,6 @@ async def _flush_session_final(session: SessionState) -> None:
             await _do_flush(session, is_final=True)
 
 
-
-
 def _register_flush_worker(task: asyncio.Task) -> None:
     """Add a flush task to the global tracking set and register auto-removal."""
     _flush_workers.add(task)
@@ -742,6 +757,7 @@ async def _run_post_session_diarization(
     """
     try:
         from services.post_session_diarizer import run_post_session_diarization
+
         await run_post_session_diarization(session_id, wav_path)
     except Exception:  # noqa: BLE001
         logger.exception(
@@ -772,7 +788,9 @@ async def _flush_loop() -> None:
     The loop itself never blocks on DB IO — each flush runs as an independent
     asyncio task.  asyncio.CancelledError is caught cleanly on shutdown.
     """
-    logger.info("Flusher — scheduler loop started (interval=%ss).", FLUSH_INTERVAL_SECONDS)
+    logger.info(
+        "Flusher — scheduler loop started (interval=%ss).", FLUSH_INTERVAL_SECONDS
+    )
     try:
         while True:
             await asyncio.sleep(FLUSH_INTERVAL_SECONDS)
@@ -792,8 +810,11 @@ async def _flush_loop() -> None:
                 # Gate: nothing buffered — avoid creating a task at all.
                 # Alerts: check both the eviction window (new alerts not yet in
                 # alert_log) and alert_log entries not yet flushed.
-                has_seg_delta    = len(session.conversation.transcript_segments) > session.last_flushed_segment_index
-                has_alert_delta  = (
+                has_seg_delta = (
+                    len(session.conversation.transcript_segments)
+                    > session.last_flushed_segment_index
+                )
+                has_alert_delta = (
                     # New alerts in the active window not yet captured in alert_log
                     any(
                         a.get("id") and a["id"] not in session.alert_log
@@ -805,7 +826,7 @@ async def _flush_loop() -> None:
                         for aid in session.alert_log
                     )
                 )
-                current_hash     = _compute_metric_hash(session.conversation)
+                current_hash = _compute_metric_hash(session.conversation)
                 has_metric_delta = current_hash != session.last_flushed_metric_hash
 
                 if not (has_seg_delta or has_alert_delta or has_metric_delta):
@@ -909,7 +930,9 @@ async def stop_flusher() -> None:
                 timeout=SHUTDOWN_TIMEOUT_SECONDS,
             )
             for exc in results:
-                if isinstance(exc, Exception) and not isinstance(exc, asyncio.CancelledError):
+                if isinstance(exc, Exception) and not isinstance(
+                    exc, asyncio.CancelledError
+                ):
                     logger.error("Flusher — worker raised during shutdown: %s", exc)
             logger.info("Flusher — primary drain complete.")
         except asyncio.TimeoutError:
@@ -929,7 +952,7 @@ async def stop_flusher() -> None:
                 )
             except asyncio.TimeoutError:
                 logger.error(
-                    "Flusher — %d straggler(s) did not honour cancellation within %.1fs;"
+                    "Flusher — %d straggler(s) did not honour cancellation within %.1fs;"  # noqa: E501
                     " proceeding to secondary drain.",
                     straggler_count,
                     CANCEL_DRAIN_TIMEOUT_SECONDS,
@@ -961,7 +984,7 @@ async def stop_flusher() -> None:
             logger.info("Flusher — secondary drain complete.")
         except asyncio.TimeoutError:
             logger.error(
-                "Flusher — %d late worker(s) exceeded secondary drain timeout; cancelling.",
+                "Flusher — %d late worker(s) exceeded secondary drain timeout; cancelling.",  # noqa: E501
                 len(late_workers),
             )
             for t in late_workers:
@@ -974,7 +997,7 @@ async def stop_flusher() -> None:
                 )
             except asyncio.TimeoutError:
                 logger.error(
-                    "Flusher — late workers did not honour cancellation; proceeding with disposal."
+                    "Flusher — late workers did not honour cancellation; proceeding with disposal."  # noqa: E501
                 )
 
     logger.info("Flusher — stopped.")

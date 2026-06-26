@@ -1,6 +1,6 @@
 import logging
 import math
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ def analyze_talk_ratio(segments: List[Any]) -> Dict[str, Any]:
                 "silence_duration_seconds": 0.0,
             },
             "overall_participation": {},
-            "timeline": []
+            "timeline": [],
         }
 
     # Track overall summary metrics
@@ -46,7 +46,7 @@ def analyze_talk_ratio(segments: List[Any]) -> Dict[str, Any]:
     speaker_switch_count = 0
     interruption_count = 0
     silence_duration_seconds = 0.0
-    
+
     # State tracking for monologues and turns
     current_speaker = None
     current_monologue_start = 0.0
@@ -54,7 +54,8 @@ def analyze_talk_ratio(segments: List[Any]) -> Dict[str, Any]:
     turn_count = 0
     total_talk_time = 0.0
 
-    # 1. First pass: Analyze overall flow (switches, interruptions, silences, monologues)
+    # 1. First pass: Analyze overall flow (switches, interruptions, silences,
+    # monologues)
     for i, seg in enumerate(segments):
         speaker = seg.speaker_id or "Unknown"
         start = seg.start_time
@@ -76,23 +77,26 @@ def analyze_talk_ratio(segments: List[Any]) -> Dict[str, Any]:
             if speaker != current_speaker:
                 speaker_switch_count += 1
                 turn_count += 1
-                
+
                 # Check for monologue record before switching
                 monologue_dur = current_monologue_end - current_monologue_start
                 if monologue_dur > longest_monologue_seconds:
                     longest_monologue_seconds = monologue_dur
                     longest_monologue_speaker = current_speaker
-                
+
                 # New speaker starts monologue
                 current_speaker = speaker
                 current_monologue_start = start
                 current_monologue_end = end
-                
+
                 # Check for interruption
                 prev_seg = segments[i - 1]
                 overlap = prev_seg.end_time - start
                 if overlap > 0:
-                    if overlap > INTERRUPTION_OVERLAP_THRESHOLD or word_count > INTERRUPTION_WORD_COUNT_THRESHOLD:
+                    if (
+                        overlap > INTERRUPTION_OVERLAP_THRESHOLD
+                        or word_count > INTERRUPTION_WORD_COUNT_THRESHOLD
+                    ):
                         interruption_count += 1
             else:
                 # Same speaker continuing
@@ -114,7 +118,9 @@ def analyze_talk_ratio(segments: List[Any]) -> Dict[str, Any]:
 
     # Total conversation duration based on max end_time
     total_duration_seconds = max(s.end_time for s in segments)
-    average_turn_length_seconds = total_talk_time / turn_count if turn_count > 0 else 0.0
+    average_turn_length_seconds = (
+        total_talk_time / turn_count if turn_count > 0 else 0.0
+    )
 
     # Overall participation
     overall_participation = {}
@@ -126,7 +132,7 @@ def analyze_talk_ratio(segments: List[Any]) -> Dict[str, Any]:
     max_participation = 0.0
     if overall_participation:
         max_participation = max(overall_participation.values())
-        
+
     conversation_balance = "GOOD"
     if max_participation > 75.0:
         conversation_balance = "POOR"
@@ -146,36 +152,42 @@ def analyze_talk_ratio(segments: List[Any]) -> Dict[str, Any]:
     for b in range(num_buckets):
         window_start = b * WINDOW_SIZE_SECONDS
         window_end = window_start + WINDOW_SIZE_SECONDS
-        
+
         bucket_talk_time: Dict[str, float] = {}
         bucket_total = 0.0
-        
+
         for seg in segments:
             # Overlap between segment and bucket
             overlap_start = max(seg.start_time, window_start)
             overlap_end = min(seg.end_time, window_end)
             overlap_duration = overlap_end - overlap_start
-            
+
             if overlap_duration > 0:
                 spk = seg.speaker_id or "Unknown"
-                bucket_talk_time[spk] = bucket_talk_time.get(spk, 0.0) + overlap_duration
+                bucket_talk_time[spk] = (
+                    bucket_talk_time.get(spk, 0.0) + overlap_duration
+                )
                 bucket_total += overlap_duration
-                
+
         # Format bucket metrics
         bucket_speakers = {}
         for spk, duration in bucket_talk_time.items():
-            part = round((duration / bucket_total) * 100, 1) if bucket_total > 0 else 0.0
+            part = (
+                round((duration / bucket_total) * 100, 1) if bucket_total > 0 else 0.0
+            )
             bucket_speakers[spk] = {
                 "talk_time": round(duration, 1),
                 "participation": part,
-                "dominance": part # In a window, dominance is essentially participation
+                "dominance": part,  # In a window, dominance is essentially participation  # noqa: E501
             }
-            
-        buckets.append({
-            "window_start": window_start,
-            "window_end": window_end,
-            "speakers": bucket_speakers
-        })
+
+        buckets.append(
+            {
+                "window_start": window_start,
+                "window_end": window_end,
+                "speakers": bucket_speakers,
+            }
+        )
 
     return {
         "summary": {
@@ -191,5 +203,5 @@ def analyze_talk_ratio(segments: List[Any]) -> Dict[str, Any]:
             "conversation_balance": conversation_balance,
         },
         "overall_participation": overall_participation,
-        "timeline": buckets
+        "timeline": buckets,
     }

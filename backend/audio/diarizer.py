@@ -14,22 +14,25 @@ Fallback:
   speakers are assigned via a simple turn-boundary heuristic: speaker
   alternates when > 1.5s of silence is detected between segments.
 """
+
 import logging
 import time
-import numpy as np
 from dataclasses import dataclass
+
+import numpy as np
 
 from audio.transcriber import TranscriptSegment
 
 logger = logging.getLogger(__name__)
 
 SAMPLE_RATE = 16_000
-SILENCE_TURN_THRESHOLD = 1.5   # seconds; gap > this → likely speaker change
+SILENCE_TURN_THRESHOLD = 1.5  # seconds; gap > this → likely speaker change
 
 
 @dataclass
 class DiarizedSegment(TranscriptSegment):
     """TranscriptSegment extended with a confirmed speaker label."""
+
     speaker: str = "Speaker 1"  # type: ignore
 
 
@@ -57,11 +60,12 @@ class SpeakerDiarizer:
             return
 
         import os
-        os.environ["HF_TOKEN"] = hf_token
 
+        os.environ["HF_TOKEN"] = hf_token
 
         try:
             import warnings
+
             with warnings.catch_warnings():
                 warnings.filterwarnings(
                     "ignore",
@@ -71,7 +75,9 @@ class SpeakerDiarizer:
                 from pyannote.audio import Pipeline
             import torch
 
-            logger.info(f"Diarizer: Loading pyannote/speaker-diarization-3.1 on {device} …")
+            logger.info(
+                f"Diarizer: Loading pyannote/speaker-diarization-3.1 on {device} …"
+            )
             t0 = time.monotonic()
 
             self._pipeline = Pipeline.from_pretrained(
@@ -84,7 +90,9 @@ class SpeakerDiarizer:
             # Run a dummy 2.0s tensor to initialize CUDA kernels and PyTorch caches
             dummy_waveform = torch.zeros(1, SAMPLE_RATE * 2, dtype=torch.float32)
             with torch.inference_mode():
-                _ = self._pipeline({"waveform": dummy_waveform, "sample_rate": SAMPLE_RATE})
+                _ = self._pipeline(
+                    {"waveform": dummy_waveform, "sample_rate": SAMPLE_RATE}
+                )
 
             elapsed = time.monotonic() - t0
             logger.info(f"Diarizer: Ready and warmed up in {elapsed:.1f}s")
@@ -119,7 +127,9 @@ class SpeakerDiarizer:
             return []
 
         if self._loaded and self._pipeline is not None:
-            return self._diarize_with_pyannote(segments, pcm_bytes, chunk_time_offset, fallback_speaker)
+            return self._diarize_with_pyannote(
+                segments, pcm_bytes, chunk_time_offset, fallback_speaker
+            )
         else:
             return self._diarize_heuristic(segments, fallback_speaker)
 
@@ -135,16 +145,17 @@ class SpeakerDiarizer:
         """Run Pyannote on the audio and map turns to Whisper segments."""
         try:
             import torch
-            from pyannote.core import Segment as PyannoteSegment
 
             # Convert PCM → float32 tensor
             audio_int16 = np.frombuffer(pcm_bytes, dtype=np.int16)
-            
+
             # Guard: Pyannote clustering fails on extremely short chunks (e.g. < 0.5s)
             # leading to divide-by-zero errors. Minimum recommended is ~1.5s.
             duration = len(audio_int16) / SAMPLE_RATE
             if duration < 1.5:
-                logger.warning(f"Diarizer: Chunk too short ({duration:.2f}s < 1.5s). Falling back to previous speaker.")
+                logger.warning(
+                    f"Diarizer: Chunk too short ({duration:.2f}s < 1.5s). Falling back to previous speaker."  # noqa: E501
+                )
                 return self._diarize_heuristic(segments, fallback_speaker)
 
             audio_float32 = audio_int16.astype(np.float32) / 32768.0
@@ -157,7 +168,8 @@ class SpeakerDiarizer:
             elapsed = (time.monotonic() - t0) * 1000
             logger.debug(f"Diarizer: Pyannote finished in {elapsed:.0f}ms")
 
-            # pyannote-audio 4.x returns a DiarizeOutput dataclass. Unwrap it using duck-typing
+            # pyannote-audio 4.x returns a DiarizeOutput dataclass. Unwrap it using
+            # duck-typing
             # to bypass class-identity mismatches under Uvicorn reload environments.
             annotation = getattr(diarization, "speaker_diarization", diarization)
 
@@ -173,24 +185,30 @@ class SpeakerDiarizer:
                     except (ValueError, IndexError):
                         pass
                 # Adjust times to absolute session time
-                turns.append((
-                    turn.start + chunk_time_offset,
-                    turn.end + chunk_time_offset,
-                    mapped_speaker,
-                ))
+                turns.append(
+                    (
+                        turn.start + chunk_time_offset,
+                        turn.end + chunk_time_offset,
+                        mapped_speaker,
+                    )
+                )
 
             # Assign speaker to each Whisper segment by overlap
             diarized: list[DiarizedSegment] = []
             for seg in segments:
-                speaker = self._find_speaker(seg.start, seg.end, turns, fallback_speaker)
-                diarized.append(DiarizedSegment(
-                    start=seg.start,
-                    end=seg.end,
-                    text=seg.text,
-                    speaker=speaker,
-                    language=seg.language,
-                    avg_logprob=seg.avg_logprob,
-                ))
+                speaker = self._find_speaker(
+                    seg.start, seg.end, turns, fallback_speaker
+                )
+                diarized.append(
+                    DiarizedSegment(
+                        start=seg.start,
+                        end=seg.end,
+                        text=seg.text,
+                        speaker=speaker,
+                        language=seg.language,
+                        avg_logprob=seg.avg_logprob,
+                    )
+                )
 
             return diarized
 
@@ -243,14 +261,16 @@ class SpeakerDiarizer:
                 elif current_speaker == "Speaker 2":
                     current_speaker = "Speaker 1"
 
-            diarized.append(DiarizedSegment(
-                start=seg.start,
-                end=seg.end,
-                text=seg.text,
-                speaker=current_speaker,
-                language=seg.language,
-                avg_logprob=seg.avg_logprob,
-            ))
+            diarized.append(
+                DiarizedSegment(
+                    start=seg.start,
+                    end=seg.end,
+                    text=seg.text,
+                    speaker=current_speaker,
+                    language=seg.language,
+                    avg_logprob=seg.avg_logprob,
+                )
+            )
             prev_end = seg.end
 
         return diarized
