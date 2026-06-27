@@ -133,6 +133,36 @@ class SpeakerDiarizer:
         else:
             return self._diarize_heuristic(segments, fallback_speaker)
 
+    async def assign_speakers_async(
+        self,
+        segments: list[TranscriptSegment],
+        pcm_bytes: bytes,
+        chunk_time_offset: float = 0.0,
+        fallback_speaker: str = "Speaker 1",
+        speaker_profile: SpeakerProfile | None = None,
+    ) -> list[DiarizedSegment]:
+        """
+        Async version of assign_speakers that separates CPU prep/post from 
+        serialized GPU inference via the global semaphore.
+        """
+        import asyncio
+        loop = asyncio.get_running_loop()
+        
+        if not segments:
+            return []
+
+        if self._loaded and self._model is not None and speaker_profile is not None:
+            return await self._diarize_with_embeddings_async(
+                segments, pcm_bytes, chunk_time_offset, fallback_speaker, speaker_profile
+            )
+        else:
+            return await loop.run_in_executor(
+                None, 
+                self._diarize_heuristic, 
+                segments, 
+                fallback_speaker
+            )
+
     # ── Pyannote diarization ──────────────────────────────────────────────────
 
     def _diarize_with_embeddings(
@@ -198,6 +228,96 @@ class SpeakerDiarizer:
 
         except Exception as exc:
             logger.error(f"Diarizer: Embedding inference error — {exc}. Falling back.")
+            return self._diarize_heuristic(segments, fallback_speaker)
+
+    async def _diarize_with_embeddings_async(
+        self,
+        segments: list[TranscriptSegment],
+        pcm_bytes: bytes,
+        chunk_time_offset: float,
+        fallback_speaker: str,
+        speaker_profile: SpeakerProfile,
+    ) -> list[DiarizedSegment]:
+        """Async embedding extraction with serialized GPU access."""
+        import asyncio
+        import torch
+        from audio.gpu_manager import get_gpu_semaphore
+        
+        loop = asyncio.get_running_loop()
+        device = next(self._model.parameters()).device
+        
+        # 1. CPU Prep
+        def _prep():
+            audio_int16 = np.frombuffer(pcm_bytes, dtype=np.int16)
+            audio_float32 = audio_int16.astype(np.float32) / 32768.0
+            
+            tensors = []
+            metas = []
+            
+            for seg in segments:
+                local_start = max(0.0, seg.start - chunk_time_offset)
+                local_end = max(0.0, seg.end - chunk_time_offset)
+                
+                start_sample = int(local_start * SAMPLE_RATE)
+                end_sample = int(local_end * SAMPLE_RATE)
+                end_sample = min(len(audio_float32), end_sample)
+                start_sample = min(end_sample, start_sample)
+                
+                seg_audio = audio_float32[start_sample:end_sample]
+                if len(seg_audio) < SAMPLE_RATE * 0.5:
+                    metas.append({"type": "short", "seg": seg})
+                else:
+                    tensor = torch.from_numpy(seg_audio).unsqueeze(0).unsqueeze(0).to(device)
+                    tensors.append(tensor)
+                    metas.append({"type": "infer", "seg": seg})
+            return tensors, metas
+
+        try:
+            tensors, metas = await loop.run_in_executor(None, _prep)
+            
+            # 2. GPU Inference
+            embs = []
+            if tensors:
+                def _infer():
+                    out = []
+                    with torch.inference_mode():
+                        for tensor in tensors:
+                            out.append(self._model(tensor).cpu().numpy()[0])
+                    return out
+                
+                async with get_gpu_semaphore():
+                    embs = await loop.run_in_executor(None, _infer)
+                    
+            # 3. CPU Post
+            def _post():
+                diarized = []
+                current_speaker = fallback_speaker
+                emb_idx = 0
+                for meta in metas:
+                    seg = meta["seg"]
+                    if meta["type"] == "short":
+                        speaker = current_speaker
+                    else:
+                        speaker = speaker_profile.match_or_create(embs[emb_idx])
+                        current_speaker = speaker
+                        emb_idx += 1
+                        
+                    diarized.append(
+                        DiarizedSegment(
+                            start=seg.start,
+                            end=seg.end,
+                            text=seg.text,
+                            speaker=speaker,
+                            language=seg.language,
+                            avg_logprob=seg.avg_logprob,
+                        )
+                    )
+                return diarized
+                
+            return await loop.run_in_executor(None, _post)
+            
+        except Exception as exc:
+            logger.error(f"Diarizer: Async embedding error — {exc}. Falling back.")
             return self._diarize_heuristic(segments, fallback_speaker)
 
     # ── Heuristic fallback ────────────────────────────────────────────────────

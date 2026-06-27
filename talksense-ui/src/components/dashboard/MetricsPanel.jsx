@@ -163,6 +163,15 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt }) => {
     duration_seconds,
     objections,
     buying_signals,
+    interruptions,
+    speaker_switches,
+    action_items,
+    decisions,
+    objection_timeline,
+    buying_signal_timeline,
+    filler_penalty,
+    pause_penalty,
+    sentiment,
     talkRatioSummary,
     talkTimeline,
     analyticsHealth,
@@ -222,36 +231,52 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt }) => {
           </div>
         )}
 
-        <div style={{ margin: "12px 0" }}>
-          <strong>Health Score:</strong> {health_score != null ? `${health_score}%` : "N/A"}
-        </div>
-        <div style={{ margin: "12px 0" }}>
-          <strong>Speaking Ratio:</strong> {renderSpeakingRatio()}
-        </div>
-        <div style={{ margin: "12px 0" }}>
-          <strong>Participation:</strong>
-          {sortedParticipation.length > 0 ? (
-            <ul>
-              {sortedParticipation.map(([speaker, percent]) => (
-                <li key={speaker}>
-                  {speaker}: {percent != null ? `${percent} words` : "N/A"}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            " N/A"
-          )}
-        </div>
-        <div style={{ margin: "12px 0" }}>
-          <strong>Filler Words:</strong> {filler_count ?? "N/A"}
-        </div>
-        <div style={{ margin: "12px 0" }}>
-          <strong>Duration:</strong> {durationText}
+        {/* ── Health Breakdown ── */}
+        <div style={{ margin: "16px 0", padding: "16px", backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", textAlign: "center" }}>
+          <div style={{ fontSize: "2.5em", fontWeight: "800", color: health_score >= 70 ? "#10b981" : health_score >= 40 ? "#f59e0b" : "#ef4444", marginBottom: "8px" }}>
+            {health_score != null ? `${health_score}%` : "N/A"}
+          </div>
+          <strong style={{ display: "block", marginBottom: "12px", color: "#1e293b", textTransform: "uppercase", letterSpacing: "1px", fontSize: "0.85em" }}>Session Health</strong>
+          
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", textAlign: "left", fontSize: "0.9em", color: "#475569" }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Sentiment:</span>
+              <strong style={{ color: "#1e293b" }}>{sentiment != null ? `${sentiment.toFixed(0)}%` : "N/A"}</strong>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Filler Penalty:</span>
+              <strong style={{ color: filler_penalty < 50 ? "#ef4444" : "#1e293b" }}>{filler_penalty != null ? `${filler_penalty.toFixed(0)}` : "N/A"}</strong>
+            </div>
+            {pause_penalty != null && (
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span>Pause Penalty:</span>
+                <strong style={{ color: pause_penalty < 50 ? "#ef4444" : "#1e293b" }}>{pause_penalty.toFixed(0)}</strong>
+              </div>
+            )}
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Action Items:</span>
+              <strong style={{ color: "#1e293b" }}>{action_items ? action_items.length : 0}</strong>
+            </div>
+          </div>
         </div>
 
-        {/* ── Conversation Flow Analytics ── */}
+        {/* ── Live Conversation Flow ── */}
         <div style={{ margin: "16px 0 12px 0", borderTop: "1px solid #eee", paddingTop: "12px" }}>
-          <strong>Conversation Flow Analytics</strong>
+          <strong style={{ display: "block", marginBottom: "12px", color: "#1e293b" }}>Conversation Flow (Live)</strong>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "0.9em", color: "#475569" }}>
+            <div><strong>Duration:</strong> {durationText}</div>
+            <div><strong>Speaker Switches:</strong> {speaker_switches ?? 0}</div>
+            <div><strong>Interruptions:</strong> {interruptions ?? 0}</div>
+            <div><strong>Total Fillers:</strong> {filler_count ?? 0}</div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <strong>Speaking Ratio:</strong> {renderSpeakingRatio()}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Post-Session Conversation Flow Analytics ── */}
+        <div style={{ margin: "16px 0 12px 0", borderTop: "1px solid #eee", paddingTop: "12px" }}>
+          <strong>Post-Session Flow Analytics</strong>
           {talkRatioSummary ? (
             <div style={{ marginTop: "8px", fontSize: "0.9em", color: "#475569" }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
@@ -358,33 +383,76 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt }) => {
           </div>
         </div>
 
-        {/* ── Objections ── */}
+        {/* ── Meeting Intelligence ── */}
         <div style={{ margin: "16px 0 12px 0", borderTop: "1px solid #eee", paddingTop: "12px" }}>
-          <strong>⚠ Detected Objections:</strong>
+          <strong>Meeting Intelligence</strong>
+          
+          <div style={{ marginTop: "12px" }}>
+            <span style={{ fontSize: "0.85em", fontWeight: "bold", color: "#475569", textTransform: "uppercase" }}>Decisions ({decisions ? decisions.length : 0})</span>
+            {decisions && decisions.length > 0 ? (
+              <ul style={{ paddingLeft: "20px", margin: "8px 0 16px 0", fontSize: "0.9em" }}>
+                {decisions.map((dec, idx) => (
+                  <li key={idx} style={{ margin: "6px 0", color: "#1e293b" }}>{dec}</li>
+                ))}
+              </ul>
+            ) : (
+              <p style={{ margin: "4px 0 16px 0", color: "#64748b", fontSize: "0.85em", fontStyle: "italic" }}>No decisions captured yet.</p>
+            )}
+          </div>
+          
+          <div>
+            <span style={{ fontSize: "0.85em", fontWeight: "bold", color: "#475569", textTransform: "uppercase" }}>Action Items ({action_items ? action_items.length : 0})</span>
+            {action_items && action_items.length > 0 ? (
+              <ul style={{ paddingLeft: "20px", margin: "8px 0 0 0", fontSize: "0.9em" }}>
+                {action_items.map((item, idx) => {
+                  const text = typeof item === 'object' ? item.text : item;
+                  const owner = typeof item === 'object' && item.owner ? item.owner : null;
+                  return (
+                    <li key={idx} style={{ margin: "6px 0", color: "#1e293b" }}>
+                      {text}
+                      {owner && <span style={{ marginLeft: "8px", backgroundColor: "#e0e7ff", color: "#4338ca", padding: "2px 6px", borderRadius: "4px", fontSize: "0.8em", fontWeight: "bold" }}>@{owner}</span>}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <p style={{ margin: "4px 0 0 0", color: "#64748b", fontSize: "0.85em", fontStyle: "italic" }}>No action items captured yet.</p>
+            )}
+          </div>
+        </div>
+
+        {/* ── Sales Intelligence (Objections Timeline) ── */}
+        <div style={{ margin: "16px 0 12px 0", borderTop: "1px solid #eee", paddingTop: "12px" }}>
+          <strong>⚠ Objection Timeline:</strong>
           <span style={{
-            backgroundColor: objections && objections.length > 0 ? "#ef4444" : "#e2e8f0",
-            color: objections && objections.length > 0 ? "white" : "#475569",
+            backgroundColor: objection_timeline && objection_timeline.length > 0 ? "#ef4444" : "#e2e8f0",
+            color: objection_timeline && objection_timeline.length > 0 ? "white" : "#475569",
             borderRadius: "10px",
             padding: "2px 8px",
             fontSize: "0.8em",
             fontWeight: "bold",
             marginLeft: "6px",
           }}>
-            {objections ? objections.length : 0}
+            {objection_timeline ? objection_timeline.length : 0}
           </span>
-          {objections && objections.length > 0 ? (
-            <ul style={{ paddingLeft: "20px", margin: "8px 0 0 0", fontSize: "0.9em" }}>
-              {objections.map((obj, idx) => {
+          {objection_timeline && objection_timeline.length > 0 ? (
+            <div style={{ marginTop: "12px", borderLeft: "2px solid #e2e8f0", paddingLeft: "12px" }}>
+              {objection_timeline.map((obj, idx) => {
                 const text = typeof obj === "string" ? obj : (obj?.text || "");
                 const cat = typeof obj === "object" && obj?.category ? `[${obj.category}] ` : "";
+                const ts = typeof obj === "object" && obj?.timestamp != null ? new Date(obj.timestamp * 1000).toISOString().substr(14, 5) : "--:--";
                 return (
-                  <li key={idx} style={{ margin: "6px 0", color: "#b91c1c" }}>
-                    <span style={{ fontWeight: "600" }}>{cat}</span>
-                    <span style={{ fontStyle: "italic" }}>"{text}"</span>
-                  </li>
+                  <div key={idx} style={{ margin: "12px 0", position: "relative" }}>
+                    <div style={{ position: "absolute", left: "-17px", top: "4px", width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#ef4444" }} />
+                    <div style={{ fontSize: "0.75em", color: "#64748b", fontWeight: "bold", marginBottom: "2px" }}>{ts}</div>
+                    <div style={{ color: "#b91c1c", fontSize: "0.9em" }}>
+                      <span style={{ fontWeight: "600" }}>{cat}</span>
+                      <span style={{ fontStyle: "italic" }}>"{text}"</span>
+                    </div>
+                  </div>
                 );
               })}
-            </ul>
+            </div>
           ) : (
             <p style={{ margin: "8px 0 0 0", color: "#64748b", fontSize: "0.9em", fontStyle: "italic" }}>
               No objections detected
@@ -440,31 +508,36 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt }) => {
           )}
         </div>
 
-        {/* ── Buying Signals ── */}
+        {/* ── Sales Intelligence (Buying Signals Timeline) ── */}
         <div style={{ margin: "16px 0 12px 0", borderTop: "1px solid #eee", paddingTop: "12px" }}>
-          <strong>🚀 Buying Signals:</strong>
+          <strong>🚀 Buying Signals Timeline:</strong>
           <span style={{
-            backgroundColor: buying_signals && buying_signals.length > 0 ? "#10b981" : "#e2e8f0",
-            color: buying_signals && buying_signals.length > 0 ? "white" : "#475569",
+            backgroundColor: buying_signal_timeline && buying_signal_timeline.length > 0 ? "#10b981" : "#e2e8f0",
+            color: buying_signal_timeline && buying_signal_timeline.length > 0 ? "white" : "#475569",
             borderRadius: "10px",
             padding: "2px 8px",
             fontSize: "0.8em",
             fontWeight: "bold",
             marginLeft: "6px",
           }}>
-            {buying_signals ? buying_signals.length : 0}
+            {buying_signal_timeline ? buying_signal_timeline.length : 0}
           </span>
-          {buying_signals && buying_signals.length > 0 ? (
-            <ul style={{ paddingLeft: "20px", margin: "8px 0 0 0", fontSize: "0.9em" }}>
-              {buying_signals.map((sig, idx) => {
+          {buying_signal_timeline && buying_signal_timeline.length > 0 ? (
+            <div style={{ marginTop: "12px", borderLeft: "2px solid #e2e8f0", paddingLeft: "12px" }}>
+              {buying_signal_timeline.map((sig, idx) => {
                 const text = typeof sig === "string" ? sig : (sig?.text || String(sig));
+                const ts = typeof sig === "object" && sig?.timestamp != null ? new Date(sig.timestamp * 1000).toISOString().substr(14, 5) : "--:--";
                 return (
-                  <li key={idx} style={{ margin: "6px 0", color: "#065f46" }}>
-                    <span style={{ fontStyle: "italic" }}>"{text}"</span>
-                  </li>
+                  <div key={idx} style={{ margin: "12px 0", position: "relative" }}>
+                    <div style={{ position: "absolute", left: "-17px", top: "4px", width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#10b981" }} />
+                    <div style={{ fontSize: "0.75em", color: "#64748b", fontWeight: "bold", marginBottom: "2px" }}>{ts}</div>
+                    <div style={{ color: "#065f46", fontSize: "0.9em", fontStyle: "italic" }}>
+                      "{text}"
+                    </div>
+                  </div>
                 );
               })}
-            </ul>
+            </div>
           ) : (
             <p style={{ margin: "8px 0 0 0", color: "#64748b", fontSize: "0.9em", fontStyle: "italic" }}>
               Awaiting buying signals

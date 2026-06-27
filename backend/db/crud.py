@@ -633,21 +633,25 @@ async def recover_stale_sessions(db: AsyncSession) -> int:
         wav_filename = f"session_{safe_id}.wav"
         wav_path = os.path.join("session_audio", wav_filename)
 
+        # Calculate duration based on WAV file if it exists, otherwise 0.0
+        duration = 0.0
         if os.path.exists(wav_path):
             try:
                 # Finalize WAV header sizes based on file size on disk
                 file_size = os.path.getsize(wav_path)
                 if file_size >= 44:
                     data_bytes = file_size - 44
+                    duration = round(data_bytes / 32000, 1)
                     with open(wav_path, "r+b") as f:
                         f.seek(4)
                         f.write(struct.pack("<I", 36 + data_bytes))
                         f.seek(40)
                         f.write(struct.pack("<I", data_bytes))
                     logger.info(
-                        "DB — finalized WAV header for recovered session %s [size=%d]",
+                        "DB — finalized WAV header for recovered session %s [size=%d, duration=%.1fs]",
                         session_id_str[:8],
                         file_size,
+                        duration,
                     )
                 session.audio_file_path = os.path.abspath(wav_path)
             except Exception as exc:
@@ -656,6 +660,7 @@ async def recover_stale_sessions(db: AsyncSession) -> int:
                     session_id_str[:8],
                     exc,
                 )
+        session.duration = duration
 
         affected += 1
 

@@ -8,6 +8,7 @@ import SessionStatusBar from "../components/dashboard/SessionStatusBar";
 import TranscriptPanel from "../components/dashboard/TranscriptPanel";
 import MetricsPanel from "../components/dashboard/MetricsPanel";
 import AlertsPanel from "../components/dashboard/AlertsPanel";
+import CoachingPanel from "../components/dashboard/CoachingPanel";
 import logoImage from "../assets/logo/logo.png";
 
 // --- Constants ---------------------------------------------------------------
@@ -636,6 +637,7 @@ export default function DashboardPage() {
             sessionStatus={sessionStatus} 
             lastSyncAt={lastSyncAt} 
           />
+          <CoachingPanel tips={metrics?.coachingTips || []} />
           <AlertsPanel alerts={alerts || []} />
         </div>
       </div>

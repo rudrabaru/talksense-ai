@@ -168,16 +168,77 @@ class WhisperTranscriber:
         initial_prompt: str | None = None,
     ) -> list[TranscriptSegment]:
         """
-        Async wrapper — runs transcription in the thread pool.
-        Use this from async WebSocket handlers.
+        Async wrapper — runs transcription in the thread pool, separated into
+        concurrent CPU prep/post and serialized GPU inference.
         """
         import asyncio
+        from audio.gpu_manager import get_gpu_semaphore
+
+        if not self._loaded or self._model is None or not pcm_bytes:
+            return []
 
         loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(
-            self._executor,
-            lambda: self.transcribe(pcm_bytes, time_offset, language, initial_prompt),
+
+        # 1. CPU Prep (concurrent)
+        def _prep():
+            audio_int16 = np.frombuffer(pcm_bytes, dtype=np.int16)
+            return audio_int16.astype(np.float32) / 32768.0
+
+        audio_float32 = await loop.run_in_executor(self._executor, _prep)
+
+        # 2. GPU Inference (serialized via semaphore)
+        def _infer():
+            t0 = time.monotonic()
+            raw_segments, info = self._model.transcribe(
+                audio_float32,
+                language=language,
+                beam_size=3,
+                best_of=1,
+                patience=0.8,
+                temperature=0.0,
+                no_speech_threshold=0.6,
+                compression_ratio_threshold=2.2,
+                condition_on_previous_text=True,
+                initial_prompt=initial_prompt,
+                vad_filter=False,
+                word_timestamps=False,
+            )
+            # exhaust generator to execute inference immediately on GPU
+            return list(raw_segments), info, time.monotonic() - t0
+
+        async with get_gpu_semaphore():
+            try:
+                raw_segments, info, inference_time = await loop.run_in_executor(self._executor, _infer)
+            except Exception as exc:
+                logger.error(f"Whisper: Transcription error — {exc}")
+                return []
+
+        # 3. CPU Postprocessing (concurrent)
+        def _post():
+            segments = []
+            for seg in raw_segments:
+                text = seg.text.strip()
+                if not text:
+                    continue
+                segments.append(
+                    TranscriptSegment(
+                        start=round(seg.start + time_offset, 2),
+                        end=round(seg.end + time_offset, 2),
+                        text=text,
+                        language=info.language,
+                        avg_logprob=round(seg.avg_logprob, 3),
+                    )
+                )
+            return segments, inference_time, info.language
+
+        segments, inference_time, lang = await loop.run_in_executor(self._executor, _post)
+        
+        elapsed_ms = inference_time * 1000
+        logger.debug(
+            f"Whisper: {len(segments)} segment(s) in {elapsed_ms:.0f}ms "
+            f"[lang={lang}]"
         )
+        return segments
 
 
 # ── Module-level singleton ────────────────────────────────────────────────────

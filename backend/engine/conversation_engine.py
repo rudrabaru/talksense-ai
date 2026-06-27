@@ -120,6 +120,9 @@ class ConversationEngine:
         # Update active alerts on state
         state.active_alerts = alert_engine.get_active()
 
+        # 8. Generate Coaching Recommendations
+        self._generate_coaching_recommendations(state, mode)
+
         return state, new_alerts
 
     def _infer_roles(
@@ -183,11 +186,91 @@ class ConversationEngine:
                 
         state.roles = roles
 
+    def _generate_coaching_recommendations(self, state: ConversationState, mode: str) -> None:
+        """Deterministically generate real-time coaching recommendations from ConversationState."""
+        tips = []
+        
+        # 1. Speaking Balance
+        if state.speaking_ratio:
+            dominant_speaker = max(state.speaking_ratio, key=state.speaking_ratio.get)
+            if state.speaking_ratio[dominant_speaker] > 70:
+                is_host = state.host_speaker_id == dominant_speaker
+                if is_host or not state.host_speaker_id:
+                    tips.append({
+                        "id": "coach_speaking_balance",
+                        "severity": "medium",
+                        "title": "Speaking Balance",
+                        "recommendation": "Pause and ask an open question.",
+                        "reason": f"You are speaking {state.speaking_ratio[dominant_speaker]:.0f}% of the time."
+                    })
+
+        # 2. Filler Density
+        duration_minutes = max(1.0, getattr(state, "duration_seconds", 0.0) / 60.0)
+        filler_density = state.filler_count / duration_minutes
+        if filler_density > 3:
+            tips.append({
+                "id": "coach_filler_density",
+                "severity": "low",
+                "title": "Filler Word Density",
+                "recommendation": "Slow down and speak more deliberately.",
+                "reason": f"High filler word count detected ({int(filler_density)}/min)."
+            })
+
+        # 3. Interruptions
+        if state.interruptions > 3:
+            tips.append({
+                "id": "coach_interruptions",
+                "severity": "medium",
+                "title": "Interruptions",
+                "recommendation": "Let the speaker finish their thought.",
+                "reason": f"High interruption frequency ({state.interruptions} detected)."
+            })
+
+        # 4. Objections (Sales mode)
+        if mode == "sales" and state.objection_timeline:
+            last_obj = state.objection_timeline[-1]
+            if state.duration_seconds - last_obj.get("timestamp", 0) < 120:
+                tips.append({
+                    "id": "coach_objection",
+                    "severity": "high",
+                    "title": f"Objection: {last_obj.get('category', 'Concern').title()}",
+                    "recommendation": "Address concern directly using FEEL-FELT-FOUND.",
+                    "reason": f"Client mentioned: '{last_obj.get('keyword', '')}'."
+                })
+
+        # 5. Buying Signals (Sales mode)
+        if mode == "sales" and state.buying_signal_timeline:
+            last_buy = state.buying_signal_timeline[-1]
+            if state.duration_seconds - last_buy.get("timestamp", 0) < 120:
+                tips.append({
+                    "id": "coach_buying_signal",
+                    "severity": "high",
+                    "title": "Buying Signal Detected",
+                    "recommendation": "Shift toward closing or next steps.",
+                    "reason": "Client expressed positive intent."
+                })
+        
+        # Sort by severity (high -> medium -> low)
+        severity_order = {"high": 0, "medium": 1, "low": 2}
+        tips.sort(key=lambda x: severity_order.get(x.get("severity", "low"), 3))
+        
+        state.coaching_tips = tips
+
     # ── Metric updaters ───────────────────────────────────────────────────────
 
     @staticmethod
     def _update_speaking_metrics(segments: list, state: ConversationState) -> None:
-        """Update speaking_ratio and participation from new segments."""
+        """Update speaking_ratio, participation, interruptions, and speaker_switches."""
+        INTERRUPTION_OVERLAP_THRESHOLD = 1.5
+        INTERRUPTION_WORD_COUNT_THRESHOLD = 3
+
+        last_speaker = None
+        last_end_time = 0.0
+        if state.transcript_segments:
+            last_seg = state.transcript_segments[-1]
+            last_speaker = getattr(last_seg, "speaker", last_seg.get("speaker") if isinstance(last_seg, dict) else None)
+            last_end_time = getattr(last_seg, "end_time", last_seg.get("end_time", 0.0) if isinstance(last_seg, dict) else 0.0)
+
         for seg in segments:
             speaker = (
                 getattr(seg, "speaker", seg.get("speaker", "Speaker 1"))
@@ -199,10 +282,25 @@ class ConversationEngine:
                 if isinstance(seg, dict)
                 else seg.text
             )
+            start_time = (
+                getattr(seg, "start_time", seg.get("start_time", 0.0))
+                if isinstance(seg, dict)
+                else seg.start_time
+            )
             word_count = len(text.split())
             state.participation[speaker] = (
                 state.participation.get(speaker, 0) + word_count
             )
+
+            # Flow tracking
+            if last_speaker is not None and speaker != last_speaker:
+                state.speaker_switches += 1
+                overlap = last_end_time - start_time
+                if overlap > INTERRUPTION_OVERLAP_THRESHOLD or word_count > INTERRUPTION_WORD_COUNT_THRESHOLD:
+                    state.interruptions += 1
+            
+            last_speaker = speaker
+            last_end_time = getattr(seg, "end_time", seg.get("end_time", 0.0) if isinstance(seg, dict) else getattr(seg, "end_time", 0.0))
 
         total_words = sum(state.participation.values()) or 1
         state.speaking_ratio = {
@@ -273,6 +371,7 @@ class ConversationEngine:
             # Flatten all keyword lists for matching
             objections = []
             for seg in seg_dicts:
+                start_time = seg.get("start_time", 0.0)
                 for clause in seg.get("clauses", []):
                     if clause.get("is_conditional") or clause.get("is_abandoned"):
                         continue
@@ -289,6 +388,7 @@ class ConversationEngine:
                                             "text": clause.get("text", ""),
                                             "keyword": kw,
                                             "category": category,
+                                            "timestamp": start_time,
                                         }
                                     )
                                     break
@@ -302,10 +402,15 @@ class ConversationEngine:
                                 o.get("text", "") for o in objections
                             ]:
                                 objections.append(
-                                    {"text": clause.get("text", ""), "keyword": kw}
+                                    {
+                                        "text": clause.get("text", ""),
+                                        "keyword": kw,
+                                        "timestamp": start_time,
+                                    }
                                 )
                                 break
             state.objections = objections
+            state.objection_timeline = objections
 
             # Detect buying signals via sales assessment
             signals = assess_sales_signals(seg_dicts, objections, [])
@@ -313,11 +418,16 @@ class ConversationEngine:
                 # Extract the specific text that triggered it
                 buying_texts = []
                 for s in seg_dicts:
+                    start_time = s.get("start_time", 0.0)
                     for c in s.get("clauses", []):
                         if not c.get("is_negated") and not c.get("is_conditional") and not c.get("is_abandoned"):
                             if any(kw in c.get("text", "").lower() for kw in ["interested", "this looks good", "sounds good", "makes sense", "fits the budget"]):
-                                buying_texts.append(c.get("text", ""))
-                state.buying_signals = buying_texts[-3:]  # keep last 3
+                                buying_texts.append({
+                                    "text": c.get("text", ""),
+                                    "timestamp": start_time
+                                })
+                state.buying_signals = [b["text"] for b in buying_texts[-3:]]  # keep last 3 strings
+                state.buying_signal_timeline = buying_texts
 
         except Exception as exc:
             logger.error(f"ConversationEngine: sales metrics error — {exc}")
@@ -329,9 +439,15 @@ class ConversationEngine:
             from services.context_analyzer import (
                 compute_meeting_quality_v2,
                 detect_signals,
+                extract_actions,
+                detect_decisions,
             )
+            from services.linguistic_parser import annotate_segments
+            from services.conversation_state_resolver import resolve_conversation_state
 
             seg_dicts = [s if isinstance(s, dict) else s.__dict__ for s in all_segments]
+            annotate_segments(seg_dicts)
+            resolve_conversation_state(seg_dicts)
 
             signals = detect_signals(seg_dicts)
             quality = compute_meeting_quality_v2(signals)
@@ -339,6 +455,10 @@ class ConversationEngine:
             # Store as a metadata field for report generation
             state.__dict__["meeting_quality"] = quality["label"]
             state.__dict__["meeting_signals"] = signals
+
+            # Real-time extraction
+            state.action_items = extract_actions(seg_dicts)
+            state.decisions = detect_decisions(seg_dicts)
 
         except Exception as exc:
             logger.error(f"ConversationEngine: meeting metrics error — {exc}")
@@ -369,8 +489,18 @@ class ConversationEngine:
         # Sentiment (-1 to +1) → 0 to 100
         sentiment_norm = (state.sentiment_score + 1) / 2 * 100
 
-        # Filler penalty (0 fillers = 100, 10+ fillers = 0)
-        filler_penalty = max(0.0, 100 - state.filler_count * 10)
+        # Filler penalty via density (fillers per minute)
+        duration_minutes = max(1.0, getattr(state, "duration_seconds", 0.0) / 60.0)
+        filler_density = state.filler_count / duration_minutes
+        # 0 fillers/min = 100, 5+ fillers/min = 0 (20 penalty per filler/min)
+        filler_penalty = max(0.0, 100 - filler_density * 20)
+
+        # Pause penalty (based on silence > 10 seconds)
+        silence = getattr(state, "last_silence_seconds", 0.0)
+        pause_penalty = max(0.0, 100.0 - max(0.0, silence - 10) * 10)
+
+        # Action items (0 = 50, each adds 10, cap 100)
+        action_items_score = min(100.0, 50.0 + len(state.action_items) * 10)
 
         # Objection handling (0 objections = 100, 5+ = 0)
         objection_handling = max(0.0, 100 - len(state.objections) * 20)
@@ -394,17 +524,17 @@ class ConversationEngine:
             "participation": participation,
             "engagement": engagement,
             "balance": balance,
-            "action_items": 50.0,  # Updated when action items are detected
+            "action_items": action_items_score,
             # Sales profile
             "objection_handling": objection_handling,
             "sentiment": sentiment_norm,
             "listening_ratio": listening_ratio,
             "buying_signals": buying_signal_score,
-            # Interview profile (placeholders until Interview mode is built)
+            # Interview profile
             "confidence": sentiment_norm,
             "filler_penalty": filler_penalty,
-            "response_quality": 50.0,
-            "pause_penalty": 50.0,
+            "response_quality": 50.0,  # Placeholder
+            "pause_penalty": pause_penalty,
         }
 
 

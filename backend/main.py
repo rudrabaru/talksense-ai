@@ -34,7 +34,9 @@ import logging
 import os
 import sys
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timezone
+
+import time
 
 from fastapi import (
     Body,
@@ -177,12 +179,15 @@ async def lifespan(app: FastAPI):
     logger.info("TalkSense AI — Shutting down")
 
     try:
-        from ws.session_manager import stop_flusher
+        from ws.session_manager import get_session_manager, stop_flusher
+
+        manager = get_session_manager()
+        await manager.end_all_active_sessions()
 
         await stop_flusher()
         logger.info("Flusher — background flusher stopped.")
     except Exception as exc:  # noqa: BLE001
-        logger.exception("Flusher — shutdown failed: %s", exc)
+        logger.exception("Shutdown — clean termination failed: %s", exc)
     finally:
         from db.database import engine
 
@@ -510,7 +515,7 @@ async def get_dashboard_snapshot(
                 "total_segments": None,
                 "coverage": None,
             },
-            "speaker_roles": None,
+            "speaker_roles": conv.roles,
             "objection_handling": [],
             "elapsed_seconds": round(session.elapsed_seconds, 1),
             "health_score": conv.health_score,
@@ -521,10 +526,18 @@ async def get_dashboard_snapshot(
             "filler_count": conv.filler_count,
             "objections": conv.objections,
             "buying_signals": conv.buying_signals,
+            "coaching_tips": conv.coaching_tips,
+            "action_items": conv.action_items,
+            "decisions": conv.decisions,
+            "interruptions": conv.interruptions,
+            "speaker_switches": conv.speaker_switches,
+            "objection_timeline": conv.objection_timeline,
+            "buying_signal_timeline": conv.buying_signal_timeline,
             "talk_ratio_summary": None,
             "talk_timeline": None,
             "active_alerts": conv.active_alerts,
             "transcript_segments": conv.transcript_segments[-50:],  # last 50 segments
+            "last_updated": time.time(),
         }
 
     # DB Fallback
@@ -557,13 +570,28 @@ async def get_dashboard_snapshot(
             "objection_handling": [],
             "talk_ratio_summary": None,
             "talk_timeline": None,
+            # Add missing metrics
+            "coaching_tips": [],
+            "action_items": [],
+            "decisions": [],
+            "interruptions": 0,
+            "speaker_switches": 0,
+            "objection_timeline": [],
+            "buying_signal_timeline": [],
         }
 
         for m in metrics_list:
             name = m.metric_name
             val = m.metric_value
-            if name in metrics:
+            if name == "speaker_roles":
+                metrics["speaker_roles"] = val
+            elif name in metrics:
                 metrics[name] = val
+
+        # Calculate latest timestamp from DB metrics
+        latest_ts = db_session.started_at.replace(tzinfo=timezone.utc).timestamp()
+        if metrics_list:
+            latest_ts = max(m.timestamp.replace(tzinfo=timezone.utc).timestamp() for m in metrics_list)
 
         # For completed/terminal sessions, recalculate speaking metrics from the full
         # set of DB segments
@@ -686,11 +714,19 @@ async def get_dashboard_snapshot(
             "filler_count": metrics["filler_count"],
             "objections": metrics["objections"],
             "buying_signals": metrics["buying_signals"],
+            "coaching_tips": metrics["coaching_tips"],
+            "action_items": metrics["action_items"],
+            "decisions": metrics["decisions"],
+            "interruptions": metrics["interruptions"],
+            "speaker_switches": metrics["speaker_switches"],
+            "objection_timeline": metrics["objection_timeline"],
+            "buying_signal_timeline": metrics["buying_signal_timeline"],
             "talk_ratio_summary": metrics["talk_ratio_summary"],
             "talk_timeline": metrics["talk_timeline"],
             "analytics_health": analytics_health,
             "active_alerts": mapped_alerts,
             "transcript_segments": mapped_segments,
+            "last_updated": latest_ts,
         }
 
 

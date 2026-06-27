@@ -104,8 +104,10 @@ from typing import TYPE_CHECKING
 
 from audio.buffer import AudioBuffer
 from audio.speaker_profile import SpeakerProfile
-from engine.conversation import ConversationEngine
 from fastapi import WebSocket
+
+if TYPE_CHECKING:
+    from engine.conversation_engine import ConversationEngine
 
 logger = logging.getLogger(__name__)
 
@@ -169,9 +171,16 @@ class ConversationState:
     )  # {"Speaker 1": 60, "Speaker 2": 40}
     participation: dict = field(default_factory=dict)
     filler_count: int = 0
+    interruptions: int = 0
+    speaker_switches: int = 0
+    action_items: list = field(default_factory=list)
+    decisions: list = field(default_factory=list)
+    objection_timeline: list = field(default_factory=list)
+    buying_signal_timeline: list = field(default_factory=list)
     objections: list = field(default_factory=list)
     buying_signals: list = field(default_factory=list)
     active_alerts: list = field(default_factory=list)
+    coaching_tips: list = field(default_factory=list)
     transcript_segments: list = field(default_factory=list)
     duration_seconds: float = 0.0
     last_silence_seconds: float = 0.0
@@ -187,6 +196,8 @@ class SessionState:
     mode: str  # "meeting" | "sales" | "interview"
     client_id: str | None
     user_id: int | None
+    conversation: ConversationState = field(init=False)
+    audio_buffer: AudioBuffer = field(init=False)
     status: SessionStatus = SessionStatus.CREATED
     speaker_attribution_status: str | None = None
     host_embedding: list[float] | None = None
@@ -197,8 +208,6 @@ class SessionState:
     ws_metrics: "WebSocket | None" = None
     ws_alerts: "WebSocket | None" = None
     ws_status: "WebSocket | None" = None
-    conversation: ConversationEngine
-    audio_buffer: AudioBuffer
     speaker_profile: SpeakerProfile = field(default_factory=SpeakerProfile)
     started_at: float = field(default_factory=time.monotonic)
     last_persist_at: float = field(default_factory=time.monotonic)
@@ -271,6 +280,8 @@ class SessionState:
     _flush_idle: asyncio.Event = field(default_factory=asyncio.Event, repr=False)
 
     def __post_init__(self) -> None:
+        self.conversation = ConversationState()
+        self.audio_buffer = AudioBuffer()
         self._flush_idle.set()
 
     @property
@@ -473,7 +484,34 @@ class SessionManager:
                 )
                 self.remove(session_id)
         else:
+            # For non-completed sessions (failed/interrupted), finalize WAV if exists
+            try:
+                session.audio_buffer.flush_remaining()
+            except Exception as exc:
+                logger.warning("Session %s…: failed to flush remaining audio buffer — %s", session_id[:8], exc)
             self.remove(session_id)
+
+    async def end_all_active_sessions(self) -> None:
+        """Gracefully end all active in-memory sessions on shutdown."""
+        active_ids = list(self._sessions.keys())
+        if not active_ids:
+            logger.info("SessionManager — shutdown: no active sessions to end.")
+            return
+
+        logger.info(
+            "SessionManager — shutdown: ending %d active session(s) cleanly …",
+            len(active_ids),
+        )
+        
+        # Await end() for all active sessions concurrently to minimize shutdown block
+        tasks = []
+        for sid in active_ids:
+            tasks.append(self.end(sid, SessionStatus.INTERRUPTED))
+            
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+            
+        logger.info("SessionManager — shutdown: all active sessions ended.")
 
     def remove(self, session_id: str) -> None:
         """Remove session from memory (call after DB flush)."""
@@ -532,6 +570,13 @@ def _compute_metric_hash(conv: ConversationState) -> str:
         "speaking_ratio": conv.speaking_ratio,
         "participation": conv.participation,
         "roles": conv.roles,
+        "coaching_tips": conv.coaching_tips,
+        "action_items": conv.action_items,
+        "decisions": conv.decisions,
+        "interruptions": conv.interruptions,
+        "speaker_switches": conv.speaker_switches,
+        "objection_timeline": conv.objection_timeline,
+        "buying_signal_timeline": conv.buying_signal_timeline,
     }
     serialised = json.dumps(payload, sort_keys=True, default=str)
     return hashlib.md5(serialised.encode()).hexdigest()
@@ -609,6 +654,13 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
                 {"metric_name": "speaking_ratio", "metric_value": conv.speaking_ratio},
                 {"metric_name": "participation", "metric_value": conv.participation},
                 {"metric_name": "speaker_roles", "metric_value": conv.roles},
+                {"metric_name": "coaching_tips", "metric_value": conv.coaching_tips},
+                {"metric_name": "action_items", "metric_value": conv.action_items},
+                {"metric_name": "decisions", "metric_value": conv.decisions},
+                {"metric_name": "interruptions", "metric_value": conv.interruptions},
+                {"metric_name": "speaker_switches", "metric_value": conv.speaker_switches},
+                {"metric_name": "objection_timeline", "metric_value": conv.objection_timeline},
+                {"metric_name": "buying_signal_timeline", "metric_value": conv.buying_signal_timeline},
             ]
     # ── Lock released — DB IO begins ──────────────────────────────────────────
 

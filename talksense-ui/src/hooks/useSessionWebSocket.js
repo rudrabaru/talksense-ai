@@ -308,6 +308,14 @@ export function useSessionWebSocket(sessionId) {
             filler_count: data.filler_count,
             objections: data.objections || [],
             buying_signals: data.buying_signals || [],
+            interruptions: data.interruptions ?? 0,
+            speaker_switches: data.speaker_switches ?? 0,
+            action_items: data.action_items || [],
+            decisions: data.decisions || [],
+            objection_timeline: data.objection_timeline || [],
+            buying_signal_timeline: data.buying_signal_timeline || [],
+            filler_penalty: data.filler_penalty ?? 0,
+            pause_penalty: data.pause_penalty ?? 0,
             duration_seconds: data.elapsed_seconds ?? data.duration_seconds,
             speakerAttributionStatus: data.speaker_attribution_status ?? null,
             speakerAttribution: data.speaker_attribution ?? null,
@@ -316,8 +324,29 @@ export function useSessionWebSocket(sessionId) {
             talkRatioSummary: data.talk_ratio_summary ?? null,
             talkTimeline: data.talk_timeline ?? null,
             analyticsHealth: data.analytics_health ?? null,
+            coachingTips: data.coaching_tips || [],
+            last_updated: data.last_updated ?? 0,
           };
-          safeSetState(setMetrics, restMetrics);
+          safeSetState(setMetrics, (prev) => {
+            const currentTimestamp = prev?.last_updated ?? 0;
+            const incomingTimestamp = restMetrics.last_updated;
+
+            if (currentTimestamp && incomingTimestamp <= currentTimestamp) {
+              console.log("[useSessionWebSocket] Stale REST payload received. Hydrating missing state only.");
+              return {
+                ...prev,
+                speakerAttributionStatus: prev?.speakerAttributionStatus ?? restMetrics.speakerAttributionStatus,
+                speakerAttribution: prev?.speakerAttribution ?? restMetrics.speakerAttribution,
+                speakerRoles: prev?.speakerRoles ?? restMetrics.speakerRoles,
+                objectionHandling: prev?.objectionHandling ?? restMetrics.objectionHandling,
+                talkRatioSummary: prev?.talkRatioSummary ?? restMetrics.talkRatioSummary,
+                talkTimeline: prev?.talkTimeline ?? restMetrics.talkTimeline,
+                analyticsHealth: prev?.analyticsHealth ?? restMetrics.analyticsHealth,
+              };
+            }
+            console.log("[useSessionWebSocket] Fresh REST payload received. Performing full replace.");
+            return restMetrics;
+          });
         }
 
         // Merge alerts
@@ -612,6 +641,14 @@ export function useSessionWebSocket(sessionId) {
             // arrive via REST polling, never via the live metrics WebSocket).
             safeSetState(setMetrics, (prev) => {
               const incoming = payload;
+              const incomingTimestamp = incoming.last_updated ?? 0;
+              const currentTimestamp = prev?.last_updated ?? 0;
+
+              if (currentTimestamp && incomingTimestamp <= currentTimestamp) {
+                console.log("[useSessionWebSocket] WS metrics payload is older than current state. Ignoring.");
+                return prev;
+              }
+
               const speakerAttributionStatus =
                 incoming.speaker_attribution_status ??
                 incoming.speakerAttributionStatus ??
@@ -619,6 +656,7 @@ export function useSessionWebSocket(sessionId) {
                 null;
               const speakerAttribution =
                 incoming.speakerAttribution ??
+                incoming.speaker_attribution ??
                 prev?.speakerAttribution ??
                 null;
               const speakerRoles =
@@ -641,6 +679,11 @@ export function useSessionWebSocket(sessionId) {
                 incoming.analytics_health ??
                 prev?.analyticsHealth ??
                 null;
+              const coachingTips = 
+                incoming.coachingTips ??
+                incoming.coaching_tips ??
+                prev?.coachingTips ??
+                [];
               return {
                 ...incoming,
                 speakerAttributionStatus,
@@ -649,6 +692,8 @@ export function useSessionWebSocket(sessionId) {
                 talkRatioSummary,
                 talkTimeline,
                 analyticsHealth,
+                coachingTips,
+                last_updated: incomingTimestamp,
               };
             });
           };

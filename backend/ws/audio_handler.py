@@ -273,16 +273,12 @@ async def _transcribe_and_enrich(
                 "speaker", "Speaker 1"
             )
 
-    loop = asyncio.get_running_loop()
-    diarized = await loop.run_in_executor(
-        None,
-        lambda: diarizer.assign_speakers(
-            raw_segments,
-            flushed,
-            max(0.0, time_offset),
-            prev_speaker,
-            session.speaker_profile,
-        ),
+    diarized = await diarizer.assign_speakers_async(
+        raw_segments,
+        flushed,
+        max(0.0, time_offset),
+        prev_speaker,
+        session.speaker_profile,
     )
 
     # 6. NLP enrichment (sentiment per segment)
@@ -378,6 +374,8 @@ async def _transcribe_and_enrich(
         "buying_signals": updated_metrics.buying_signals,
         "duration_seconds": session.elapsed_seconds,
         "roles": updated_metrics.roles,
+        "coaching_tips": updated_metrics.coaching_tips,
+        "last_updated": time.time(),
     }
 
     await broadcast_all(
@@ -471,6 +469,8 @@ async def _inject_phrase(session_id: str, speaker: str, phrase: str, manager) ->
         "buying_signals": updated_metrics.buying_signals,
         "duration_seconds": session.elapsed_seconds,
         "roles": updated_metrics.roles,
+        "coaching_tips": updated_metrics.coaching_tips,
+        "last_updated": time.time(),
     }
 
     await broadcast_all(
