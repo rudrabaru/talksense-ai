@@ -1790,7 +1790,7 @@ def is_valid_decision(text: str) -> bool:
     return any(d in t for d in DECISION_KEYWORDS)
 
 
-def is_valid_execution_decision(text: str, clause: dict = None) -> bool:
+def is_valid_execution_decision(text: str, clause: dict | None = None) -> bool:
     """
     STRICT validation for execution decisions.
     Rejects: Questions, Agenda, Conceptual language, Conditionals.

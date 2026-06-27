@@ -75,7 +75,7 @@ _INFO_SUBJECTS = {
 }
 
 
-def resolve_clause_intent(text: str, flags: dict = None) -> dict:
+def resolve_clause_intent(text: str, flags: dict | None = None) -> dict:
     """
     Given a parsed clause text and its linguistic flags, returns:
     {

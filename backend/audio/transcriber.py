@@ -189,6 +189,7 @@ class WhisperTranscriber:
 
         # 2. GPU Inference (serialized via semaphore)
         def _infer():
+            assert self._model is not None, "Model is not loaded"
             t0 = time.monotonic()
             raw_segments, info = self._model.transcribe(
                 audio_float32,

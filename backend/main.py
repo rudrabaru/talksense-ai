@@ -235,7 +235,7 @@ def check_diarizer():
     diarizer = get_diarizer()
     return {
         "loaded": diarizer._loaded,
-        "has_pipeline": diarizer._pipeline is not None,
+        "has_pipeline": diarizer._model is not None,
         "hf_token_len": len(settings.hf_token) if settings.hf_token else 0,
         "pyannote_enabled": settings.pyannote_enabled,
     }

@@ -194,7 +194,9 @@ class ConversationEngine:
 
         # 1. Speaking Balance
         if state.speaking_ratio:
-            dominant_speaker = max(state.speaking_ratio, key=state.speaking_ratio.get)
+            dominant_speaker = max(
+                state.speaking_ratio, key=lambda k: state.speaking_ratio[k]
+            )
             if state.speaking_ratio[dominant_speaker] > 70:
                 is_host = state.host_speaker_id == dominant_speaker
                 if is_host or not state.host_speaker_id:

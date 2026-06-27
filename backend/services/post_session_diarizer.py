@@ -205,7 +205,8 @@ async def run_post_session_diarization(
                     (m for m in metrics if m.metric_name == "speaker_roles"), None
                 )
                 if role_metric and role_metric.metric_value:
-                    primary_roles = role_metric.metric_value
+                    if isinstance(role_metric.metric_value, dict):
+                        primary_roles = role_metric.metric_value
 
         with profile_stage(session_id, "Database writes"):
             from db import crud
@@ -568,6 +569,8 @@ def _run_pyannote_sync(
                 "pyannote/speaker-diarization-3.1",
                 token=hf_token,
             )
+            if pipeline is None:
+                raise RuntimeError("Failed to load pyannote pipeline")
             device = "cuda" if torch.cuda.is_available() else "cpu"
             pipeline.to(torch.device(device))
 
