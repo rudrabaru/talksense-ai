@@ -1,5 +1,4 @@
 import React from "react";
-import { Lightbulb, Info } from "lucide-react";
 
 export default function CoachingPanel({ tips = [] }) {
   if (!tips || tips.length === 0) {
@@ -18,22 +17,22 @@ export default function CoachingPanel({ tips = [] }) {
     }
   };
 
-  const getIconStyle = (severity) => {
+  const getSeverityEmoji = (severity) => {
     switch (severity) {
       case "high":
-        return "text-amber-500";
+        return "⚠️";
       case "medium":
-        return "text-blue-500";
+        return "📢";
       case "low":
       default:
-        return "text-slate-500";
+        return "✅";
     }
   };
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2 px-1">
-        <Lightbulb className="w-5 h-5 text-indigo-500" />
+        <span className="text-xl">💡</span>
         <h3 className="font-semibold text-slate-800">Live Coaching</h3>
       </div>
       <div className="flex flex-col gap-2">
@@ -44,7 +43,7 @@ export default function CoachingPanel({ tips = [] }) {
               tip.severity
             )} shadow-sm transition-all`}
           >
-            <Info className={`w-5 h-5 mt-0.5 shrink-0 ${getIconStyle(tip.severity)}`} />
+            <span className="text-lg mt-0.5 shrink-0">{getSeverityEmoji(tip.severity)}</span>
             <div className="flex flex-col">
               <span className="font-semibold text-sm">{tip.title}</span>
               <span className="text-sm mt-0.5">{tip.recommendation}</span>
