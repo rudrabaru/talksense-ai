@@ -91,26 +91,24 @@ def test_blockers_with_ownership_and_decision():
     print(f"Summary: {result['summary']}")
 
     # CRITICAL: Meeting quality MUST be High
-    assert result["meeting_quality"]["label"] == "High", (
-        f"FAILED: Expected meeting_quality='High', got '{result['meeting_quality']['label']}'"
-    )  # noqa: E501
+    assert (
+        result["meeting_quality"]["label"] == "High"
+    ), f"FAILED: Expected meeting_quality='High', got '{result['meeting_quality']['label']}'"  # noqa: E501
 
     # Project risk should be Medium or High (due to blockers)
     assert result["project_risk"]["label"] in [
         "Medium",
         "High",
-    ], (
-        f"FAILED: Expected project_risk='Medium' or 'High', got '{result['project_risk']['label']}'"
-    )  # noqa: E501
+    ], f"FAILED: Expected project_risk='Medium' or 'High', got '{result['project_risk']['label']}'"  # noqa: E501
 
     # Summary should NOT say "no ownership" or "no decisions"
     summary_lower = result["summary"].lower()
-    assert "no ownership" not in summary_lower, (
-        "FAILED: Summary says 'no ownership' when ownership exists"
-    )
-    assert "no decision" not in summary_lower, (
-        "FAILED: Summary says 'no decision' when decision exists"
-    )
+    assert (
+        "no ownership" not in summary_lower
+    ), "FAILED: Summary says 'no ownership' when ownership exists"
+    assert (
+        "no decision" not in summary_lower
+    ), "FAILED: Summary says 'no decision' when decision exists"
 
     # Summary SHOULD mention ownership and decisions positively
     assert any(

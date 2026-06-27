@@ -326,9 +326,11 @@ class ConversationEngine:
             last_end_time = getattr(
                 seg,
                 "end_time",
-                seg.get("end_time", 0.0)
-                if isinstance(seg, dict)
-                else getattr(seg, "end_time", 0.0),
+                (
+                    seg.get("end_time", 0.0)
+                    if isinstance(seg, dict)
+                    else getattr(seg, "end_time", 0.0)
+                ),
             )
 
         total_words = sum(state.participation.values()) or 1

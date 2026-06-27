@@ -134,9 +134,9 @@ async def test_client_memory():
     assert res.status_code == 200
     data = res.json()
     assert data["meetings_count"] == 2
-    assert data["sentiment_trend"] == "improving", (
-        f"Expected improving, got {data['sentiment_trend']}"
-    )
+    assert (
+        data["sentiment_trend"] == "improving"
+    ), f"Expected improving, got {data['sentiment_trend']}"
     assert set(data["common_objections"]) == {"Integration", "Pricing"}
 
     assert data["last_meeting_date"] == "2026-06-21T14:00:00+00:00"
@@ -184,9 +184,9 @@ async def test_client_memory():
     assert res.status_code == 200
     data = res.json()
     assert data["meetings_count"] == 3
-    assert data["sentiment_trend"] == "declining", (
-        f"Expected declining, got {data['sentiment_trend']}"
-    )
+    assert (
+        data["sentiment_trend"] == "declining"
+    ), f"Expected declining, got {data['sentiment_trend']}"
     assert "Security" in data["common_objections"]
     print("[OK] Third meeting sentiment trend change (declining) validated")
     print("ALL TESTS PASSED SUCCESSFULLY!")

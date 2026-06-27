@@ -118,9 +118,9 @@ async def test_all():
         assert s1_item["mode"] == "meeting"
         assert s1_item["status"] == "completed"
         assert s1_item["client_name"] == "Test Client Alpha"
-        assert s1_item["health_score"] == 85, (
-            f"Expected latest health score 85, got {s1_item['health_score']}"
-        )
+        assert (
+            s1_item["health_score"] == 85
+        ), f"Expected latest health score 85, got {s1_item['health_score']}"
         assert s1_item["sentiment"] == "positive"
         print("[OK] Baseline list & DTO verified")
 
