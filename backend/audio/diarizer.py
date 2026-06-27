@@ -9,7 +9,7 @@ VRAM Strategy:
   - Whisper and Embedding model run sequentially per chunk.
 
 Fallback:
-  If Pyannote is disabled or fails to load, speakers are assigned via a 
+  If Pyannote is disabled or fails to load, speakers are assigned via a
   simple heuristic.
 """
 
@@ -19,8 +19,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from audio.transcriber import TranscriptSegment
 from audio.speaker_profile import SpeakerProfile
+from audio.transcriber import TranscriptSegment
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +90,9 @@ class SpeakerDiarizer:
 
             logger.info("Diarizer: Running warm-up inference ...")
             # Run a dummy 2.0s tensor to initialize CUDA kernels and PyTorch caches
-            dummy_waveform = torch.zeros(1, 1, SAMPLE_RATE * 2, dtype=torch.float32).to(torch.device(device))
+            dummy_waveform = torch.zeros(1, 1, SAMPLE_RATE * 2, dtype=torch.float32).to(
+                torch.device(device)
+            )
             with torch.inference_mode():
                 _ = self._model(dummy_waveform)
 
@@ -128,7 +130,11 @@ class SpeakerDiarizer:
 
         if self._loaded and self._model is not None and speaker_profile is not None:
             return self._diarize_with_embeddings(
-                segments, pcm_bytes, chunk_time_offset, fallback_speaker, speaker_profile
+                segments,
+                pcm_bytes,
+                chunk_time_offset,
+                fallback_speaker,
+                speaker_profile,
             )
         else:
             return self._diarize_heuristic(segments, fallback_speaker)
@@ -142,25 +148,27 @@ class SpeakerDiarizer:
         speaker_profile: SpeakerProfile | None = None,
     ) -> list[DiarizedSegment]:
         """
-        Async version of assign_speakers that separates CPU prep/post from 
+        Async version of assign_speakers that separates CPU prep/post from
         serialized GPU inference via the global semaphore.
         """
         import asyncio
+
         loop = asyncio.get_running_loop()
-        
+
         if not segments:
             return []
 
         if self._loaded and self._model is not None and speaker_profile is not None:
             return await self._diarize_with_embeddings_async(
-                segments, pcm_bytes, chunk_time_offset, fallback_speaker, speaker_profile
+                segments,
+                pcm_bytes,
+                chunk_time_offset,
+                fallback_speaker,
+                speaker_profile,
             )
         else:
             return await loop.run_in_executor(
-                None, 
-                self._diarize_heuristic, 
-                segments, 
-                fallback_speaker
+                None, self._diarize_heuristic, segments, fallback_speaker
             )
 
     # ── Pyannote diarization ──────────────────────────────────────────────────
@@ -189,27 +197,29 @@ class SpeakerDiarizer:
                 # Calculate sample indices relative to the provided pcm chunk
                 local_start = max(0.0, seg.start - chunk_time_offset)
                 local_end = max(0.0, seg.end - chunk_time_offset)
-                
+
                 start_sample = int(local_start * SAMPLE_RATE)
                 end_sample = int(local_end * SAMPLE_RATE)
-                
+
                 # Bounds check
                 end_sample = min(len(audio_float32), end_sample)
                 start_sample = min(end_sample, start_sample)
-                
+
                 seg_audio = audio_float32[start_sample:end_sample]
-                
+
                 # If segment is too short (< 0.5s), embedding will be noisy.
                 # Just use the previous speaker (or fallback).
                 if len(seg_audio) < SAMPLE_RATE * 0.5:
                     speaker = current_speaker
                 else:
-                    tensor = torch.from_numpy(seg_audio).unsqueeze(0).unsqueeze(0)  # [1, 1, samples]
+                    tensor = (
+                        torch.from_numpy(seg_audio).unsqueeze(0).unsqueeze(0)
+                    )  # [1, 1, samples]
                     tensor = tensor.to(device)
-                    
+
                     with torch.inference_mode():
                         emb = self._model(tensor).cpu().numpy()[0]
-                    
+
                     speaker = speaker_profile.match_or_create(emb)
                     current_speaker = speaker
 
@@ -240,54 +250,59 @@ class SpeakerDiarizer:
     ) -> list[DiarizedSegment]:
         """Async embedding extraction with serialized GPU access."""
         import asyncio
+
         import torch
+
         from audio.gpu_manager import get_gpu_semaphore
-        
+
         loop = asyncio.get_running_loop()
         device = next(self._model.parameters()).device
-        
+
         # 1. CPU Prep
         def _prep():
             audio_int16 = np.frombuffer(pcm_bytes, dtype=np.int16)
             audio_float32 = audio_int16.astype(np.float32) / 32768.0
-            
+
             tensors = []
             metas = []
-            
+
             for seg in segments:
                 local_start = max(0.0, seg.start - chunk_time_offset)
                 local_end = max(0.0, seg.end - chunk_time_offset)
-                
+
                 start_sample = int(local_start * SAMPLE_RATE)
                 end_sample = int(local_end * SAMPLE_RATE)
                 end_sample = min(len(audio_float32), end_sample)
                 start_sample = min(end_sample, start_sample)
-                
+
                 seg_audio = audio_float32[start_sample:end_sample]
                 if len(seg_audio) < SAMPLE_RATE * 0.5:
                     metas.append({"type": "short", "seg": seg})
                 else:
-                    tensor = torch.from_numpy(seg_audio).unsqueeze(0).unsqueeze(0).to(device)
+                    tensor = (
+                        torch.from_numpy(seg_audio).unsqueeze(0).unsqueeze(0).to(device)
+                    )
                     tensors.append(tensor)
                     metas.append({"type": "infer", "seg": seg})
             return tensors, metas
 
         try:
             tensors, metas = await loop.run_in_executor(None, _prep)
-            
+
             # 2. GPU Inference
             embs = []
             if tensors:
+
                 def _infer():
                     out = []
                     with torch.inference_mode():
                         for tensor in tensors:
                             out.append(self._model(tensor).cpu().numpy()[0])
                     return out
-                
+
                 async with get_gpu_semaphore():
                     embs = await loop.run_in_executor(None, _infer)
-                    
+
             # 3. CPU Post
             def _post():
                 diarized = []
@@ -301,7 +316,7 @@ class SpeakerDiarizer:
                         speaker = speaker_profile.match_or_create(embs[emb_idx])
                         current_speaker = speaker
                         emb_idx += 1
-                        
+
                     diarized.append(
                         DiarizedSegment(
                             start=seg.start,
@@ -313,9 +328,9 @@ class SpeakerDiarizer:
                         )
                     )
                 return diarized
-                
+
             return await loop.run_in_executor(None, _post)
-            
+
         except Exception as exc:
             logger.error(f"Diarizer: Async embedding error — {exc}. Falling back.")
             return self._diarize_heuristic(segments, fallback_speaker)

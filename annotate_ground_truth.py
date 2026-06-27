@@ -16,6 +16,7 @@ Features:
     - Saves revised GT with annotation_method = "human_reviewed"
     - Preserves original GT as ground_truth_original.json backup
 """
+
 import json
 import os
 import shutil
@@ -25,16 +26,28 @@ from datetime import datetime
 
 
 SAMPLE_RATE = 16000
-AUDIO_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "sample_audio"))
+AUDIO_DIR = os.path.abspath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "sample_audio")
+)
 
 
 def get_audio_duration(audio_path):
     """Get audio duration using ffprobe."""
     try:
         result = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-             "-of", "default=noprint_wrappers=1:nokey=1", audio_path],
-            capture_output=True, text=True, timeout=10
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                audio_path,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         return float(result.stdout.strip())
     except Exception:
@@ -71,7 +84,9 @@ def display_segments(segments, highlight_idx=None):
     for i, seg in enumerate(segments):
         marker = ">>>" if i == highlight_idx else "   "
         text = seg["text"][:65]
-        print(f"  {marker} [{i:3d}] {seg['start']:7.2f} - {seg['end']:7.2f}  {seg['speaker']:4s}  │ {text}")
+        print(
+            f"  {marker} [{i:3d}] {seg['start']:7.2f} - {seg['end']:7.2f}  {seg['speaker']:4s}  │ {text}"
+        )
 
     print(f"  {'─' * 80}")
 
@@ -87,7 +102,7 @@ def display_speaker_summary(segments):
         stats[spk]["count"] += 1
         stats[spk]["duration"] += dur
 
-    print(f"\n  Speaker Summary:")
+    print("\n  Speaker Summary:")
     print(f"  {'Speaker':<8} {'Segments':>8} {'Duration':>10} {'First utterance'}")
     print(f"  {'─' * 70}")
     for spk in sorted(stats.keys()):
@@ -98,12 +113,14 @@ def display_speaker_summary(segments):
 
 def display_transitions(segments):
     """Show speaker transitions to help identify misattributions."""
-    print(f"\n  Speaker Transitions:")
+    print("\n  Speaker Transitions:")
     prev_speaker = None
     for i, seg in enumerate(segments):
         if seg["speaker"] != prev_speaker:
             if prev_speaker is not None:
-                print(f"    [{i:3d}] {prev_speaker} → {seg['speaker']}  at {seg['start']:.2f}s  │ {seg['text'][:50]}")
+                print(
+                    f"    [{i:3d}] {prev_speaker} → {seg['speaker']}  at {seg['start']:.2f}s  │ {seg['text'][:50]}"
+                )
             prev_speaker = seg["speaker"]
     print()
 
@@ -141,7 +158,7 @@ def interactive_review(sample_dir):
     duration = get_audio_duration(audio_path) if os.path.isfile(audio_path) else None
 
     print("=" * 80)
-    print(f"  GROUND TRUTH ANNOTATION TOOL")
+    print("  GROUND TRUTH ANNOTATION TOOL")
     print("=" * 80)
     print(f"  Sample:     {category}/{sample_name}")
     print(f"  Recording:  {recording}")
@@ -158,8 +175,12 @@ def interactive_review(sample_dir):
 
     while True:
         print("\n  Commands:")
-        print("    e <idx> <speaker>    — Edit segment <idx> to <speaker> (e.g. 'e 3 B')")
-        print("    b <old> <new>        — Batch reassign all <old> → <new> (e.g. 'b A B')")
+        print(
+            "    e <idx> <speaker>    — Edit segment <idx> to <speaker> (e.g. 'e 3 B')"
+        )
+        print(
+            "    b <old> <new>        — Batch reassign all <old> → <new> (e.g. 'b A B')"
+        )
         print("    r <idx_range> <spk>  — Range edit (e.g. 'r 5-8 B')")
         print("    v                    — View all segments")
         print("    t                    — View transitions")
@@ -182,7 +203,9 @@ def interactive_review(sample_dir):
 
         if action == "q":
             if modified:
-                confirm = input("  Unsaved changes. Quit anyway? (y/n) > ").strip().lower()
+                confirm = (
+                    input("  Unsaved changes. Quit anyway? (y/n) > ").strip().lower()
+                )
                 if confirm != "y":
                     continue
             print("  Exiting without saving.")
@@ -250,7 +273,7 @@ def interactive_review(sample_dir):
 
         elif action == "d" and len(parts) >= 2:
             gt["description"] = " ".join(parts[1:])
-            print(f"  Description updated.")
+            print("  Description updated.")
             modified = True
 
         else:
@@ -265,7 +288,7 @@ def save_revised_gt(sample_dir, gt, segments):
     # Backup original if not already backed up
     if not os.path.isfile(backup_path):
         shutil.copy2(gt_path, backup_path)
-        print(f"  Original backed up to: ground_truth_original.json")
+        print("  Original backed up to: ground_truth_original.json")
 
     # Update GT
     gt["segments"] = segments
@@ -290,7 +313,9 @@ def save_revised_gt(sample_dir, gt, segments):
 
 def batch_review_all():
     """Show summary of all samples for batch review prioritization."""
-    dataset_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend", "benchmark_dataset")
+    dataset_dir = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "backend", "benchmark_dataset"
+    )
 
     print("=" * 80)
     print("  BENCHMARK DATASET — ANNOTATION STATUS")
@@ -326,11 +351,17 @@ def batch_review_all():
 def main():
     if len(sys.argv) < 2:
         print("Usage:")
-        print("  python annotate_ground_truth.py <sample_dir>      — Review a single sample")
-        print("  python annotate_ground_truth.py --status           — Show annotation status")
+        print(
+            "  python annotate_ground_truth.py <sample_dir>      — Review a single sample"
+        )
+        print(
+            "  python annotate_ground_truth.py --status           — Show annotation status"
+        )
         print()
         print("Example:")
-        print("  python annotate_ground_truth.py backend/benchmark_dataset/2_speaker/sales_meeting")
+        print(
+            "  python annotate_ground_truth.py backend/benchmark_dataset/2_speaker/sales_meeting"
+        )
         batch_review_all()
         return
 

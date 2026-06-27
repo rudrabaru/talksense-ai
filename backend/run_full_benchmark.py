@@ -245,7 +245,7 @@ def generate_report(results, output_path):
     lines.append("# TalkSense AI — Speaker Attribution Benchmark Report")
     lines.append(f"\n> Generated: {time.strftime('%Y-%m-%d %H:%M:%S')}")
     lines.append(
-        f"> Thresholds: F1 >= {THRESHOLD_F1}, Accuracy >= {THRESHOLD_ACCURACY*100}%, SCDR >= {THRESHOLD_SCDR*100}%"  # noqa: E501
+        f"> Thresholds: F1 >= {THRESHOLD_F1}, Accuracy >= {THRESHOLD_ACCURACY * 100}%, SCDR >= {THRESHOLD_SCDR * 100}%"  # noqa: E501
     )
     lines.append("")
 
@@ -265,14 +265,14 @@ def generate_report(results, output_path):
             f"| Average Macro F1 | **{avg_f1:.4f}** | {THRESHOLD_F1} | {'PASS' if avg_f1 >= THRESHOLD_F1 else 'FAIL'} |"  # noqa: E501
         )
         lines.append(
-            f"| Average Accuracy | **{avg_acc:.1f}%** | {THRESHOLD_ACCURACY*100}% | {'PASS' if avg_acc/100 >= THRESHOLD_ACCURACY else 'FAIL'} |"  # noqa: E501
+            f"| Average Accuracy | **{avg_acc:.1f}%** | {THRESHOLD_ACCURACY * 100}% | {'PASS' if avg_acc / 100 >= THRESHOLD_ACCURACY else 'FAIL'} |"  # noqa: E501
         )
         lines.append(
-            f"| Average SCDR | **{avg_scdr:.1f}%** | {THRESHOLD_SCDR*100}% | {'PASS' if avg_scdr/100 >= THRESHOLD_SCDR else 'FAIL'} |"  # noqa: E501
+            f"| Average SCDR | **{avg_scdr:.1f}%** | {THRESHOLD_SCDR * 100}% | {'PASS' if avg_scdr / 100 >= THRESHOLD_SCDR else 'FAIL'} |"  # noqa: E501
         )
         lines.append(f"| Samples Tested | {len(valid)} | - | - |")
         lines.append(
-            f"| Total Audio | {total_duration:.0f}s ({total_duration/60:.1f} min) | - | - |"  # noqa: E501
+            f"| Total Audio | {total_duration:.0f}s ({total_duration / 60:.1f} min) | - | - |"  # noqa: E501
         )
         lines.append("")
 
@@ -342,8 +342,8 @@ def generate_report(results, output_path):
             else "FAIL"
         )
         lines.append(
-            f"| {r['sample']} | {r.get('category','-')} | {r.get('duration_s',0):.0f}s | "  # noqa: E501
-            f"{r.get('speakers_expected','?')} | {r.get('speakers_detected','?')} | "
+            f"| {r['sample']} | {r.get('category', '-')} | {r.get('duration_s', 0):.0f}s | "  # noqa: E501
+            f"{r.get('speakers_expected', '?')} | {r.get('speakers_detected', '?')} | "
             f"{r['macro_f1']:.3f} | {r['scdr']:.0f}% | {r['accuracy']:.0f}% | {status} |"  # noqa: E501
         )
 
@@ -432,7 +432,7 @@ def main():
     for i, sample_dir in enumerate(samples):
         sample_name = os.path.basename(sample_dir)
         category = os.path.basename(os.path.dirname(sample_dir))
-        print(f"\n  [{i+1}/{len(samples)}] {category}/{sample_name}")
+        print(f"\n  [{i + 1}/{len(samples)}] {category}/{sample_name}")
 
         try:
             result = run_sample(pipeline, transcriber, sample_dir, AUDIO_DIR)
@@ -511,8 +511,8 @@ def main():
     print(f"  Samples:     {len(valid)} valid / {len(all_results)} total")
     print(f"  Total time:  {total_time:.1f}s")
     print(f"  Avg F1:      {avg_f1:.4f} (threshold: {THRESHOLD_F1})")
-    print(f"  Avg Accuracy:{avg_acc:.1f}% (threshold: {THRESHOLD_ACCURACY*100}%)")
-    print(f"  Avg SCDR:    {avg_scdr:.1f}% (threshold: {THRESHOLD_SCDR*100}%)")
+    print(f"  Avg Accuracy:{avg_acc:.1f}% (threshold: {THRESHOLD_ACCURACY * 100}%)")
+    print(f"  Avg SCDR:    {avg_scdr:.1f}% (threshold: {THRESHOLD_SCDR * 100}%)")
 
     all_pass = (
         avg_f1 >= THRESHOLD_F1

@@ -24,7 +24,7 @@ def test_refined_key_insights():
     actions_weak = [{"task": "We should refactor.", "owner": "Unassigned"}]
 
     insights = generate_key_insights(signals_overlap, actions_weak, [], [])
-    print(f"Scenario 1 (Collapse): { [i['type'] for i in insights] }")
+    print(f"Scenario 1 (Collapse): {[i['type'] for i in insights]}")
     types = [i["type"] for i in insights]
     assert "Execution Risk" in types
     assert "Decision Ambiguity" not in types
@@ -42,7 +42,7 @@ def test_refined_key_insights():
         signals_risk_high, [], [], []
     )  # Empty tension
     print(
-        f"Scenario 2 (Escalation Guardrail): { [i['type'] for i in insights_guardrail] }"  # noqa: E501
+        f"Scenario 2 (Escalation Guardrail): {[i['type'] for i in insights_guardrail]}"  # noqa: E501
     )
     assert "Escalation Required" not in [i["type"] for i in insights_guardrail]
 
@@ -51,9 +51,7 @@ def test_refined_key_insights():
     insights_escalate = generate_key_insights(
         signals_risk_high, [], [], [{"text": "Blocked"}]
     )
-    print(
-        f"Scenario 3 (Escalation Trigger): { [i['type'] for i in insights_escalate] }"
-    )
+    print(f"Scenario 3 (Escalation Trigger): {[i['type'] for i in insights_escalate]}")
     assert "Escalation Required" in [i["type"] for i in insights_escalate]
 
     # 3. Test Capping (Max 2)
@@ -87,7 +85,7 @@ def test_refined_key_insights():
     insights_capped = generate_key_insights(
         signals_max, actions_chaos, [], tension_chaos
     )
-    print(f"Scenario 4 (Capping): { [i['type'] for i in insights_capped] }")
+    print(f"Scenario 4 (Capping): {[i['type'] for i in insights_capped]}")
     assert len(insights_capped) <= 2
     assert "Escalation Required" in [i["type"] for i in insights_capped]  # Priority 0
     assert "Execution Risk" in [i["type"] for i in insights_capped]  # Priority 1

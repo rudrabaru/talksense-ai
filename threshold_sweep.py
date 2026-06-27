@@ -3,6 +3,7 @@ TalkSense AI -- Clustering Threshold Sweep
 
 Tests internal Pyannote clustering thresholds to find optimal speaker separation.
 """
+
 import json
 import os
 import subprocess
@@ -14,12 +15,28 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "bac
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 SAMPLE_RATE = 16000
-GT_PATH = os.path.join(os.path.dirname(__file__), "backend", "ground_truth", "meeting_short_gt.json")
-AUDIO_PATH = os.path.join(os.path.dirname(__file__), "sample_audio", "meeting_short.mp3")
+GT_PATH = os.path.join(
+    os.path.dirname(__file__), "backend", "ground_truth", "meeting_short_gt.json"
+)
+AUDIO_PATH = os.path.join(
+    os.path.dirname(__file__), "sample_audio", "meeting_short.mp3"
+)
 
 
 def decode_audio(audio_path):
-    cmd = ["ffmpeg", "-y", "-i", audio_path, "-f", "s16le", "-ac", "1", "-ar", str(SAMPLE_RATE), "-"]
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        audio_path,
+        "-f",
+        "s16le",
+        "-ac",
+        "1",
+        "-ar",
+        str(SAMPLE_RATE),
+        "-",
+    ]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     pcm = proc.stdout.read()
     proc.wait()
@@ -30,9 +47,12 @@ def main():
     from backend.core.config import get_settings
     from backend.audio.transcriber import get_transcriber
     from backend.evaluate_speaker_accuracy import (
-        load_ground_truth, Segment as EvalSegment,
-        match_segments, resolve_label_mapping,
-        compute_accuracy, compute_precision_recall_f1, compute_scdr,
+        Segment as EvalSegment,
+        match_segments,
+        resolve_label_mapping,
+        compute_accuracy,
+        compute_precision_recall_f1,
+        compute_scdr,
     )
     import torch
     import warnings
@@ -41,13 +61,19 @@ def main():
 
     print("Loading Whisper...")
     transcriber = get_transcriber()
-    transcriber.load(settings.whisper_model, settings.whisper_compute_type, settings.whisper_device)
+    transcriber.load(
+        settings.whisper_model, settings.whisper_compute_type, settings.whisper_device
+    )
 
     print("Loading Pyannote...")
     with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", message=".*torchcodec.*", category=UserWarning)
+        warnings.filterwarnings(
+            "ignore", message=".*torchcodec.*", category=UserWarning
+        )
         from pyannote.audio import Pipeline
-    pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1", token=settings.hf_token)
+    pipeline = Pipeline.from_pretrained(
+        "pyannote/speaker-diarization-3.1", token=settings.hf_token
+    )
     pipeline.to(torch.device(settings.pyannote_device))
 
     print("Decoding audio...")
@@ -68,10 +94,14 @@ def main():
         print(f"  Keys: {list(params.keys())}")
         if "clustering" in params:
             clustering = params["clustering"]
-            print(f"  clustering keys: {list(clustering.keys()) if isinstance(clustering, dict) else clustering}")
+            print(
+                f"  clustering keys: {list(clustering.keys()) if isinstance(clustering, dict) else clustering}"
+            )
         if "segmentation" in params:
             seg_params = params["segmentation"]
-            print(f"  segmentation keys: {list(seg_params.keys()) if isinstance(seg_params, dict) else seg_params}")
+            print(
+                f"  segmentation keys: {list(seg_params.keys()) if isinstance(seg_params, dict) else seg_params}"
+            )
     except Exception as e:
         print(f"  Could not inspect: {e}")
 
@@ -81,9 +111,9 @@ def main():
     # Check what the default threshold is
     default_threshold = None
     try:
-        if hasattr(pipeline, '_segmentation'):
+        if hasattr(pipeline, "_segmentation"):
             print(f"  _segmentation: {pipeline._segmentation}")
-        if hasattr(pipeline, 'clustering'):
+        if hasattr(pipeline, "clustering"):
             print(f"  clustering: {pipeline.clustering}")
 
         # Pyannote 3.1 uses YAML-configured pipeline
@@ -118,7 +148,7 @@ def main():
                 hp["clustering"]["threshold"] = threshold
                 pipeline.instantiate(hp)
             else:
-                print(f"    Cannot modify clustering threshold, skipping")
+                print("    Cannot modify clustering threshold, skipping")
                 break
 
             t0 = time.monotonic()
@@ -128,6 +158,7 @@ def main():
             # Unwrap
             try:
                 from pyannote.audio.pipelines.speaker_diarization import DiarizeOutput
+
                 if isinstance(diarization, DiarizeOutput):
                     annotation = diarization.speaker_diarization
                 else:
@@ -155,7 +186,14 @@ def main():
                     if ov > best_overlap:
                         best_overlap = ov
                         best_speaker = spk
-                predicted.append(EvalSegment(start=seg.start, end=seg.end, speaker=best_speaker, text=seg.text))
+                predicted.append(
+                    EvalSegment(
+                        start=seg.start,
+                        end=seg.end,
+                        speaker=best_speaker,
+                        text=seg.text,
+                    )
+                )
 
             # Evaluate
             pairs = match_segments(predicted, annotated_segs, min_overlap_ratio=0.10)
@@ -163,8 +201,14 @@ def main():
                 label_map = resolve_label_mapping(pairs)
                 accuracy, correct, total = compute_accuracy(pairs, label_map)
                 per_speaker = compute_precision_recall_f1(pairs, label_map)
-                scdr, scdr_det, scdr_total = compute_scdr(predicted, annotated_segs, label_map)
-                macro_f1 = sum(v["f1"] for v in per_speaker.values()) / len(per_speaker) if per_speaker else 0.0
+                scdr, scdr_det, scdr_total = compute_scdr(
+                    predicted, annotated_segs, label_map
+                )
+                macro_f1 = (
+                    sum(v["f1"] for v in per_speaker.values()) / len(per_speaker)
+                    if per_speaker
+                    else 0.0
+                )
                 speakers = len(set(s.speaker for s in predicted))
             else:
                 accuracy, macro_f1, scdr, speakers = 0, 0, 0, 0
@@ -179,7 +223,9 @@ def main():
                 "time": round(elapsed, 2),
             }
             results.append(r)
-            print(f"    Speakers={speakers} Turns={len(turns)} F1={macro_f1:.4f} SCDR={scdr:.1f}% Acc={accuracy:.1f}% Time={elapsed:.2f}s")
+            print(
+                f"    Speakers={speakers} Turns={len(turns)} F1={macro_f1:.4f} SCDR={scdr:.1f}% Acc={accuracy:.1f}% Time={elapsed:.2f}s"
+            )
 
         except Exception as e:
             print(f"    ERROR: {e}")
@@ -211,6 +257,7 @@ def main():
 
             try:
                 from pyannote.audio.pipelines.speaker_diarization import DiarizeOutput
+
                 if isinstance(diarization, DiarizeOutput):
                     annotation = diarization.speaker_diarization
                 else:
@@ -237,31 +284,54 @@ def main():
                     if ov > best_overlap:
                         best_overlap = ov
                         best_speaker = spk
-                predicted.append(EvalSegment(start=seg.start, end=seg.end, speaker=best_speaker, text=seg.text))
+                predicted.append(
+                    EvalSegment(
+                        start=seg.start,
+                        end=seg.end,
+                        speaker=best_speaker,
+                        text=seg.text,
+                    )
+                )
 
             pairs = match_segments(predicted, annotated_segs, min_overlap_ratio=0.10)
             if pairs:
                 label_map = resolve_label_mapping(pairs)
                 accuracy, correct, total = compute_accuracy(pairs, label_map)
                 per_speaker = compute_precision_recall_f1(pairs, label_map)
-                scdr, scdr_det, scdr_total = compute_scdr(predicted, annotated_segs, label_map)
-                macro_f1 = sum(v["f1"] for v in per_speaker.values()) / len(per_speaker) if per_speaker else 0.0
+                scdr, scdr_det, scdr_total = compute_scdr(
+                    predicted, annotated_segs, label_map
+                )
+                macro_f1 = (
+                    sum(v["f1"] for v in per_speaker.values()) / len(per_speaker)
+                    if per_speaker
+                    else 0.0
+                )
                 speakers = len(set(s.speaker for s in predicted))
             else:
                 accuracy, macro_f1, scdr, speakers = 0, 0, 0, 0
 
-            print(f"  threshold={threshold} (no constraint): Spk={speakers} F1={macro_f1:.4f} SCDR={scdr:.1f}% Acc={accuracy:.1f}%")
-            results.append({
-                "threshold": threshold, "constraint": "none",
-                "speakers": speakers, "turns": len(turns),
-                "f1": round(macro_f1, 4), "scdr": round(scdr, 1),
-                "accuracy": round(accuracy, 1), "time": round(elapsed, 2),
-            })
+            print(
+                f"  threshold={threshold} (no constraint): Spk={speakers} F1={macro_f1:.4f} SCDR={scdr:.1f}% Acc={accuracy:.1f}%"
+            )
+            results.append(
+                {
+                    "threshold": threshold,
+                    "constraint": "none",
+                    "speakers": speakers,
+                    "turns": len(turns),
+                    "f1": round(macro_f1, 4),
+                    "scdr": round(scdr, 1),
+                    "accuracy": round(accuracy, 1),
+                    "time": round(elapsed, 2),
+                }
+            )
         except Exception as e:
             print(f"  threshold={threshold} ERROR: {e}")
 
     # Save all results
-    out_path = os.path.join(os.path.dirname(__file__), "backend", "threshold_sweep_results.json")
+    out_path = os.path.join(
+        os.path.dirname(__file__), "backend", "threshold_sweep_results.json"
+    )
     with open(out_path, "w") as f:
         json.dump(results, f, indent=2)
     print(f"\nResults saved to: {out_path}")
@@ -269,6 +339,7 @@ def main():
 
 def load_gt_raw(path):
     from backend.evaluate_speaker_accuracy import load_ground_truth
+
     return load_ground_truth(path)
 
 

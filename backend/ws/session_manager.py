@@ -102,12 +102,13 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from audio.buffer import AudioBuffer
-from audio.speaker_profile import SpeakerProfile
 from fastapi import WebSocket
 
+from audio.buffer import AudioBuffer
+from audio.speaker_profile import SpeakerProfile
+
 if TYPE_CHECKING:
-    from engine.conversation_engine import ConversationEngine
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -488,7 +489,11 @@ class SessionManager:
             try:
                 session.audio_buffer.flush_remaining()
             except Exception as exc:
-                logger.warning("Session %s…: failed to flush remaining audio buffer — %s", session_id[:8], exc)
+                logger.warning(
+                    "Session %s…: failed to flush remaining audio buffer — %s",
+                    session_id[:8],
+                    exc,
+                )
             self.remove(session_id)
 
     async def end_all_active_sessions(self) -> None:
@@ -502,15 +507,15 @@ class SessionManager:
             "SessionManager — shutdown: ending %d active session(s) cleanly …",
             len(active_ids),
         )
-        
+
         # Await end() for all active sessions concurrently to minimize shutdown block
         tasks = []
         for sid in active_ids:
             tasks.append(self.end(sid, SessionStatus.INTERRUPTED))
-            
+
         if tasks:
             await asyncio.gather(*tasks, return_exceptions=True)
-            
+
         logger.info("SessionManager — shutdown: all active sessions ended.")
 
     def remove(self, session_id: str) -> None:
@@ -658,9 +663,18 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
                 {"metric_name": "action_items", "metric_value": conv.action_items},
                 {"metric_name": "decisions", "metric_value": conv.decisions},
                 {"metric_name": "interruptions", "metric_value": conv.interruptions},
-                {"metric_name": "speaker_switches", "metric_value": conv.speaker_switches},
-                {"metric_name": "objection_timeline", "metric_value": conv.objection_timeline},
-                {"metric_name": "buying_signal_timeline", "metric_value": conv.buying_signal_timeline},
+                {
+                    "metric_name": "speaker_switches",
+                    "metric_value": conv.speaker_switches,
+                },
+                {
+                    "metric_name": "objection_timeline",
+                    "metric_value": conv.objection_timeline,
+                },
+                {
+                    "metric_name": "buying_signal_timeline",
+                    "metric_value": conv.buying_signal_timeline,
+                },
             ]
     # ── Lock released — DB IO begins ──────────────────────────────────────────
 

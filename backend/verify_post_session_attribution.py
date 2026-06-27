@@ -236,7 +236,7 @@ async def run_verification():
         for idx, s in enumerate(segments):
             distinct_speakers.add(s.speaker_id)
             print(
-                f"      Segment {idx+1:02d} | Time: {s.start_time:.2f}s - {s.end_time:.2f}s | Speaker: {s.speaker_id:12s} | '{s.text[:40]}...'"  # noqa: E501
+                f"      Segment {idx + 1:02d} | Time: {s.start_time:.2f}s - {s.end_time:.2f}s | Speaker: {s.speaker_id:12s} | '{s.text[:40]}...'"  # noqa: E501
             )
 
         print(

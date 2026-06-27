@@ -6,6 +6,7 @@ ground truth annotations for manual review.
 
 Outputs a JSON per file with Whisper segments + Pyannote speaker labels.
 """
+
 import json
 import os
 import subprocess
@@ -17,11 +18,25 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "bac
 
 SAMPLE_RATE = 16000
 AUDIO_DIR = os.path.join(os.path.dirname(__file__), "sample_audio")
-OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "backend", "benchmark_dataset", "_drafts")
+OUTPUT_DIR = os.path.join(
+    os.path.dirname(__file__), "backend", "benchmark_dataset", "_drafts"
+)
 
 
 def decode_audio(path):
-    cmd = ["ffmpeg", "-y", "-i", path, "-f", "s16le", "-ac", "1", "-ar", str(SAMPLE_RATE), "-"]
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        path,
+        "-f",
+        "s16le",
+        "-ac",
+        "1",
+        "-ar",
+        str(SAMPLE_RATE),
+        "-",
+    ]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     pcm = proc.stdout.read()
     proc.wait()
@@ -38,25 +53,30 @@ def main():
 
     print("Loading Whisper...")
     transcriber = get_transcriber()
-    transcriber.load(settings.whisper_model, settings.whisper_compute_type, settings.whisper_device)
+    transcriber.load(
+        settings.whisper_model, settings.whisper_compute_type, settings.whisper_device
+    )
 
     print("Loading Pyannote...")
     with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", message=".*torchcodec.*", category=UserWarning)
+        warnings.filterwarnings(
+            "ignore", message=".*torchcodec.*", category=UserWarning
+        )
         from pyannote.audio import Pipeline
-    pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1", token=settings.hf_token)
+    pipeline = Pipeline.from_pretrained(
+        "pyannote/speaker-diarization-3.1", token=settings.hf_token
+    )
     pipeline.to(torch.device(settings.pyannote_device))
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-    audio_files = sorted([
-        f for f in os.listdir(AUDIO_DIR)
-        if f.endswith((".mp3", ".m4a", ".wav"))
-    ])
+    audio_files = sorted(
+        [f for f in os.listdir(AUDIO_DIR) if f.endswith((".mp3", ".m4a", ".wav"))]
+    )
 
     for i, fname in enumerate(audio_files):
         audio_path = os.path.join(AUDIO_DIR, fname)
-        print(f"\n[{i+1}/{len(audio_files)}] Processing: {fname}")
+        print(f"\n[{i + 1}/{len(audio_files)}] Processing: {fname}")
 
         # Decode
         pcm = decode_audio(audio_path)
@@ -82,6 +102,7 @@ def main():
         # Unwrap
         try:
             from pyannote.audio.pipelines.speaker_diarization import DiarizeOutput
+
             if isinstance(diarization, DiarizeOutput):
                 annotation = diarization.speaker_diarization
             else:
@@ -99,10 +120,18 @@ def main():
                     mapped = f"Speaker {num + 1}"
                 except (ValueError, IndexError):
                     pass
-            turns.append({"start": round(turn.start, 2), "end": round(turn.end, 2), "speaker": mapped})
+            turns.append(
+                {
+                    "start": round(turn.start, 2),
+                    "end": round(turn.end, 2),
+                    "speaker": mapped,
+                }
+            )
 
         unique_speakers = list(set(t["speaker"] for t in turns))
-        print(f"  Pyannote: {len(turns)} turns, {len(unique_speakers)} speakers in {t_pyannote:.1f}s")
+        print(
+            f"  Pyannote: {len(turns)} turns, {len(unique_speakers)} speakers in {t_pyannote:.1f}s"
+        )
 
         # Assign speakers to segments
         seg_data = []
@@ -113,12 +142,14 @@ def main():
                 if ov > best_ov:
                     best_ov = ov
                     best_speaker = t["speaker"]
-            seg_data.append({
-                "start": round(seg.start, 2),
-                "end": round(seg.end, 2),
-                "speaker": best_speaker,
-                "text": seg.text.strip(),
-            })
+            seg_data.append(
+                {
+                    "start": round(seg.start, 2),
+                    "end": round(seg.end, 2),
+                    "speaker": best_speaker,
+                    "text": seg.text.strip(),
+                }
+            )
 
         # Build output
         stem = os.path.splitext(fname)[0]
@@ -138,9 +169,9 @@ def main():
             json.dump(result, f, indent=2, ensure_ascii=False)
         print(f"  Saved: {out_path}")
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  All {len(audio_files)} files processed. Drafts in: {OUTPUT_DIR}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
 
 if __name__ == "__main__":

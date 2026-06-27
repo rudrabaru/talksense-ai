@@ -168,11 +168,11 @@ class AudioBuffer:
                         self._clear()
 
         self._total_bytes_received += len(pcm_bytes)
-        
+
         if result is not None:
             flushed, time_offset, is_partial = result
             return flushed, time_offset, is_partial
-            
+
         return None
 
     def flush_remaining(self) -> tuple[bytes, float, bool] | None:
@@ -196,11 +196,11 @@ class AudioBuffer:
 
             # Always finalize and close the WAV file on session end
             self._finalize_wav()
-            
+
             if result is not None:
                 flushed, time_offset, is_partial = result
                 return flushed, time_offset, is_partial
-                
+
             return None
 
     def get_audio_file_path(self) -> str | None:

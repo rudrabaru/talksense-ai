@@ -19,6 +19,7 @@ Usage (run from project root):
   .\\backend\\venv\\Scripts\\Activate.ps1
   python investigate\\phantom_speaker.py
 """
+
 import asyncio
 import json
 import os
@@ -28,7 +29,7 @@ import warnings
 import wave
 import numpy as np
 from collections import Counter, defaultdict
-from typing import Dict, List, Tuple, Any, Optional
+from typing import Dict, List, Tuple, Any
 
 # ── Ground truth and DB helpers ──────────────────────────────────────────────
 
@@ -37,6 +38,7 @@ WAV_PATH = (
     r"D:\Code world\Python\SCET Hackathon\talksense-ai\backend"
     r"\session_audio\session_ceff564bc3a0409b.wav"
 )
+
 
 class Segment:
     def __init__(self, start: float, end: float, speaker: str, text: str = ""):
@@ -69,6 +71,7 @@ def load_ground_truth(path: str) -> Tuple[List[Segment], Dict]:
 def load_wav(path: str) -> Tuple[Any, int]:
     """Load WAV file. Returns (float32 tensor waveform dict, sample_rate)."""
     import torch
+
     with wave.open(path, "rb") as w:
         params = w.getparams()
         nchannels, sampwidth, framerate, nframes = params[:4]
@@ -96,6 +99,7 @@ def run_pyannote(pipeline, waveform: dict, config_kwargs: dict) -> List[Segment]
     # Unwrap DiarizeOutput if needed
     try:
         from pyannote.audio.pipelines.speaker_diarization import DiarizeOutput
+
         if isinstance(diarization, DiarizeOutput):
             annotation = diarization.speaker_diarization
         else:
@@ -135,8 +139,10 @@ def turns_to_whisper_segments(
                 best_spk = turn.speaker
         # proximity fallback: if no overlap, find nearest turn
         if best_spk == "Unknown" and turns:
+
             def proximity(t):
                 return min(abs(pred.start - t.end), abs(pred.end - t.start))
+
             nearest = min(turns, key=proximity)
             if proximity(nearest) < 2.0:
                 best_spk = nearest.speaker
@@ -145,6 +151,7 @@ def turns_to_whisper_segments(
 
 
 # ── Metrics ──────────────────────────────────────────────────────────────────
+
 
 def match_segments(predicted: List[Segment], annotated: List[Segment]) -> List[Tuple]:
     """Many-to-one: each predicted maps to best annotated window (>=10% overlap)."""
@@ -169,7 +176,9 @@ def resolve_label_mapping(pairs: List[Tuple]) -> Dict[str, str]:
         cooc[pred.speaker][ann.speaker] += 1
     mapping: Dict[str, str] = {}
     assigned: set = set()
-    for pred_label in sorted(cooc.keys(), key=lambda l: sum(cooc[l].values()), reverse=True):
+    for pred_label in sorted(
+        cooc.keys(), key=lambda label: sum(cooc[label].values()), reverse=True
+    ):
         best_c = None
         best_n = 0
         for c, n in cooc[pred_label].most_common():
@@ -184,7 +193,9 @@ def resolve_label_mapping(pairs: List[Tuple]) -> Dict[str, str]:
     return mapping
 
 
-def compute_macro_f1(pairs: List[Tuple], label_map: Dict[str, str]) -> Tuple[float, Dict]:
+def compute_macro_f1(
+    pairs: List[Tuple], label_map: Dict[str, str]
+) -> Tuple[float, Dict]:
     all_canonical = set(ann.speaker for _, ann in pairs)
     tp = defaultdict(int)
     fp = defaultdict(int)
@@ -204,20 +215,26 @@ def compute_macro_f1(pairs: List[Tuple], label_map: Dict[str, str]) -> Tuple[flo
         p = (t / p_cnt) if p_cnt > 0 else 0.0
         r = (t / r_cnt) if r_cnt > 0 else 0.0
         f1 = (2 * p * r / (p + r)) if (p + r) > 0 else 0.0
-        per_spk[spk] = {"precision": round(p, 3), "recall": round(r, 3), "f1": round(f1, 3)}
+        per_spk[spk] = {
+            "precision": round(p, 3),
+            "recall": round(r, 3),
+            "f1": round(f1, 3),
+        }
     macro = (sum(v["f1"] for v in per_spk.values()) / len(per_spk)) if per_spk else 0.0
     return round(macro, 3), per_spk
 
 
-def compute_scdr(predicted: List[Segment], annotated: List[Segment], label_map: Dict[str, str]) -> Tuple[float, int, int]:
+def compute_scdr(
+    predicted: List[Segment], annotated: List[Segment], label_map: Dict[str, str]
+) -> Tuple[float, int, int]:
     def changes(segs, use_map=False):
         c = []
         for i in range(1, len(segs)):
-            p, q = segs[i-1].speaker, segs[i].speaker
+            p, q = segs[i - 1].speaker, segs[i].speaker
             if use_map:
                 p, q = label_map.get(p, p), label_map.get(q, q)
             if p != q:
-                c.append((segs[i-1].end + segs[i].start) / 2)
+                c.append((segs[i - 1].end + segs[i].start) / 2)
         return c
 
     ann_ch = changes(annotated)
@@ -241,14 +258,19 @@ def compute_coverage(assigned_segs: List[Segment]) -> float:
 
 # ── Main investigation ────────────────────────────────────────────────────────
 
+
 async def fetch_db_predicted_segments() -> List[Segment]:
     """Fetch the 22 fine-grained DB segments for the ceff564b session."""
     from db.database import AsyncSessionLocal
     from db import crud
+
     session_id = "ceff564b-c3a0-409b-9723-c52b4a40547d"
     async with AsyncSessionLocal() as db:
         rows = await crud.get_all_transcript_segments(db, session_id)
-    segs = [Segment(r.start_time, r.end_time, r.speaker_id or "Unknown", r.text or "") for r in rows]
+    segs = [
+        Segment(r.start_time, r.end_time, r.speaker_id or "Unknown", r.text or "")
+        for r in rows
+    ]
     segs.sort(key=lambda s: s.start)
     return segs
 
@@ -262,10 +284,10 @@ def evaluate_config(
     annotated: List[Segment],
 ) -> Dict[str, Any]:
     """Run one Pyannote configuration and return metrics."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"  Config: {name}")
     print(f"  kwargs: {config_kwargs}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     t0 = time.monotonic()
     turns = run_pyannote(pipeline, waveform, config_kwargs)
@@ -286,13 +308,13 @@ def evaluate_config(
     macro_f1, per_spk = compute_macro_f1(pairs, label_map)
     scdr, scdr_det, scdr_tot = compute_scdr(assigned, annotated, label_map)
 
-    print(f"\n  Label mapping:")
+    print("\n  Label mapping:")
     for k, v in sorted(label_map.items()):
         print(f"    {k} -> {v}")
     print(f"\n  Coverage    : {coverage}%")
     print(f"  Macro F1    : {macro_f1}")
     print(f"  SCDR        : {scdr}% ({scdr_det}/{scdr_tot})")
-    print(f"\n  Per-speaker F1:")
+    print("\n  Per-speaker F1:")
     for spk, m in sorted(per_spk.items()):
         print(f"    {spk}: P={m['precision']} R={m['recall']} F1={m['f1']}")
 
@@ -322,7 +344,9 @@ def generate_report(results: List[Dict]) -> str:
     lines.append("- **Coverage**: 86.4% (misleadingly high)")
     lines.append("- **Macro F1**: 0.619 (below 0.75 threshold)")
     lines.append("- **SCDR**: 16.7% (far below 70% threshold)")
-    lines.append("- **Root cause hypothesis**: unconstrained Pyannote hallucinated a 3rd speaker")
+    lines.append(
+        "- **Root cause hypothesis**: unconstrained Pyannote hallucinated a 3rd speaker"
+    )
 
     lines.append("\n---\n## Configurations Tested")
     lines.append("| Config | Kwargs | Speakers Detected | Turns | Runtime (s) |")
@@ -354,9 +378,10 @@ def generate_report(results: List[Dict]) -> str:
 
     lines.append("\n---\n## Root Cause Analysis")
     baseline = results[0]
-    constrained = [r for r in results if r != baseline]
 
-    lines.append(f"### Config A (Unconstrained) — Detected {baseline['speakers_detected']} speakers")
+    lines.append(
+        f"### Config A (Unconstrained) — Detected {baseline['speakers_detected']} speakers"
+    )
     lines.append(
         "The Pyannote pipeline with **no speaker count hint** uses its internal "
         "agglomerative clustering with a learned distance threshold. For a short (32s) "
@@ -371,18 +396,21 @@ def generate_report(results: List[Dict]) -> str:
 
     lines.append("\n### Phantom Speaker Characteristics")
     lines.append(
-        "- Speaker 2 (unmapped phantom) captured 3 segments from the B-window (4.80–12.72s)")
+        "- Speaker 2 (unmapped phantom) captured 3 segments from the B-window (4.80–12.72s)"
+    )
     lines.append(
-        "- These segments contained 'integration is working' and 'lower than expected' — both from Speaker B")
+        "- These segments contained 'integration is working' and 'lower than expected' — both from Speaker B"
+    )
     lines.append(
-        "- Result: Speaker B's recall collapsed to 0.286, pulling Macro F1 down to 0.619")
+        "- Result: Speaker B's recall collapsed to 0.286, pulling Macro F1 down to 0.619"
+    )
 
     # Find best config
     best = max(results, key=lambda r: (r["macro_f1"], r["scdr"]))
-    lines.append(f"\n---\n## Recommendation")
+    lines.append("\n---\n## Recommendation")
     lines.append(f"\n**Best configuration: `{best['name']}` (`{best['kwargs']}`)**")
     lines.append(f"\n| Metric | Baseline (Unconstrained) | {best['name']} | Change |")
-    lines.append(f"|--------|--------------------------|----------------|--------|")
+    lines.append("|--------|--------------------------|----------------|--------|")
     lines.append(
         f"| Coverage | {baseline['coverage']}% | {best['coverage']}% | "
         f"{'+' if best['coverage'] >= baseline['coverage'] else ''}{best['coverage'] - baseline['coverage']:.1f}pp |"
@@ -396,8 +424,12 @@ def generate_report(results: List[Dict]) -> str:
         f"{'+' if best['scdr'] >= baseline['scdr'] else ''}{best['scdr'] - baseline['scdr']:.1f}pp |"
     )
 
-    is_production_ready = best["macro_f1"] >= 0.75 and best["scdr"] >= 70.0 and best["coverage"] >= 80.0
-    lines.append(f"\n### Production Readiness After Fix: {'✅ YES' if is_production_ready else '❌ NOT YET'}")
+    is_production_ready = (
+        best["macro_f1"] >= 0.75 and best["scdr"] >= 70.0 and best["coverage"] >= 80.0
+    )
+    lines.append(
+        f"\n### Production Readiness After Fix: {'✅ YES' if is_production_ready else '❌ NOT YET'}"
+    )
     if is_production_ready:
         lines.append(
             f"\nWith `{best['kwargs']}`, attribution quality meets thresholds "
@@ -421,7 +453,9 @@ async def main():
 
     print("Loading ground truth...")
     annotated, meta = load_ground_truth(GROUND_TRUTH_PATH)
-    print(f"  {len(annotated)} annotated segments, expected speakers: {meta['expected_speakers']}")
+    print(
+        f"  {len(annotated)} annotated segments, expected speakers: {meta['expected_speakers']}"
+    )
 
     print("\nLoading WAV file...")
     waveform, sample_rate, duration = load_wav(WAV_PATH)
@@ -434,6 +468,7 @@ async def main():
     print("\nLoading Pyannote pipeline (this may take a moment)...")
     from audio.diarizer import get_diarizer
     from core.config import get_settings
+
     settings = get_settings()
     diarizer = get_diarizer()
     if not diarizer._loaded:

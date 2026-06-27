@@ -1,5 +1,7 @@
-import numpy as np
 from typing import Dict, Optional
+
+import numpy as np
+
 
 class SpeakerProfile:
     """
@@ -26,7 +28,7 @@ class SpeakerProfile:
 
         best_speaker: Optional[str] = None
         best_sim = -1.0
-        
+
         # L2 normalize input embedding
         emb_norm = embedding / (np.linalg.norm(embedding) + 1e-8)
 
@@ -38,13 +40,19 @@ class SpeakerProfile:
                 best_sim = float(sim)
                 best_speaker = spk
 
-        print(f"DEBUG: match_or_create best_sim={best_sim:.3f} for speaker={best_speaker}, threshold={self.similarity_threshold}")
+        print(
+            f"DEBUG: match_or_create best_sim={best_sim:.3f} for speaker={best_speaker}, threshold={self.similarity_threshold}"
+        )
 
         if best_speaker is not None and best_sim >= self.similarity_threshold:
             # Update centroid (moving average)
             count = self.counts[best_speaker]
-            new_centroid = (self.centroids[best_speaker] * count + emb_norm) / (count + 1)
-            self.centroids[best_speaker] = new_centroid / (np.linalg.norm(new_centroid) + 1e-8)
+            new_centroid = (self.centroids[best_speaker] * count + emb_norm) / (
+                count + 1
+            )
+            self.centroids[best_speaker] = new_centroid / (
+                np.linalg.norm(new_centroid) + 1e-8
+            )
             self.counts[best_speaker] += 1
             return best_speaker
         else:

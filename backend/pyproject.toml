@@ -42,7 +42,7 @@ select = [
     "F",  # pyflakes
     "I",  # isort
 ]
-ignore = []
+ignore = ["E501"]
 
 [tool.pyright]
 include = ["."]

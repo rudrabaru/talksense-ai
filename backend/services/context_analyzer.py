@@ -4,11 +4,11 @@ from typing import Any, Optional
 
 # Ensure we can import from utils
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from services.conversation_state_resolver import resolve_conversation_state
+from services.intent_resolver import ROADMAP_STATEMENT, resolve_clause_intent
+from services.linguistic_parser import annotate_segments
 from utils.config_loader import KEYWORDS_CONFIG
 from utils.profiler import profile_stage
-from services.linguistic_parser import annotate_segments
-from services.conversation_state_resolver import resolve_conversation_state
-from services.intent_resolver import resolve_clause_intent, ROADMAP_STATEMENT
 
 # Load Configured Keywords (or defaults)
 DECISION_KEYWORDS = KEYWORDS_CONFIG["meeting"]["decisions"]
@@ -224,7 +224,11 @@ def detect_ownership_committed(segments):
     resolve_conversation_state(segments)
     for seg in segments:
         for clause in seg.get("clauses", []):
-            if clause.get("is_negated") or clause.get("is_conditional") or clause.get("is_abandoned"):
+            if (
+                clause.get("is_negated")
+                or clause.get("is_conditional")
+                or clause.get("is_abandoned")
+            ):
                 continue
             text = clause.get("text", "").lower()
             # Check for commitment patterns
@@ -261,7 +265,7 @@ def detect_signals(segments):
     ownership_detected = False
     decision_detected = False
     execution_decision_detected = False
-    
+
     annotate_segments(segments)
     resolve_conversation_state(segments)
 
@@ -272,16 +276,24 @@ def detect_signals(segments):
             text = clause.get("text", "")
 
             # Check for ownership patterns (skip negated/conditional)
-            if not ownership_detected and not clause.get("is_negated") and not clause.get("is_conditional"):
+            if (
+                not ownership_detected
+                and not clause.get("is_negated")
+                and not clause.get("is_conditional")
+            ):
                 if any(p in text.lower() for p in OWNERSHIP_PATTERNS):
                     ownership_detected = True
 
             # Check for decisions (for display purposes)
-            if not decision_detected and any(d in text.lower() for d in DECISION_PATTERNS):
+            if not decision_detected and any(
+                d in text.lower() for d in DECISION_PATTERNS
+            ):
                 decision_detected = True
 
             # 🔒 HARD FREEZE: Check for execution decision
-            if not execution_decision_detected and is_valid_execution_decision(text, clause):
+            if not execution_decision_detected and is_valid_execution_decision(
+                text, clause
+            ):
                 execution_decision_detected = True
                 # FREEZE: Do NOT allow later logic to change this back
             # No re-evaluation, no confidence downgrade, no "but maybe"
@@ -533,8 +545,7 @@ def compose_executive_summary(
             )
         else:
             summary_parts.append(
-                f"The team discussed {topic_phrase} "
-                "with no major blockers identified."
+                f"The team discussed {topic_phrase} with no major blockers identified."
             )
 
         # Part 2: Decisions & Actions (CALIBRATED LOGIC)
@@ -551,17 +562,15 @@ def compose_executive_summary(
                 )
         elif decision == "decision made" and action == "next steps identified":
             summary_parts.append(
-                "Key decisions were locked in, "
-                "and clear next steps have been assigned."
+                "Key decisions were locked in, and clear next steps have been assigned."
             )
         elif decision == "decision made" and action == "no clear next steps":
             summary_parts.append(
-                "Key decisions were locked in, "
-                "but future actions need to be defined."
+                "Key decisions were locked in, but future actions need to be defined."
             )
         elif decision == "no final decision" and action == "next steps identified":
             summary_parts.append(
-                "Clear next steps were assigned, " "but no final decisions were made."
+                "Clear next steps were assigned, but no final decisions were made."
             )
 
         return " ".join(summary_parts)
@@ -773,15 +782,19 @@ def assess_sales_signals(segments, objections, recommendations):
     """
     annotate_segments(segments)
     resolve_conversation_state(segments)
-    
+
     # Base text blob (all segments) for things that rely on negations (like authority)
     text_blob = " ".join([s["text"].lower() for s in segments])
-    
+
     # Filtered text blob (no conditionals/negations/abandoned) for pure buying signals
     positive_clauses = []
     for s in segments:
         for c in s.get("clauses", []):
-            if not c.get("is_negated") and not c.get("is_conditional") and not c.get("is_abandoned"):
+            if (
+                not c.get("is_negated")
+                and not c.get("is_conditional")
+                and not c.get("is_abandoned")
+            ):
                 positive_clauses.append(c)
     positive_blob = " ".join([c["text"].lower() for c in positive_clauses])
 
@@ -799,10 +812,16 @@ def assess_sales_signals(segments, objections, recommendations):
         # Check for Positive/Neutral sentiment with confidence >= 0.6
         if (label in ["Positive", "Neutral"]) and confidence >= 0.6:
             for clause in seg.get("clauses", []):
-                if clause.get("is_negated") or clause.get("is_conditional") or clause.get("is_abandoned"):
+                if (
+                    clause.get("is_negated")
+                    or clause.get("is_conditional")
+                    or clause.get("is_abandoned")
+                ):
                     continue
                 # Check for commitment keywords
-                if any(keyword in clause["text"].lower() for keyword in COMMITMENT_KEYWORDS):
+                if any(
+                    keyword in clause["text"].lower() for keyword in COMMITMENT_KEYWORDS
+                ):
                     end_of_call_commitment = True
                     break
 
@@ -1546,7 +1565,11 @@ def extract_actions(segments):
 
     for seg in segments:
         for clause in seg.get("clauses", []):
-            if clause.get("is_negated") or clause.get("is_conditional") or clause.get("is_abandoned"):
+            if (
+                clause.get("is_negated")
+                or clause.get("is_conditional")
+                or clause.get("is_abandoned")
+            ):
                 continue
 
             text = clause.get("text", "")
@@ -1775,7 +1798,7 @@ def is_valid_execution_decision(text: str, clause: dict = None) -> bool:
     """
     if clause and clause.get("is_conditional"):
         return False
-        
+
     t = text.lower()
 
     if is_question(t):
@@ -1893,11 +1916,11 @@ def detect_objections(segments, budget_alignment=False):
     for seg in segments:
         label = seg.get("sentiment_label", "Neutral")
         high_neg = label == "Negative" and seg["sentiment_confidence"] >= 0.75
-            
+
         for clause in seg.get("clauses", []):
             if clause.get("is_conditional") or clause.get("is_abandoned"):
                 continue
-                
+
             text = clause["text"].lower()
 
             for obj_type, keywords in OBJECTION_KEYWORDS.items():
@@ -1910,7 +1933,11 @@ def detect_objections(segments, budget_alignment=False):
                 if obj_type == "NoIntent":
                     if any(k in text for k in keywords):
                         objections.append(
-                            {"type": obj_type, "text": clause["text"], "time": seg.get("start", 0)}
+                            {
+                                "type": obj_type,
+                                "text": clause["text"],
+                                "time": seg.get("start", 0),
+                            }
                         )
                     continue
 
@@ -1920,7 +1947,11 @@ def detect_objections(segments, budget_alignment=False):
 
                 if any(k in text for k in keywords):
                     objections.append(
-                        {"type": obj_type, "text": clause["text"], "time": seg.get("start", 0)}
+                        {
+                            "type": obj_type,
+                            "text": clause["text"],
+                            "time": seg.get("start", 0),
+                        }
                     )
 
     return objections

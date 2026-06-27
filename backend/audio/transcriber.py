@@ -172,6 +172,7 @@ class WhisperTranscriber:
         concurrent CPU prep/post and serialized GPU inference.
         """
         import asyncio
+
         from audio.gpu_manager import get_gpu_semaphore
 
         if not self._loaded or self._model is None or not pcm_bytes:
@@ -208,7 +209,9 @@ class WhisperTranscriber:
 
         async with get_gpu_semaphore():
             try:
-                raw_segments, info, inference_time = await loop.run_in_executor(self._executor, _infer)
+                raw_segments, info, inference_time = await loop.run_in_executor(
+                    self._executor, _infer
+                )
             except Exception as exc:
                 logger.error(f"Whisper: Transcription error — {exc}")
                 return []
@@ -231,12 +234,13 @@ class WhisperTranscriber:
                 )
             return segments, inference_time, info.language
 
-        segments, inference_time, lang = await loop.run_in_executor(self._executor, _post)
-        
+        segments, inference_time, lang = await loop.run_in_executor(
+            self._executor, _post
+        )
+
         elapsed_ms = inference_time * 1000
         logger.debug(
-            f"Whisper: {len(segments)} segment(s) in {elapsed_ms:.0f}ms "
-            f"[lang={lang}]"
+            f"Whisper: {len(segments)} segment(s) in {elapsed_ms:.0f}ms [lang={lang}]"
         )
         return segments
 

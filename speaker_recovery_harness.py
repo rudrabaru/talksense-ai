@@ -9,27 +9,42 @@ Usage:
 Tests multiple Pyannote configurations against ground truth and produces
 a comparison table with the best configuration recommendation.
 """
+
 import json
 import os
 import subprocess
 import sys
 import time
-import wave
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "backend"))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 SAMPLE_RATE = 16000
-GT_PATH = os.path.join(os.path.dirname(__file__), "backend", "ground_truth", "meeting_short_gt.json")
-AUDIO_PATH = os.path.join(os.path.dirname(__file__), "sample_audio", "meeting_short.mp3")
-REPORT_PATH = os.path.join(os.path.dirname(__file__), "backend", "speaker_recovery_results.json")
+GT_PATH = os.path.join(
+    os.path.dirname(__file__), "backend", "ground_truth", "meeting_short_gt.json"
+)
+AUDIO_PATH = os.path.join(
+    os.path.dirname(__file__), "sample_audio", "meeting_short.mp3"
+)
+REPORT_PATH = os.path.join(
+    os.path.dirname(__file__), "backend", "speaker_recovery_results.json"
+)
 
 
 def decode_audio(audio_path):
     cmd = [
-        "ffmpeg", "-y", "-i", audio_path,
-        "-f", "s16le", "-ac", "1", "-ar", str(SAMPLE_RATE), "-"
+        "ffmpeg",
+        "-y",
+        "-i",
+        audio_path,
+        "-f",
+        "s16le",
+        "-ac",
+        "1",
+        "-ar",
+        str(SAMPLE_RATE),
+        "-",
     ]
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     pcm = proc.stdout.read()
@@ -39,41 +54,64 @@ def decode_audio(audio_path):
 
 def load_gt(path):
     from backend.evaluate_speaker_accuracy import load_ground_truth
+
     return load_ground_truth(path)
 
 
 def evaluate(predicted_segs, annotated_segs):
     from backend.evaluate_speaker_accuracy import (
-        match_segments, resolve_label_mapping,
-        compute_accuracy, compute_precision_recall_f1, compute_scdr,
-        collect_failures, Segment as EvalSegment,
+        match_segments,
+        resolve_label_mapping,
+        compute_accuracy,
+        compute_precision_recall_f1,
+        compute_scdr,
+        collect_failures,
     )
+
     pairs = match_segments(predicted_segs, annotated_segs, min_overlap_ratio=0.10)
     if not pairs:
         return {
-            "segments_matched": 0, "total_annotated": len(annotated_segs),
-            "accuracy": 0.0, "macro_f1": 0.0, "scdr": 0.0,
-            "per_speaker": {}, "label_map": {}, "failures": [],
+            "segments_matched": 0,
+            "total_annotated": len(annotated_segs),
+            "accuracy": 0.0,
+            "macro_f1": 0.0,
+            "scdr": 0.0,
+            "per_speaker": {},
+            "label_map": {},
+            "failures": [],
             "speakers_detected": 0,
         }
     label_map = resolve_label_mapping(pairs)
     accuracy, correct, total = compute_accuracy(pairs, label_map)
     per_speaker = compute_precision_recall_f1(pairs, label_map)
     scdr, scdr_det, scdr_total = compute_scdr(predicted_segs, annotated_segs, label_map)
-    macro_f1 = sum(v["f1"] for v in per_speaker.values()) / len(per_speaker) if per_speaker else 0.0
+    macro_f1 = (
+        sum(v["f1"] for v in per_speaker.values()) / len(per_speaker)
+        if per_speaker
+        else 0.0
+    )
     failures = collect_failures(pairs, label_map)
     speakers = set(s.speaker for s in predicted_segs)
     return {
-        "segments_matched": len(pairs), "total_annotated": len(annotated_segs),
-        "accuracy": round(accuracy, 1), "correct": correct, "total_matched": total,
-        "macro_f1": round(macro_f1, 4), "scdr": round(scdr, 1),
-        "scdr_detected": scdr_det, "scdr_total": scdr_total,
-        "per_speaker": per_speaker, "label_map": {k: v for k, v in label_map.items()},
-        "failures": failures, "speakers_detected": len(speakers),
+        "segments_matched": len(pairs),
+        "total_annotated": len(annotated_segs),
+        "accuracy": round(accuracy, 1),
+        "correct": correct,
+        "total_matched": total,
+        "macro_f1": round(macro_f1, 4),
+        "scdr": round(scdr, 1),
+        "scdr_detected": scdr_det,
+        "scdr_total": scdr_total,
+        "per_speaker": per_speaker,
+        "label_map": {k: v for k, v in label_map.items()},
+        "failures": failures,
+        "speakers_detected": len(speakers),
     }
 
 
-def run_config(pipeline, pcm_data, transcriber, annotated_segs, config_name, pyannote_params):
+def run_config(
+    pipeline, pcm_data, transcriber, annotated_segs, config_name, pyannote_params
+):
     """Run a single Pyannote configuration and return metrics."""
     import torch
     from backend.evaluate_speaker_accuracy import Segment as EvalSegment
@@ -96,6 +134,7 @@ def run_config(pipeline, pcm_data, transcriber, annotated_segs, config_name, pya
     # Unwrap
     try:
         from pyannote.audio.pipelines.speaker_diarization import DiarizeOutput
+
         if isinstance(diarization, DiarizeOutput):
             annotation = diarization.speaker_diarization
         else:
@@ -124,7 +163,11 @@ def run_config(pipeline, pcm_data, transcriber, annotated_segs, config_name, pya
             if ov > best_overlap:
                 best_overlap = ov
                 best_speaker = spk
-        predicted.append(EvalSegment(start=seg.start, end=seg.end, speaker=best_speaker, text=seg.text))
+        predicted.append(
+            EvalSegment(
+                start=seg.start, end=seg.end, speaker=best_speaker, text=seg.text
+            )
+        )
 
     metrics = evaluate(predicted, annotated_segs)
     metrics["config"] = config_name
@@ -142,18 +185,25 @@ def main():
     # Load models
     from backend.core.config import get_settings
     from backend.audio.transcriber import get_transcriber
+
     settings = get_settings()
 
     print("\n[1/4] Loading Whisper...")
     transcriber = get_transcriber()
-    transcriber.load(settings.whisper_model, settings.whisper_compute_type, settings.whisper_device)
+    transcriber.load(
+        settings.whisper_model, settings.whisper_compute_type, settings.whisper_device
+    )
 
     print("[2/4] Loading Pyannote pipeline...")
     import warnings
+
     with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", message=".*torchcodec.*", category=UserWarning)
+        warnings.filterwarnings(
+            "ignore", message=".*torchcodec.*", category=UserWarning
+        )
         from pyannote.audio import Pipeline
     import torch
+
     pipeline = Pipeline.from_pretrained(
         "pyannote/speaker-diarization-3.1",
         token=settings.hf_token,
@@ -187,17 +237,21 @@ def main():
     # Try to tune clustering threshold and min_duration_off if accessible
     try:
         params = pipeline.parameters(instantiated=True)
-        print(f"\n  Pipeline parameters: {list(params.keys()) if isinstance(params, dict) else 'opaque'}")
+        print(
+            f"\n  Pipeline parameters: {list(params.keys()) if isinstance(params, dict) else 'opaque'}"
+        )
     except Exception:
         print("\n  Could not inspect pipeline parameters (expected for Pyannote 3.1)")
 
     all_results = []
 
     for i, (name, params) in enumerate(configs):
-        print(f"\n  [{i+1}/{len(configs)}] Running: {name}")
+        print(f"\n  [{i + 1}/{len(configs)}] Running: {name}")
         print(f"    Params: {params}")
         try:
-            result = run_config(pipeline, pcm_data, transcriber, annotated_segs, name, params)
+            result = run_config(
+                pipeline, pcm_data, transcriber, annotated_segs, name, params
+            )
             all_results.append(result)
             print(f"    Speakers: {result.get('speakers_detected', '?')}")
             print(f"    Turns:    {result.get('turns_detected', '?')}")

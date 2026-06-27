@@ -138,6 +138,7 @@ def run_live_chunked(pcm_data: bytes, transcriber, diarizer) -> list[EvalSegment
     prev_speaker = "Speaker 1"
 
     from audio.speaker_profile import SpeakerProfile
+
     speaker_profile = SpeakerProfile()
 
     while offset_bytes < len(pcm_data):
@@ -195,8 +196,11 @@ def run_post_session(pcm_data: bytes, transcriber, diarizer) -> list[EvalSegment
     # Step 2: Run Pyannote on the FULL audio (like post_session_diarizer.py)
     try:
         import warnings
+
         with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message=".*torchcodec.*", category=UserWarning)
+            warnings.filterwarnings(
+                "ignore", message=".*torchcodec.*", category=UserWarning
+            )
             from pyannote.audio import Pipeline
         import torch
 

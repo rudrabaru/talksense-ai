@@ -519,11 +519,11 @@ async def run_evaluation(
         else 0.0
     )
 
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"  Attribution Accuracy : {accuracy:.1f}%  ({correct}/{total_matched})")
     print(f"  Macro F1             : {macro_f1:.3f}")
     print(f"  SCDR                 : {scdr:.1f}%  ({scdr_detected}/{scdr_total})")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
 
     report = generate_report(
         session_id=session_id,

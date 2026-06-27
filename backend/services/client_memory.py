@@ -210,7 +210,7 @@ async def update_client_memory(db: AsyncSession, client_id: uuid.UUID) -> None:
                     bs_text = ", ".join(bs) if bs else "None detected"
 
                     history_parts.append(
-                        f"Meeting {i+1}:\n"
+                        f"Meeting {i + 1}:\n"
                         f"  Title: {s.title or 'Untitled Session'}\n"
                         f"  Date: "
                         f"{s.started_at.isoformat() if s.started_at else 'Unknown'}\n"

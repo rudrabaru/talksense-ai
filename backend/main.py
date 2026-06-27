@@ -33,10 +33,9 @@ REST endpoints:
 import logging
 import os
 import sys
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-
-import time
 
 from fastapi import (
     Body,
@@ -591,7 +590,10 @@ async def get_dashboard_snapshot(
         # Calculate latest timestamp from DB metrics
         latest_ts = db_session.started_at.replace(tzinfo=timezone.utc).timestamp()
         if metrics_list:
-            latest_ts = max(m.timestamp.replace(tzinfo=timezone.utc).timestamp() for m in metrics_list)
+            latest_ts = max(
+                m.timestamp.replace(tzinfo=timezone.utc).timestamp()
+                for m in metrics_list
+            )
 
         # For completed/terminal sessions, recalculate speaking metrics from the full
         # set of DB segments

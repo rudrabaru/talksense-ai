@@ -186,10 +186,10 @@ async def run_post_session_diarization(
 
         # ── Step 10: Role Classification (Offline-First mode-aware mapping) ─────────────
         from ws.session_manager import get_session_manager
-        
+
         manager = get_session_manager()
         session_obj = manager.get(session_id)
-        
+
         primary_roles = {}
         if session_obj and session_obj.conversation:
             primary_roles = session_obj.conversation.roles
@@ -198,25 +198,28 @@ async def run_post_session_diarization(
         if not primary_roles:
             from db import crud
             from db.database import AsyncSessionLocal
+
             async with AsyncSessionLocal() as db:
                 metrics = await crud.get_latest_session_metrics(db, session_id)
-                role_metric = next((m for m in metrics if m.metric_name == "speaker_roles"), None)
+                role_metric = next(
+                    (m for m in metrics if m.metric_name == "speaker_roles"), None
+                )
                 if role_metric and role_metric.metric_value:
                     primary_roles = role_metric.metric_value
 
         with profile_stage(session_id, "Database writes"):
             from db import crud
             from db.database import AsyncSessionLocal
-            
+
             async with AsyncSessionLocal() as db:
                 metrics_to_save = []
-                
+
                 # Standardized offline-first roles
                 if primary_roles:
                     metrics_to_save.append(
                         {"metric_name": "speaker_roles", "metric_value": primary_roles}
                     )
-                    
+
                 # Save role classification result
                 if metrics_to_save:
                     await crud.save_session_metrics_batch(
@@ -498,8 +501,8 @@ def _run_pyannote_sync(
         or None if diarization failed.
     """
     try:
-        import warnings
         import os
+        import warnings
 
         hf_token = os.environ.get("HF_TOKEN")
         if not hf_token:
@@ -556,15 +559,18 @@ def _run_pyannote_sync(
             )
 
             from pyannote.audio import Pipeline
-            
-            logger.info("post_session_diarizer — session %s: Loading offline pipeline", session_id[:8])
+
+            logger.info(
+                "post_session_diarizer — session %s: Loading offline pipeline",
+                session_id[:8],
+            )
             pipeline = Pipeline.from_pretrained(
                 "pyannote/speaker-diarization-3.1",
                 token=hf_token,
             )
             device = "cuda" if torch.cuda.is_available() else "cpu"
             pipeline.to(torch.device(device))
-            
+
             # OPTIMIZATION: Set batch size to 32 for maximum throughput.
             # Stride remains 0.1 (default) to preserve SCDR accuracy.
             pipeline.segmentation_batch_size = 32

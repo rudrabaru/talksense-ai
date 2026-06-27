@@ -115,12 +115,12 @@ async def main():
         logger.info(f"Recovered session status: '{recovered_sess.status}'")
         logger.info(f"Recovered session audio path: '{recovered_sess.audio_file_path}'")
 
-        assert (
-            recovered_sess.status == "interrupted"
-        ), "Session status should be interrupted"
-        assert recovered_sess.audio_file_path == os.path.abspath(
-            wav_path
-        ), "Audio path should be mapped"
+        assert recovered_sess.status == "interrupted", (
+            "Session status should be interrupted"
+        )
+        assert recovered_sess.audio_file_path == os.path.abspath(wav_path), (
+            "Audio path should be mapped"
+        )
 
     # 5. Verify WAV header finalization
     final_chunk, final_subchunk = parse_wav_header(wav_path)
@@ -130,12 +130,12 @@ async def main():
     expected_chunk_size = 36 + dummy_data_size
     expected_subchunk_size = dummy_data_size
 
-    assert (
-        final_chunk == expected_chunk_size
-    ), f"Expected ChunkSize {expected_chunk_size}, got {final_chunk}"
-    assert (
-        final_subchunk == expected_subchunk_size
-    ), f"Expected Subchunk2Size {expected_subchunk_size}, got {final_subchunk}"
+    assert final_chunk == expected_chunk_size, (
+        f"Expected ChunkSize {expected_chunk_size}, got {final_chunk}"
+    )
+    assert final_subchunk == expected_subchunk_size, (
+        f"Expected Subchunk2Size {expected_subchunk_size}, got {final_subchunk}"
+    )
 
     # 6. Cleanup
     if os.path.exists(wav_path):

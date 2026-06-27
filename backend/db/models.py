@@ -176,7 +176,8 @@ class Session(Base):
         Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     mode: Mapped[str] = mapped_column(
-        String(50), nullable=False  # "meeting" | "sales" | "interview"
+        String(50),
+        nullable=False,  # "meeting" | "sales" | "interview"
     )
     title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     started_at: Mapped[datetime] = mapped_column(
@@ -264,7 +265,8 @@ class TranscriptSegment(Base):
         nullable=False,
     )
     speaker_id: Mapped[str | None] = mapped_column(
-        String(100), nullable=True  # e.g. "Speaker A", "Speaker B"
+        String(100),
+        nullable=True,  # e.g. "Speaker A", "Speaker B"
     )
     start_time: Mapped[float] = mapped_column(Float, nullable=False)
     end_time: Mapped[float] = mapped_column(Float, nullable=False)
@@ -416,10 +418,12 @@ class Alert(Base):
         nullable=False,
     )
     type: Mapped[str | None] = mapped_column(
-        String(100), nullable=True  # e.g. "long_silence", "sentiment_crash"
+        String(100),
+        nullable=True,  # e.g. "long_silence", "sentiment_crash"
     )
     severity: Mapped[str] = mapped_column(
-        String(50), nullable=False  # "critical" | "warning" | "info"
+        String(50),
+        nullable=False,  # "critical" | "warning" | "info"
     )
     message: Mapped[str] = mapped_column(Text, nullable=False)
     timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -475,14 +479,16 @@ class ClientSnapshot(Base):
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     sentiment_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     sentiment_trend: Mapped[str | None] = mapped_column(
-        String(50), nullable=True  # "improving" | "stable" | "declining"
+        String(50),
+        nullable=True,  # "improving" | "stable" | "declining"
     )
     meetings_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_meeting_date: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
     common_objections: Mapped[list | None] = mapped_column(
-        JSONB, nullable=True  # e.g. ["pricing", "integration"]
+        JSONB,
+        nullable=True,  # e.g. ["pricing", "integration"]
     )
 
     # ── Indexes ───────────────────────────────────────────────────────────────

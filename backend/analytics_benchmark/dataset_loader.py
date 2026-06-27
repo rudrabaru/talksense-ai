@@ -1,6 +1,7 @@
 import json
 import os
-from typing import Dict, List, Any
+from typing import Any, Dict, List
+
 
 def load_dataset(file_path: str) -> Dict[str, Any]:
     with open(file_path, "r", encoding="utf-8") as f:
@@ -9,6 +10,7 @@ def load_dataset(file_path: str) -> Dict[str, Any]:
             if "sentiment_confidence" not in seg:
                 seg["sentiment_confidence"] = 1.0
         return data
+
 
 def discover_datasets(base_dir: str) -> List[str]:
     """Discover all JSON datasets in the datasets directory."""

@@ -142,12 +142,12 @@ class ConversationEngine:
         if host_embedding and speaker_centroids:
             best_match = None
             best_score = -1.0
-            
+
             import numpy as np
-            
+
             host_arr = np.array(host_embedding)
             host_norm = np.linalg.norm(host_arr)
-            
+
             if host_norm > 0:
                 for spk, centroid in speaker_centroids.items():
                     cent_arr = np.array(centroid)
@@ -157,7 +157,7 @@ class ConversationEngine:
                         if score > best_score:
                             best_score = score
                             best_match = spk
-                            
+
             if best_match and best_score > 0.65:  # threshold
                 host_speaker_id = best_match
 
@@ -176,84 +176,96 @@ class ConversationEngine:
         }
 
         mapping = mode_roles.get(mode, {"host": "host", "guest": "guest"})
-        
+
         roles = {}
         for spk in state.participation.keys():
             if spk == host_speaker_id:
                 roles[spk] = mapping["host"]
             else:
                 roles[spk] = mapping["guest"]
-                
+
         state.roles = roles
 
-    def _generate_coaching_recommendations(self, state: ConversationState, mode: str) -> None:
+    def _generate_coaching_recommendations(
+        self, state: ConversationState, mode: str
+    ) -> None:
         """Deterministically generate real-time coaching recommendations from ConversationState."""
         tips = []
-        
+
         # 1. Speaking Balance
         if state.speaking_ratio:
             dominant_speaker = max(state.speaking_ratio, key=state.speaking_ratio.get)
             if state.speaking_ratio[dominant_speaker] > 70:
                 is_host = state.host_speaker_id == dominant_speaker
                 if is_host or not state.host_speaker_id:
-                    tips.append({
-                        "id": "coach_speaking_balance",
-                        "severity": "medium",
-                        "title": "Speaking Balance",
-                        "recommendation": "Pause and ask an open question.",
-                        "reason": f"You are speaking {state.speaking_ratio[dominant_speaker]:.0f}% of the time."
-                    })
+                    tips.append(
+                        {
+                            "id": "coach_speaking_balance",
+                            "severity": "medium",
+                            "title": "Speaking Balance",
+                            "recommendation": "Pause and ask an open question.",
+                            "reason": f"You are speaking {state.speaking_ratio[dominant_speaker]:.0f}% of the time.",
+                        }
+                    )
 
         # 2. Filler Density
         duration_minutes = max(1.0, getattr(state, "duration_seconds", 0.0) / 60.0)
         filler_density = state.filler_count / duration_minutes
         if filler_density > 3:
-            tips.append({
-                "id": "coach_filler_density",
-                "severity": "low",
-                "title": "Filler Word Density",
-                "recommendation": "Slow down and speak more deliberately.",
-                "reason": f"High filler word count detected ({int(filler_density)}/min)."
-            })
+            tips.append(
+                {
+                    "id": "coach_filler_density",
+                    "severity": "low",
+                    "title": "Filler Word Density",
+                    "recommendation": "Slow down and speak more deliberately.",
+                    "reason": f"High filler word count detected ({int(filler_density)}/min).",
+                }
+            )
 
         # 3. Interruptions
         if state.interruptions > 3:
-            tips.append({
-                "id": "coach_interruptions",
-                "severity": "medium",
-                "title": "Interruptions",
-                "recommendation": "Let the speaker finish their thought.",
-                "reason": f"High interruption frequency ({state.interruptions} detected)."
-            })
+            tips.append(
+                {
+                    "id": "coach_interruptions",
+                    "severity": "medium",
+                    "title": "Interruptions",
+                    "recommendation": "Let the speaker finish their thought.",
+                    "reason": f"High interruption frequency ({state.interruptions} detected).",
+                }
+            )
 
         # 4. Objections (Sales mode)
         if mode == "sales" and state.objection_timeline:
             last_obj = state.objection_timeline[-1]
             if state.duration_seconds - last_obj.get("timestamp", 0) < 120:
-                tips.append({
-                    "id": "coach_objection",
-                    "severity": "high",
-                    "title": f"Objection: {last_obj.get('category', 'Concern').title()}",
-                    "recommendation": "Address concern directly using FEEL-FELT-FOUND.",
-                    "reason": f"Client mentioned: '{last_obj.get('keyword', '')}'."
-                })
+                tips.append(
+                    {
+                        "id": "coach_objection",
+                        "severity": "high",
+                        "title": f"Objection: {last_obj.get('category', 'Concern').title()}",
+                        "recommendation": "Address concern directly using FEEL-FELT-FOUND.",
+                        "reason": f"Client mentioned: '{last_obj.get('keyword', '')}'.",
+                    }
+                )
 
         # 5. Buying Signals (Sales mode)
         if mode == "sales" and state.buying_signal_timeline:
             last_buy = state.buying_signal_timeline[-1]
             if state.duration_seconds - last_buy.get("timestamp", 0) < 120:
-                tips.append({
-                    "id": "coach_buying_signal",
-                    "severity": "high",
-                    "title": "Buying Signal Detected",
-                    "recommendation": "Shift toward closing or next steps.",
-                    "reason": "Client expressed positive intent."
-                })
-        
+                tips.append(
+                    {
+                        "id": "coach_buying_signal",
+                        "severity": "high",
+                        "title": "Buying Signal Detected",
+                        "recommendation": "Shift toward closing or next steps.",
+                        "reason": "Client expressed positive intent.",
+                    }
+                )
+
         # Sort by severity (high -> medium -> low)
         severity_order = {"high": 0, "medium": 1, "low": 2}
         tips.sort(key=lambda x: severity_order.get(x.get("severity", "low"), 3))
-        
+
         state.coaching_tips = tips
 
     # ── Metric updaters ───────────────────────────────────────────────────────
@@ -268,8 +280,16 @@ class ConversationEngine:
         last_end_time = 0.0
         if state.transcript_segments:
             last_seg = state.transcript_segments[-1]
-            last_speaker = getattr(last_seg, "speaker", last_seg.get("speaker") if isinstance(last_seg, dict) else None)
-            last_end_time = getattr(last_seg, "end_time", last_seg.get("end_time", 0.0) if isinstance(last_seg, dict) else 0.0)
+            last_speaker = getattr(
+                last_seg,
+                "speaker",
+                last_seg.get("speaker") if isinstance(last_seg, dict) else None,
+            )
+            last_end_time = getattr(
+                last_seg,
+                "end_time",
+                last_seg.get("end_time", 0.0) if isinstance(last_seg, dict) else 0.0,
+            )
 
         for seg in segments:
             speaker = (
@@ -296,11 +316,20 @@ class ConversationEngine:
             if last_speaker is not None and speaker != last_speaker:
                 state.speaker_switches += 1
                 overlap = last_end_time - start_time
-                if overlap > INTERRUPTION_OVERLAP_THRESHOLD or word_count > INTERRUPTION_WORD_COUNT_THRESHOLD:
+                if (
+                    overlap > INTERRUPTION_OVERLAP_THRESHOLD
+                    or word_count > INTERRUPTION_WORD_COUNT_THRESHOLD
+                ):
                     state.interruptions += 1
-            
+
             last_speaker = speaker
-            last_end_time = getattr(seg, "end_time", seg.get("end_time", 0.0) if isinstance(seg, dict) else getattr(seg, "end_time", 0.0))
+            last_end_time = getattr(
+                seg,
+                "end_time",
+                seg.get("end_time", 0.0)
+                if isinstance(seg, dict)
+                else getattr(seg, "end_time", 0.0),
+            )
 
         total_words = sum(state.participation.values()) or 1
         state.speaking_ratio = {
@@ -357,8 +386,8 @@ class ConversationEngine:
                 OBJECTION_KEYWORDS,
                 assess_sales_signals,
             )
-            from services.linguistic_parser import annotate_segments
             from services.conversation_state_resolver import resolve_conversation_state
+            from services.linguistic_parser import annotate_segments
 
             # Convert to the format context_analyzer expects
             seg_dicts = [s if isinstance(s, dict) else s.__dict__ for s in all_segments]
@@ -379,7 +408,7 @@ class ConversationEngine:
                     if isinstance(OBJECTION_KEYWORDS, dict):
                         # Nested dict: {category: [kw1, kw2, ...]}
                         for category, kw_list in OBJECTION_KEYWORDS.items():
-                            for kw in (kw_list if isinstance(kw_list, list) else []):
+                            for kw in kw_list if isinstance(kw_list, list) else []:
                                 if kw in text and text not in [
                                     o.get("text", "") for o in objections
                                 ]:
@@ -420,13 +449,27 @@ class ConversationEngine:
                 for s in seg_dicts:
                     start_time = s.get("start_time", 0.0)
                     for c in s.get("clauses", []):
-                        if not c.get("is_negated") and not c.get("is_conditional") and not c.get("is_abandoned"):
-                            if any(kw in c.get("text", "").lower() for kw in ["interested", "this looks good", "sounds good", "makes sense", "fits the budget"]):
-                                buying_texts.append({
-                                    "text": c.get("text", ""),
-                                    "timestamp": start_time
-                                })
-                state.buying_signals = [b["text"] for b in buying_texts[-3:]]  # keep last 3 strings
+                        if (
+                            not c.get("is_negated")
+                            and not c.get("is_conditional")
+                            and not c.get("is_abandoned")
+                        ):
+                            if any(
+                                kw in c.get("text", "").lower()
+                                for kw in [
+                                    "interested",
+                                    "this looks good",
+                                    "sounds good",
+                                    "makes sense",
+                                    "fits the budget",
+                                ]
+                            ):
+                                buying_texts.append(
+                                    {"text": c.get("text", ""), "timestamp": start_time}
+                                )
+                state.buying_signals = [
+                    b["text"] for b in buying_texts[-3:]
+                ]  # keep last 3 strings
                 state.buying_signal_timeline = buying_texts
 
         except Exception as exc:
@@ -438,12 +481,12 @@ class ConversationEngine:
         try:
             from services.context_analyzer import (
                 compute_meeting_quality_v2,
+                detect_decisions,
                 detect_signals,
                 extract_actions,
-                detect_decisions,
             )
-            from services.linguistic_parser import annotate_segments
             from services.conversation_state_resolver import resolve_conversation_state
+            from services.linguistic_parser import annotate_segments
 
             seg_dicts = [s if isinstance(s, dict) else s.__dict__ for s in all_segments]
             annotate_segments(seg_dicts)

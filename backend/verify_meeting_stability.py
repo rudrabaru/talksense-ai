@@ -138,7 +138,7 @@ async def main():
     pcm_data = b"\x00" * TARGET_BYTES
     actual_duration = len(pcm_data) / BYTES_PER_SAMPLE / SAMPLE_RATE
     logger.info(
-        f"Prepared audio duration: {actual_duration:.1f}s ({actual_duration/60:.2f} mins), size={len(pcm_data)} bytes"  # noqa: E501
+        f"Prepared audio duration: {actual_duration:.1f}s ({actual_duration / 60:.2f} mins), size={len(pcm_data)} bytes"  # noqa: E501
     )
 
     # 2. Get backend process for system monitoring
@@ -284,7 +284,7 @@ async def main():
     t_end = time.monotonic()
     total_realtime = t_end - t_start
     logger.info(
-        f"Stream completed in {total_realtime:.1f}s (speedup={actual_duration/total_realtime:.2f}x)"  # noqa: E501
+        f"Stream completed in {total_realtime:.1f}s (speedup={actual_duration / total_realtime:.2f}x)"  # noqa: E501
     )
 
     # 6. Wait for post-session diarization and status completion
@@ -454,8 +454,8 @@ async def main():
         "\n### Summary",
         "A 15-minute simulated meeting validation was executed at 5x speed (15 minutes of audio streamed in approximately 3 minutes) to verify the core subsystems of TalkSense AI under real-world durations.",  # noqa: E501
         "\n### Performance Metrics",
-        f"- **Simulated Duration:** {actual_duration/60:.1f} minutes ({actual_duration:.1f} seconds)",  # noqa: E501
-        f"- **Actual Execution Time:** {total_realtime:.1f} seconds (speedup ratio: {actual_duration/total_realtime:.2f}x)",  # noqa: E501
+        f"- **Simulated Duration:** {actual_duration / 60:.1f} minutes ({actual_duration:.1f} seconds)",  # noqa: E501
+        f"- **Actual Execution Time:** {total_realtime:.1f} seconds (speedup ratio: {actual_duration / total_realtime:.2f}x)",  # noqa: E501
         "\n#### CPU & Memory Profile",
         f"- **CPU Usage:** Min={cpu_stats['min']:.1f}%, Max={cpu_stats['max']:.1f}%, Avg={cpu_stats['avg']:.1f}%",  # noqa: E501
         f"- **Memory Usage:** Start={mem_stats['start']:.1f} MB, End={mem_stats['end']:.1f} MB, Peak={mem_stats['max']:.1f} MB",  # noqa: E501

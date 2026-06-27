@@ -12,6 +12,7 @@ from backend.services.nlp_engine import NLPEngine
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def verify_batch_sentiment():
     print("Initializing NLP Engine...")
     try:
@@ -23,19 +24,25 @@ def verify_batch_sentiment():
     # Create dummy segments
     # Mix of short (<3 words) and long (>=3 words) segments
     segments = [
-        {"text": "Hello", "speaker": "A"},                            # Short
-        {"text": "This is a great product I love it", "speaker": "B"}, # Long (Positive)
-        {"text": "No", "speaker": "A"},                               # Short
-        {"text": "I am not happy with the service", "speaker": "B"},   # Long (Negative)
-        {"text": "Okay sure", "speaker": "A"},                        # Short? (2 words)
-        {"text": "Let's schedule a follow up meeting", "speaker": "B"}, # Long (Neutral/Positive?)
+        {"text": "Hello", "speaker": "A"},  # Short
+        {
+            "text": "This is a great product I love it",
+            "speaker": "B",
+        },  # Long (Positive)
+        {"text": "No", "speaker": "A"},  # Short
+        {"text": "I am not happy with the service", "speaker": "B"},  # Long (Negative)
+        {"text": "Okay sure", "speaker": "A"},  # Short? (2 words)
+        {
+            "text": "Let's schedule a follow up meeting",
+            "speaker": "B",
+        },  # Long (Neutral/Positive?)
     ]
-    
+
     print(f"\nProcessing {len(segments)} segments...")
     start_time = time.time()
-    
+
     enriched = engine.enrich_transcript(segments)
-    
+
     end_time = time.time()
     duration = end_time - start_time
     print(f"Processing took {duration:.4f} seconds")
@@ -46,7 +53,7 @@ def verify_batch_sentiment():
         print(f"    Sentiment: {seg.get('sentiment')} ({seg.get('sentiment_label')})")
         print(f"    Confidence: {seg.get('sentiment_confidence')}")
         print(f"    Keywords: {seg.get('keywords')}")
-        
+
         # Verify schema
         assert "sentiment" in seg, "Missing sentiment field"
         assert "sentiment_confidence" in seg, "Missing sentiment_confidence field"
@@ -56,9 +63,12 @@ def verify_batch_sentiment():
         words = seg["text"].split()
         if len(words) < 3:
             if seg["sentiment"] != 0.0 or seg["sentiment_label"] != "Neutral":
-                 print(f"WARNING: Short text should be Neutral/0.0 but got {seg['sentiment']}")
+                print(
+                    f"WARNING: Short text should be Neutral/0.0 but got {seg['sentiment']}"
+                )
 
     print("\nVerification Passed!")
+
 
 if __name__ == "__main__":
     verify_batch_sentiment()

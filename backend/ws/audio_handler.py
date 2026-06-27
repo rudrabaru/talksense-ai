@@ -21,6 +21,7 @@ binary frames. Invalid sessions are rejected with a close code 4004.
 
 import asyncio
 import logging
+import time
 import uuid
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -285,6 +286,7 @@ async def _transcribe_and_enrich(
     nlp = get_nlp_engine()  # returns the module-level singleton; no model reload
 
     raw_dicts = [{"text": s.text, "start": s.start, "end": s.end} for s in diarized]
+    loop = asyncio.get_running_loop()
     enriched = await loop.run_in_executor(None, nlp.enrich_transcript, raw_dicts)
 
     # Merge enrichment back onto diarized segments
@@ -341,12 +343,12 @@ async def _transcribe_and_enrich(
                 session.conversation.transcript_segments.append(seg.__dict__)
 
         updated_metrics, new_alerts = engine.process_segments(
-            diarized, 
-            session.conversation, 
+            diarized,
+            session.conversation,
             session.mode,
             session_id,
             session.host_embedding,
-            session.speaker_profile.centroids
+            session.speaker_profile.centroids,
         )
         session.conversation = updated_metrics
 
@@ -444,12 +446,12 @@ async def _inject_phrase(session_id: str, speaker: str, phrase: str, manager) ->
     async with session.lock:
         session.conversation.transcript_segments.append(seg_dict)
         updated_metrics, new_alerts = engine.process_segments(
-            [seg_dict], 
-            session.conversation, 
+            [seg_dict],
+            session.conversation,
             session.mode,
             session_id,
             session.host_embedding,
-            session.speaker_profile.centroids
+            session.speaker_profile.centroids,
         )
         session.conversation = updated_metrics
 
