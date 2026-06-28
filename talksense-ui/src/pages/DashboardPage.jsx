@@ -2,7 +2,13 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSessionWebSocket } from "../hooks/useSessionWebSocket";
 import { useAudioCapture } from "../hooks/useAudioCapture";
-import { createSession, getSession, listClients, getClientBriefing, createClient } from "../services/api";
+import {
+  createSession,
+  getSession,
+  listClients,
+  getClientBriefing,
+  createClient,
+} from "../services/api";
 import ClientBriefingCard from "../components/ClientBriefingCard";
 import SessionStatusBar from "../components/dashboard/SessionStatusBar";
 import TranscriptPanel from "../components/dashboard/TranscriptPanel";
@@ -93,6 +99,7 @@ export default function DashboardPage() {
       };
       fetchBriefing();
     } else {
+      // eslint-disable-next-line
       setClientBriefing(null);
     }
   }, [selectedClientId, launcherMode, sessionId]);
@@ -108,14 +115,15 @@ export default function DashboardPage() {
       setClientCreateError(null);
       const newClient = await createClient({
         name: newClientName.trim(),
-        industry: newClientIndustry.trim() || null
+        industry: newClientIndustry.trim() || null,
       });
-      setClients(prev => [...prev, newClient]);
+      setClients((prev) => [...prev, newClient]);
       setSelectedClientId(newClient.id);
       setNewClientName("");
       setNewClientIndustry("");
       setIsCreatingClient(false);
     } catch (err) {
+      console.error("[DashboardPage] Failed to create client:", err);
       setClientCreateError("Failed to create client.");
     }
   };
@@ -126,8 +134,8 @@ export default function DashboardPage() {
     setInitError(null);
     try {
       const data = await createSession(
-        launcherMode, 
-        launcherMode === "sales" && selectedClientId ? selectedClientId : null
+        launcherMode,
+        launcherMode === "sales" && selectedClientId ? selectedClientId : null,
       );
       if (data && data.session_id) {
         navigate(`/dashboard/${data.session_id}`);
@@ -152,20 +160,27 @@ export default function DashboardPage() {
         setActiveSessionMode(sessionData?.mode || null);
         setValidatedSessionId(sessionId);
       } catch (err) {
-        console.warn(`[DashboardPage] Session ${sessionId} invalid/expired.`, err);
-        setInitError("Session not found or invalid. Please return to home or launch a new session.");
+        console.warn(
+          `[DashboardPage] Session ${sessionId} invalid/expired.`,
+          err,
+        );
+        setInitError(
+          "Session not found or invalid. Please return to home or launch a new session.",
+        );
       }
     };
 
     initializeSession();
   }, [sessionId]);
 
-
   // --- Cleanup audio capture on unmount --------------------------------------
   useEffect(() => {
     return () => {
       // Send "end" and close socket on unmount to properly complete the session
-      if (audioWsRef.current && audioWsRef.current.readyState === WebSocket.OPEN) {
+      if (
+        audioWsRef.current &&
+        audioWsRef.current.readyState === WebSocket.OPEN
+      ) {
         try {
           audioWsRef.current.send("end");
         } catch (e) {
@@ -190,15 +205,23 @@ export default function DashboardPage() {
    */
   const startMicrophone = useCallback(() => {
     if (!validatedSessionId) return;
-    
+
     // If we ALREADY have an open WebSocket, we just need to restart capture!
-    if (audioWsRef.current && audioWsRef.current.readyState === WebSocket.OPEN) {
-      console.log("[DashboardPage] Audio WebSocket already open. Resuming capture.");
+    if (
+      audioWsRef.current &&
+      audioWsRef.current.readyState === WebSocket.OPEN
+    ) {
+      console.log(
+        "[DashboardPage] Audio WebSocket already open. Resuming capture.",
+      );
       setAudioStatus("streaming");
       try {
         startCapture({
           onAudioChunk: (buffer) => {
-            if (audioWsRef.current && audioWsRef.current.readyState === WebSocket.OPEN) {
+            if (
+              audioWsRef.current &&
+              audioWsRef.current.readyState === WebSocket.OPEN
+            ) {
               audioWsRef.current.send(buffer);
             }
           },
@@ -210,7 +233,10 @@ export default function DashboardPage() {
       return;
     }
 
-    if (audioWsRef.current && audioWsRef.current.readyState === WebSocket.CONNECTING) {
+    if (
+      audioWsRef.current &&
+      audioWsRef.current.readyState === WebSocket.CONNECTING
+    ) {
       console.warn("[DashboardPage] Audio WebSocket is connecting.");
       return;
     }
@@ -227,7 +253,10 @@ export default function DashboardPage() {
         await startCapture({
           onAudioChunk: (buffer) => {
             // Guard: only send if the socket is still open.
-            if (audioWsRef.current && audioWsRef.current.readyState === WebSocket.OPEN) {
+            if (
+              audioWsRef.current &&
+              audioWsRef.current.readyState === WebSocket.OPEN
+            ) {
               audioWsRef.current.send(buffer);
             }
           },
@@ -239,7 +268,9 @@ export default function DashboardPage() {
     };
 
     ws.onclose = (event) => {
-      console.log(`[DashboardPage] Audio WebSocket closed (code: ${event.code}).`);
+      console.log(
+        `[DashboardPage] Audio WebSocket closed (code: ${event.code}).`,
+      );
       audioWsRef.current = null;
       stopCapture();
       setAudioStatus("idle");
@@ -247,7 +278,9 @@ export default function DashboardPage() {
       // 4009 = backend rejected because session is terminal.
       // Navigate to /dashboard so a fresh session is auto-created.
       if (event.code === 4009) {
-        console.warn("[DashboardPage] Session ended on backend — navigating to fresh session.");
+        console.warn(
+          "[DashboardPage] Session ended on backend — navigating to fresh session.",
+        );
         navigate("/dashboard", { replace: true });
       }
     };
@@ -265,7 +298,7 @@ export default function DashboardPage() {
   const stopMicrophone = useCallback(() => {
     // 1. Stop PCM capture to pause audio ingestion.
     stopCapture();
-    
+
     // Do NOT send "end" or close the WebSocket here so we can restart.
     setAudioStatus("idle");
   }, [stopCapture]);
@@ -285,8 +318,18 @@ export default function DashboardPage() {
   if (initError) {
     return (
       <main style={{ padding: "16px", fontFamily: "sans-serif" }} role="alert">
-        <div style={{ border: "2px solid #ef4444", padding: "16px", background: "#fef2f2", textAlign: "center", borderRadius: "8px" }}>
-          <h3 style={{ margin: "0 0 8px 0", color: "#991b1b" }}>Session Initialization Failed</h3>
+        <div
+          style={{
+            border: "2px solid #ef4444",
+            padding: "16px",
+            background: "#fef2f2",
+            textAlign: "center",
+            borderRadius: "8px",
+          }}
+        >
+          <h3 style={{ margin: "0 0 8px 0", color: "#991b1b" }}>
+            Session Initialization Failed
+          </h3>
           <p style={{ margin: "0", color: "#7f1d1d" }}>{initError}</p>
         </div>
       </main>
@@ -301,32 +344,36 @@ export default function DashboardPage() {
         <nav className="border-b border-gray-200 bg-white sticky top-0 z-50 shadow-sm">
           <div className="mx-auto px-6 lg:px-12 xl:px-16 h-16 flex items-center justify-between">
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate("/")}
               className="flex items-center gap-3 hover:opacity-85 transition-all"
             >
               <div className="relative w-9 h-9">
-                <img src={logoImage} alt="TalkSense AI Logo" className="w-full h-full object-contain" />
+                <img
+                  src={logoImage}
+                  alt="TalkSense AI Logo"
+                  className="w-full h-full object-contain"
+                />
               </div>
               <span className="font-bold text-xl tracking-tight">
-                <span style={{ color: '#4F46E5' }}>TalkSense</span>
-                <span style={{ color: '#14B8A6' }}> AI</span>
+                <span style={{ color: "#4F46E5" }}>TalkSense</span>
+                <span style={{ color: "#14B8A6" }}> AI</span>
               </span>
             </button>
             <div className="flex gap-6 items-center text-sm font-medium">
               <button
-                onClick={() => navigate('/')}
+                onClick={() => navigate("/")}
                 className="text-gray-500 hover:text-indigo-600 transition-colors"
               >
                 Home
               </button>
               <button
-                onClick={() => navigate('/upload')}
+                onClick={() => navigate("/upload")}
                 className="text-gray-500 hover:text-indigo-600 transition-colors"
               >
                 Analyze
               </button>
               <button
-                onClick={() => navigate('/sessions')}
+                onClick={() => navigate("/sessions")}
                 className="text-gray-500 hover:text-indigo-600 transition-colors"
               >
                 History
@@ -341,7 +388,8 @@ export default function DashboardPage() {
               Launch Live Intelligence Session
             </h1>
             <p className="text-gray-500 text-center mb-8">
-              Configure your workspace and review client memory before starting the live session.
+              Configure your workspace and review client memory before starting
+              the live session.
             </p>
 
             <div className="grid md:grid-cols-2 gap-8 mb-8 items-start">
@@ -395,35 +443,48 @@ export default function DashboardPage() {
                         onClick={() => setIsCreatingClient(!isCreatingClient)}
                         className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
                       >
-                        {isCreatingClient ? "← Choose Client" : "+ Create Client"}
+                        {isCreatingClient
+                          ? "← Choose Client"
+                          : "+ Create Client"}
                       </button>
                     </div>
 
                     {isCreatingClient ? (
-                      <form onSubmit={handleCreateClient} className="space-y-3 bg-white p-4 rounded-xl border border-gray-200 shadow-sm animate-scale-in">
+                      <form
+                        onSubmit={handleCreateClient}
+                        className="space-y-3 bg-white p-4 rounded-xl border border-gray-200 shadow-sm animate-scale-in"
+                      >
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Company / Name</label>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                            Company / Name
+                          </label>
                           <input
                             type="text"
                             required
                             value={newClientName}
-                            onChange={e => setNewClientName(e.target.value)}
+                            onChange={(e) => setNewClientName(e.target.value)}
                             placeholder="e.g. Acme Corporation"
                             className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Industry (Optional)</label>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">
+                            Industry (Optional)
+                          </label>
                           <input
                             type="text"
                             value={newClientIndustry}
-                            onChange={e => setNewClientIndustry(e.target.value)}
+                            onChange={(e) =>
+                              setNewClientIndustry(e.target.value)
+                            }
                             placeholder="e.g. Software"
                             className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           />
                         </div>
                         {clientCreateError && (
-                          <p className="text-[10px] text-rose-600 mt-1">⚠️ {clientCreateError}</p>
+                          <p className="text-[10px] text-rose-600 mt-1">
+                            ⚠️ {clientCreateError}
+                          </p>
                         )}
                         <button
                           type="submit"
@@ -438,7 +499,9 @@ export default function DashboardPage() {
                         onChange={(e) => setSelectedClientId(e.target.value)}
                         className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-gray-700"
                       >
-                        <option value="" disabled>Select client...</option>
+                        <option value="" disabled>
+                          Select client...
+                        </option>
                         {clients.map((c) => (
                           <option key={c.id} value={c.id}>
                             {c.name} {c.industry ? `(${c.industry})` : ""}
@@ -457,7 +520,10 @@ export default function DashboardPage() {
                 </label>
                 {launcherMode === "sales" ? (
                   selectedClientId ? (
-                    <ClientBriefingCard client={clientBriefing} loading={briefingLoading} />
+                    <ClientBriefingCard
+                      client={clientBriefing}
+                      loading={briefingLoading}
+                    />
                   ) : (
                     <div className="border-2 border-dashed border-gray-200 rounded-2xl p-8 text-center text-gray-400">
                       Select a client to load relationship memory profile.
@@ -466,10 +532,12 @@ export default function DashboardPage() {
                 ) : (
                   <div className="bg-slate-50 border border-slate-150 rounded-2xl p-6 text-center text-slate-500">
                     <span className="block font-semibold mb-1 text-gray-800">
-                      {launcherMode === "meeting" ? "Meeting Mode selected" : "Interview Mode selected"}
+                      {launcherMode === "meeting"
+                        ? "Meeting Mode selected"
+                        : "Interview Mode selected"}
                     </span>
-                    {launcherMode === "meeting" 
-                      ? "Internal team meeting mode does not use client relationship briefing memory." 
+                    {launcherMode === "meeting"
+                      ? "Internal team meeting mode does not use client relationship briefing memory."
                       : "Interview mode focuses on candidate evaluation and does not use client relationship briefing memory."}
                   </div>
                 )}
@@ -480,14 +548,32 @@ export default function DashboardPage() {
             <div className="border-t border-gray-150 pt-8 mt-6">
               <button
                 onClick={handleLaunchSession}
-                disabled={launchLoading || (launcherMode === "sales" && !selectedClientId)}
+                disabled={
+                  launchLoading ||
+                  (launcherMode === "sales" && !selectedClientId)
+                }
                 className="w-full bg-indigo-600 text-white font-bold py-4 rounded-2xl shadow-lg hover:bg-indigo-700 hover:shadow-xl transition-smooth disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center active:scale-95"
               >
                 {launchLoading ? (
                   <>
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                     Creating session...
                   </>
@@ -504,8 +590,13 @@ export default function DashboardPage() {
 
   // --- Render: Loading skeleton ----------------------------------------------
 
-  const isTerminal = ["completed", "failed", "interrupted", "expired"].includes(sessionStatus);
-  if ((connectionState === "idle" || connectionState === "connecting") && !isTerminal) {
+  const isTerminal = ["completed", "failed", "interrupted", "expired"].includes(
+    sessionStatus,
+  );
+  if (
+    (connectionState === "idle" || connectionState === "connecting") &&
+    !isTerminal
+  ) {
     return (
       <main
         className="dashboard-loading-skeleton"
@@ -513,12 +604,45 @@ export default function DashboardPage() {
         aria-busy="true"
         aria-label="Loading session dashboard"
       >
-        <div style={{ height: "48px", background: "#e2e8f0", borderRadius: "4px", marginBottom: "16px" }} />
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "16px" }}>
-          <div style={{ height: "400px", background: "#e2e8f0", borderRadius: "4px" }} />
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div style={{ height: "192px", background: "#e2e8f0", borderRadius: "4px" }} />
-            <div style={{ height: "192px", background: "#e2e8f0", borderRadius: "4px" }} />
+        <div
+          style={{
+            height: "48px",
+            background: "#e2e8f0",
+            borderRadius: "4px",
+            marginBottom: "16px",
+          }}
+        />
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "2fr 1fr",
+            gap: "16px",
+          }}
+        >
+          <div
+            style={{
+              height: "400px",
+              background: "#e2e8f0",
+              borderRadius: "4px",
+            }}
+          />
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+          >
+            <div
+              style={{
+                height: "192px",
+                background: "#e2e8f0",
+                borderRadius: "4px",
+              }}
+            />
+            <div
+              style={{
+                height: "192px",
+                background: "#e2e8f0",
+                borderRadius: "4px",
+              }}
+            />
           </div>
         </div>
       </main>
@@ -532,32 +656,36 @@ export default function DashboardPage() {
       <nav className="border-b border-gray-200 bg-white sticky top-0 z-50 shadow-sm">
         <div className="mx-auto px-6 lg:px-12 xl:px-16 h-16 flex items-center justify-between">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate("/")}
             className="flex items-center gap-3 hover:opacity-85 transition-all"
           >
             <div className="relative w-9 h-9">
-              <img src={logoImage} alt="TalkSense AI Logo" className="w-full h-full object-contain" />
+              <img
+                src={logoImage}
+                alt="TalkSense AI Logo"
+                className="w-full h-full object-contain"
+              />
             </div>
             <span className="font-bold text-xl tracking-tight">
-              <span style={{ color: '#4F46E5' }}>TalkSense</span>
-              <span style={{ color: '#14B8A6' }}> AI</span>
+              <span style={{ color: "#4F46E5" }}>TalkSense</span>
+              <span style={{ color: "#14B8A6" }}> AI</span>
             </span>
           </button>
           <div className="flex gap-6 items-center text-sm font-medium">
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate("/")}
               className="text-gray-500 hover:text-indigo-600 transition-colors"
             >
               Home
             </button>
             <button
-              onClick={() => navigate('/upload')}
+              onClick={() => navigate("/upload")}
               className="text-gray-500 hover:text-indigo-600 transition-colors"
             >
               Analyze
             </button>
             <button
-              onClick={() => navigate('/sessions')}
+              onClick={() => navigate("/sessions")}
               className="text-gray-500 hover:text-indigo-600 transition-colors"
             >
               History
@@ -566,119 +694,172 @@ export default function DashboardPage() {
         </div>
       </nav>
 
-      <main style={{ padding: "24px 16px", flex: 1 }} className="max-w-7xl mx-auto w-full">
-      {/* --- Connection banners --- */}
-      {connectionState === "reconnecting" && (
-        <div
-          key="banner-reconnecting"
-          role="status"
-          aria-live="polite"
-          style={{ background: "#f59e0b", color: "white", padding: "8px", textAlign: "center", borderRadius: "4px", marginBottom: "12px" }}
-        >
-          Reconnecting to session...
-        </div>
-      )}
-
-      {connectionState === "failed" && (
-        <div
-          key="banner-failed"
-          role="alert"
-          style={{ border: "2px solid #ef4444", padding: "16px", margin: "16px 0", background: "#fef2f2", textAlign: "center", borderRadius: "8px" }}
-        >
-          <h3 style={{ margin: "0 0 8px 0", color: "#991b1b" }}>Connection Failed</h3>
-          <p style={{ margin: "0 0 12px 0", color: "#7f1d1d" }}>
-            {error || "Unable to connect to the session WebSocket."}
-          </p>
-          <button
-            onClick={handleReconnect}
-            style={{ padding: "8px 16px", cursor: "pointer", background: "#ef4444", color: "white", border: "none", borderRadius: "4px", fontWeight: "bold" }}
-            aria-label="Retry connecting to the session"
-          >
-            Reconnect
-          </button>
-        </div>
-      )}
-
-      {/* --- Permission error banner --- */}
-      {permissionError && (
-        <div
-          role="alert"
-          style={{ border: "2px solid #f59e0b", padding: "12px", margin: "0 0 12px 0", background: "#fffbeb", textAlign: "center", borderRadius: "8px" }}
-        >
-          <p style={{ margin: "0", color: "#92400e" }}>{permissionError}</p>
-        </div>
-      )}
-
-      {/* --- Status bar --- */}
-      <SessionStatusBar
-        sessionStatus={sessionStatus || "unknown"}
-        connectionState={connectionState || "disconnected"}
-        lastSyncAt={lastSyncAt}
-        mode={activeSessionMode}
-      />
-
-      {/* --- Microphone controls --- */}
-      <div style={{ display: "flex", justifyContent: "center", gap: "12px", margin: "16px 0" }}>
-        {!isCapturing ? (
-          <button
-            id="start-mic-btn"
-            onClick={startMicrophone}
-            disabled={audioStatus === "connecting" || !validatedSessionId}
+      <main
+        style={{ padding: "24px 16px", flex: 1 }}
+        className="max-w-7xl mx-auto w-full"
+      >
+        {/* --- Connection banners --- */}
+        {connectionState === "reconnecting" && (
+          <div
+            key="banner-reconnecting"
+            role="status"
+            aria-live="polite"
             style={{
-              padding: "12px 28px",
-              fontSize: "0.95rem",
-              fontWeight: 600,
-              color: "#fff",
-              background: audioStatus === "connecting"
-                ? "#94a3b8"
-                : "linear-gradient(135deg, #7c3aed, #4f46e5)",
-              border: "none",
-              borderRadius: "12px",
-              cursor: audioStatus === "connecting" ? "wait" : "pointer",
-              letterSpacing: "0.03em",
+              background: "#f59e0b",
+              color: "white",
+              padding: "8px",
+              textAlign: "center",
+              borderRadius: "4px",
+              marginBottom: "12px",
             }}
-            aria-label="Start microphone capture"
           >
-            {audioStatus === "connecting" ? "⏳ Connecting…" : "🎙 Start Microphone"}
-          </button>
-        ) : (
-          <button
-            id="stop-mic-btn"
-            onClick={stopMicrophone}
-            style={{
-              padding: "12px 28px",
-              fontSize: "0.95rem",
-              fontWeight: 600,
-              color: "#fff",
-              background: "linear-gradient(135deg, #dc2626, #b91c1c)",
-              border: "none",
-              borderRadius: "12px",
-              cursor: "pointer",
-              letterSpacing: "0.03em",
-            }}
-            aria-label="Stop microphone capture"
-          >
-            ⏹ Stop Microphone
-          </button>
+            Reconnecting to session...
+          </div>
         )}
-      </div>
 
-      {/* --- Dashboard panels --- */}
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "16px", marginTop: "16px" }}>
-        <div>
-          <TranscriptPanel transcript={transcript || []} />
+        {connectionState === "failed" && (
+          <div
+            key="banner-failed"
+            role="alert"
+            style={{
+              border: "2px solid #ef4444",
+              padding: "16px",
+              margin: "16px 0",
+              background: "#fef2f2",
+              textAlign: "center",
+              borderRadius: "8px",
+            }}
+          >
+            <h3 style={{ margin: "0 0 8px 0", color: "#991b1b" }}>
+              Connection Failed
+            </h3>
+            <p style={{ margin: "0 0 12px 0", color: "#7f1d1d" }}>
+              {error || "Unable to connect to the session WebSocket."}
+            </p>
+            <button
+              onClick={handleReconnect}
+              style={{
+                padding: "8px 16px",
+                cursor: "pointer",
+                background: "#ef4444",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                fontWeight: "bold",
+              }}
+              aria-label="Retry connecting to the session"
+            >
+              Reconnect
+            </button>
+          </div>
+        )}
+
+        {/* --- Permission error banner --- */}
+        {permissionError && (
+          <div
+            role="alert"
+            style={{
+              border: "2px solid #f59e0b",
+              padding: "12px",
+              margin: "0 0 12px 0",
+              background: "#fffbeb",
+              textAlign: "center",
+              borderRadius: "8px",
+            }}
+          >
+            <p style={{ margin: "0", color: "#92400e" }}>{permissionError}</p>
+          </div>
+        )}
+
+        {/* --- Status bar --- */}
+        <SessionStatusBar
+          sessionStatus={sessionStatus || "unknown"}
+          connectionState={connectionState || "disconnected"}
+          lastSyncAt={lastSyncAt}
+          mode={activeSessionMode}
+        />
+
+        {/* --- Microphone controls --- */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            gap: "12px",
+            margin: "16px 0",
+          }}
+        >
+          {!isCapturing ? (
+            <button
+              id="start-mic-btn"
+              onClick={startMicrophone}
+              disabled={audioStatus === "connecting" || !validatedSessionId}
+              style={{
+                padding: "12px 28px",
+                fontSize: "0.95rem",
+                fontWeight: 600,
+                color: "#fff",
+                background:
+                  audioStatus === "connecting"
+                    ? "#94a3b8"
+                    : "linear-gradient(135deg, #7c3aed, #4f46e5)",
+                border: "none",
+                borderRadius: "12px",
+                cursor: audioStatus === "connecting" ? "wait" : "pointer",
+                letterSpacing: "0.03em",
+              }}
+              aria-label="Start microphone capture"
+            >
+              {audioStatus === "connecting"
+                ? "⏳ Connecting…"
+                : "🎙 Start Microphone"}
+            </button>
+          ) : (
+            <button
+              id="stop-mic-btn"
+              onClick={stopMicrophone}
+              style={{
+                padding: "12px 28px",
+                fontSize: "0.95rem",
+                fontWeight: 600,
+                color: "#fff",
+                background: "linear-gradient(135deg, #dc2626, #b91c1c)",
+                border: "none",
+                borderRadius: "12px",
+                cursor: "pointer",
+                letterSpacing: "0.03em",
+              }}
+              aria-label="Stop microphone capture"
+            >
+              ⏹ Stop Microphone
+            </button>
+          )}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          <MetricsPanel 
-            metrics={metrics || null} 
-            sessionStatus={sessionStatus} 
-            lastSyncAt={lastSyncAt} 
-          />
-          <CoachingPanel tips={metrics?.coachingTips || []} />
-          <AlertsPanel alerts={alerts || []} />
+
+        {/* --- Dashboard panels --- */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "2fr 1fr",
+            gap: "16px",
+            marginTop: "16px",
+          }}
+        >
+          <div>
+            <TranscriptPanel transcript={transcript || []} />
+          </div>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+          >
+            <MetricsPanel
+              metrics={metrics || null}
+              sessionStatus={sessionStatus}
+              lastSyncAt={lastSyncAt}
+            />
+            <CoachingPanel tips={metrics?.coachingTips || []} />
+            <AlertsPanel alerts={alerts || []} />
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
     </div>
   );
 }
