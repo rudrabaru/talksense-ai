@@ -287,29 +287,37 @@ class ConversationEngine:
                 "speaker",
                 last_seg.get("speaker") if isinstance(last_seg, dict) else None,
             )
-            last_end_time = getattr(
-                last_seg,
-                "end_time",
-                last_seg.get("end_time", 0.0) if isinstance(last_seg, dict) else 0.0,
+            # Try to get end_time/end, defaulting to 0.0 if not found or None
+            last_end_val = (
+                last_seg.get("end_time", last_seg.get("end", 0.0))
+                if isinstance(last_seg, dict)
+                else getattr(last_seg, "end_time", getattr(last_seg, "end", 0.0))
             )
+            last_end_time = float(last_end_val if last_end_val is not None else 0.0)
 
         for seg in segments:
             speaker = (
                 getattr(seg, "speaker", seg.get("speaker", "Speaker 1"))
                 if isinstance(seg, dict)
-                else seg.speaker
+                else getattr(seg, "speaker", "Speaker 1")
             )
             text = (
                 getattr(seg, "text", seg.get("text", ""))
                 if isinstance(seg, dict)
-                else seg.text
+                else getattr(seg, "text", "")
             )
-            start_time = (
-                getattr(seg, "start_time", seg.get("start_time", 0.0))
-                if isinstance(seg, dict)
-                else seg.start_time
-            )
+            if text is None:
+                text = ""
+
             word_count = len(text.split())
+            
+            # Try to get start_time/start, defaulting to 0.0 if not found or None
+            start_val = (
+                seg.get("start_time", seg.get("start", 0.0))
+                if isinstance(seg, dict)
+                else getattr(seg, "start_time", getattr(seg, "start", 0.0))
+            )
+            start_time = float(start_val if start_val is not None else 0.0)
             state.participation[speaker] = (
                 state.participation.get(speaker, 0) + word_count
             )
@@ -325,15 +333,13 @@ class ConversationEngine:
                     state.interruptions += 1
 
             last_speaker = speaker
-            last_end_time = getattr(
-                seg,
-                "end_time",
-                (
-                    seg.get("end_time", 0.0)
-                    if isinstance(seg, dict)
-                    else getattr(seg, "end_time", 0.0)
-                ),
+            # Try to get end_time/end, defaulting to 0.0 if not found or None
+            end_val = (
+                seg.get("end_time", seg.get("end", 0.0))
+                if isinstance(seg, dict)
+                else getattr(seg, "end_time", getattr(seg, "end", 0.0))
             )
+            last_end_time = float(end_val if end_val is not None else 0.0)
 
         total_words = sum(state.participation.values()) or 1
         state.speaking_ratio = {

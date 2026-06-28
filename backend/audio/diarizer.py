@@ -81,10 +81,13 @@ class SpeakerDiarizer:
             )
             t0 = time.monotonic()
 
-            self._model = Model.from_pretrained(
+            model = Model.from_pretrained(
                 "pyannote/wespeaker-voxceleb-resnet34-LM",
                 use_auth_token=hf_token,
             )
+            if model is None:
+                raise ValueError("Model.from_pretrained returned None. Check HF token/network.")
+            self._model = model
             self._model.to(torch.device(device))
             self._model.eval()
 
@@ -182,6 +185,8 @@ class SpeakerDiarizer:
         speaker_profile: SpeakerProfile,
     ) -> list[DiarizedSegment]:
         """Extract embeddings for each segment and assign via SpeakerProfile."""
+        if self._model is None:
+            raise ValueError("Diarizer model is not loaded.")
         try:
             import torch
 
@@ -249,6 +254,8 @@ class SpeakerDiarizer:
         speaker_profile: SpeakerProfile,
     ) -> list[DiarizedSegment]:
         """Async embedding extraction with serialized GPU access."""
+        if self._model is None:
+            raise ValueError("Diarizer model is not loaded.")
         import asyncio
 
         import torch
