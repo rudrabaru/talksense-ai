@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback } from "react";
 import { AudioSourceManager } from "../audio/AudioSourceManager";
 
 /**
@@ -22,14 +22,8 @@ export function useAudioCapture() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [permissionError, setPermissionError] = useState(null);
 
-  // We keep a single instance of the AudioSourceManager per hook usage
-  const managerRef = useRef(null);
+  const [manager] = useState(() => new AudioSourceManager());
   const isStartingRef = useRef(false);
-
-  // Initialize the manager lazily
-  if (!managerRef.current) {
-    managerRef.current = new AudioSourceManager();
-  }
 
   const start = useCallback(async ({ onAudioChunk } = {}) => {
     if (isCapturing || isStartingRef.current) {
@@ -42,7 +36,7 @@ export function useAudioCapture() {
     try {
       // AudioSourceManager handles the complexity.
       // We pass onAudioChunk directly to it.
-      await managerRef.current.start({ onAudioChunk });
+      await manager.start({ onAudioChunk });
       
       setIsCapturing(true);
       console.log("[useAudioCapture] Capture started via AudioSourceManager.");
@@ -72,7 +66,7 @@ export function useAudioCapture() {
     } finally {
       isStartingRef.current = false;
     }
-  }, [isCapturing]);
+  }, [isCapturing, manager]);
 
   const stop = useCallback(() => {
     if (!isCapturing) {
@@ -81,27 +75,21 @@ export function useAudioCapture() {
     }
     console.log("[useAudioCapture] Stopping capture...");
     
-    if (managerRef.current) {
-      managerRef.current.stop();
-    }
+    manager.stop();
     
     setIsCapturing(false);
     console.log("[useAudioCapture] Capture stopped.");
-  }, [isCapturing]);
+  }, [isCapturing, manager]);
 
   const cleanup = useCallback(async () => {
     console.log("[useAudioCapture] Running full cleanup...");
     
-    if (managerRef.current) {
-      await managerRef.current.destroy();
-      // We do not null out managerRef.current so start() can be called again
-      // The AudioSourceManager supports destroy() then re-start().
-    }
+    await manager.destroy();
     
     setIsCapturing(false);
     setPermissionError(null);
     console.log("[useAudioCapture] Cleanup complete.");
-  }, []);
+  }, [manager]);
 
   return {
     start,

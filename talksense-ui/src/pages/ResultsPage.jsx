@@ -110,6 +110,7 @@ export default function ResultsPage() {
                     sentiment: seg.sentiment || 0
                 })) || []
             }
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setData(transformedData)
             setLoading(false)
         } else {
@@ -237,7 +238,7 @@ export default function ResultsPage() {
         // Transcript
         if (data.transcript.length > 0) {
             addSectionHeader("Transcript", [107, 114, 128])
-            data.transcript.forEach((segment, index) => {
+            data.transcript.forEach((segment) => {
                 if (yPosition > pageHeight - margin - 20) {
                     doc.addPage()
                     yPosition = margin

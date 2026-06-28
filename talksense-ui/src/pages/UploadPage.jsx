@@ -37,6 +37,7 @@ export default function UploadPage() {
             }
         }
         fetchClients()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     // Fetch briefing details when selection changes
@@ -79,7 +80,7 @@ export default function UploadPage() {
             setNewClientName("")
             setNewClientIndustry("")
             setIsCreatingClient(false)
-        } catch (err) {
+        } catch {
             setClientCreateError("Failed to create client. Please try again.")
         }
     }
@@ -162,7 +163,7 @@ export default function UploadPage() {
                 })
             }, 600)
 
-        } catch (err) {
+        } catch {
             setError("Failed to load demo data. Please try again.")
             setLoading(false)
             setProgress("")

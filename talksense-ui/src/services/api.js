@@ -145,7 +145,7 @@ export async function healthCheck() {
     try {
         const response = await fetch(`${API_BASE_URL}/health`);
         return response.json();
-    } catch (error) {
+    } catch {
         throw new Error('Backend is not available');
     }
 }

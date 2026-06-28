@@ -20,6 +20,7 @@ export class AudioSource {
    * @param {Function} options.onAudioChunk - Callback receiving Int16Array or ArrayBuffer PCM chunks
    * @returns {Promise<void>}
    */
+  // eslint-disable-next-line no-unused-vars
   async start(options) {
     throw new Error("AudioSource: start() must be implemented by subclass.");
   }

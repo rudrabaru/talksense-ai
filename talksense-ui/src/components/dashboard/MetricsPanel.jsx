@@ -110,13 +110,26 @@ const SpeakerAttributionCard = ({ attribution, attributionStatus, sessionStatus,
 // ── MetricsPanel ──────────────────────────────────────────────────────────────
 
 const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt }) => {
+  const [secondsAgo, setSecondsAgo] = React.useState(null);
+
+  React.useEffect(() => {
+    if (!lastSyncAt) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSecondsAgo(null);
+      return;
+    }
+    const update = () => {
+      const diff = Math.round((Date.now() - new Date(lastSyncAt).getTime()) / 1000);
+      setSecondsAgo(diff >= 0 ? diff : 0);
+    };
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [lastSyncAt]);
+
   const hasValidMetrics = !!(
-    metrics && (
-      metrics.health_score != null ||
-      metrics.speaking_ratio != null ||
-      metrics.filler_count != null ||
-      metrics.objections != null ||
-      metrics.buying_signals != null ||
+    metrics &&
+    (
       metrics.speakerAttributionStatus !== undefined ||
       (metrics.duration_seconds != null && !isNaN(Number(metrics.duration_seconds))) ||
       (metrics.participation != null &&
@@ -139,30 +152,13 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt }) => {
     );
   }
 
-  const [secondsAgo, setSecondsAgo] = React.useState(null);
 
-  React.useEffect(() => {
-    if (!lastSyncAt) {
-      setSecondsAgo(null);
-      return;
-    }
-    const update = () => {
-      const diff = Math.round((Date.now() - new Date(lastSyncAt).getTime()) / 1000);
-      setSecondsAgo(diff >= 0 ? diff : 0);
-    };
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, [lastSyncAt]);
 
   const {
     health_score,
     speaking_ratio,
-    participation,
     filler_count,
     duration_seconds,
-    objections,
-    buying_signals,
     interruptions,
     speaker_switches,
     action_items,
@@ -177,9 +173,7 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt }) => {
     analyticsHealth,
   } = metrics;
 
-  const sortedParticipation = participation && typeof participation === "object"
-    ? Object.entries(participation).sort(([a], [b]) => a.localeCompare(b))
-    : [];
+
 
   const parsedDuration = duration_seconds != null ? Number(duration_seconds) : NaN;
   const durationText = !isNaN(parsedDuration) ? `${parsedDuration.toFixed(1)}s` : "N/A";

@@ -192,7 +192,7 @@ function ListCompare({ title, shared, uniqueA, uniqueB }) {
     );
 }
 
-function TalkRatioBar({ ratio, colorA, colorB }) {
+function TalkRatioBar({ ratio }) {
     if (!ratio || Object.keys(ratio).length === 0) {
         return <div style={{ color: "#4b5563", fontSize: 13 }}>No talk ratio data.</div>;
     }
@@ -276,7 +276,7 @@ export default function ComparisonPage() {
     const [id2, setId2] = useState(searchParams.get("id2") || "");
 
     const [sessions, setSessions] = useState([]);
-    const [loadingSessions, setLoadingSessions] = useState(true);
+    const [, setLoadingSessions] = useState(true);
 
     const [result, setResult] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -297,14 +297,6 @@ export default function ComparisonPage() {
         })();
     }, []);
 
-    // Auto-fetch if both IDs are present in URL
-    useEffect(() => {
-        if (id1 && id2) {
-            runComparison(id1, id2);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
     const runComparison = useCallback(async (a, b) => {
         if (!a || !b) return;
         setLoading(true);
@@ -320,6 +312,17 @@ export default function ComparisonPage() {
             setLoading(false);
         }
     }, [setSearchParams]);
+
+    // Auto-fetch if both IDs are present in URL
+    useEffect(() => {
+        if (id1 && id2) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            runComparison(id1, id2);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+
 
     const handleCompare = () => {
         if (!id1 || !id2) { setError("Please select both sessions."); return; }
