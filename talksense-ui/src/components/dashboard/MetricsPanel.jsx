@@ -241,7 +241,11 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt }) => {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", textAlign: "left", fontSize: "0.9em", color: "#475569" }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span>Sentiment:</span>
-              <strong style={{ color: "#1e293b" }}>{sentiment != null ? `${sentiment.toFixed(0)}%` : "N/A"}</strong>
+              <strong style={{ color: "#1e293b", textTransform: "capitalize" }}>
+                {sentiment != null 
+                  ? (typeof sentiment === 'number' ? `${sentiment.toFixed(0)}%` : sentiment) 
+                  : "N/A"}
+              </strong>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span>Filler Penalty:</span>

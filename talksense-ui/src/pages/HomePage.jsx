@@ -24,6 +24,7 @@ export default function HomePage() {
                     <div className="hidden md:flex gap-8 text-sm font-medium text-gray-600">
                         <a href="#how-it-works" className="hover:text-indigo-600 transition-colors">How it Works</a>
                         <a href="#solutions" className="hover:text-indigo-600 transition-colors">Solutions</a>
+                        <button onClick={() => navigate('/dashboard')} className="hover:text-indigo-600 transition-colors">Dashboard</button>
                         <button onClick={() => navigate('/sessions')} className="hover:text-indigo-600 transition-colors">History</button>
                     </div>
                     <div>

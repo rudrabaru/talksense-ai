@@ -329,7 +329,7 @@ export default function DashboardPage() {
                   <label className="block text-sm font-bold text-gray-900 mb-3">
                     Conversation Mode
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <button
                       onClick={() => setLauncherMode("meeting")}
                       className={`py-3 px-4 rounded-xl border-2 text-center font-semibold transition-smooth ${
@@ -349,6 +349,16 @@ export default function DashboardPage() {
                       }`}
                     >
                       Sales Call
+                    </button>
+                    <button
+                      onClick={() => setLauncherMode("interview")}
+                      className={`py-3 px-4 rounded-xl border-2 text-center font-semibold transition-smooth ${
+                        launcherMode === "interview"
+                          ? "border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm"
+                          : "border-gray-200 bg-white hover:border-gray-300 text-gray-700"
+                      }`}
+                    >
+                      Interview
                     </button>
                   </div>
                 </div>
@@ -433,8 +443,12 @@ export default function DashboardPage() {
                   )
                 ) : (
                   <div className="bg-slate-50 border border-slate-150 rounded-2xl p-6 text-center text-slate-500">
-                    <span className="block font-semibold mb-1 text-gray-800">Meeting Mode selected</span>
-                    Internal team meeting mode does not use client relationship briefing memory.
+                    <span className="block font-semibold mb-1 text-gray-800">
+                      {launcherMode === "meeting" ? "Meeting Mode selected" : "Interview Mode selected"}
+                    </span>
+                    {launcherMode === "meeting" 
+                      ? "Internal team meeting mode does not use client relationship briefing memory." 
+                      : "Interview mode focuses on candidate evaluation and does not use client relationship briefing memory."}
                   </div>
                 )}
               </div>
