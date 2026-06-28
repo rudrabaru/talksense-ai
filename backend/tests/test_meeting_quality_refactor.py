@@ -120,8 +120,6 @@ def test_blockers_with_ownership_and_decision():
     print("Project risk is correctly elevated due to blockers.")
     print("Summary correctly emphasizes ownership and decisions without contradiction.")
 
-    return result
-
 
 if __name__ == "__main__":
     test_blockers_with_ownership_and_decision()
