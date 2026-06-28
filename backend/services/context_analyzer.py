@@ -1923,7 +1923,8 @@ def detect_objections(segments, budget_alignment=False):
 
             text = clause["text"].lower()
 
-            for obj_type, keywords in OBJECTION_KEYWORDS.items():
+            objection_items = OBJECTION_KEYWORDS.items() if isinstance(OBJECTION_KEYWORDS, dict) else [("General", OBJECTION_KEYWORDS)]
+            for obj_type, keywords in objection_items:
                 # STEP 2: Skip pricing objections if budget alignment detected
                 if obj_type == "Pricing" and budget_alignment:
                     continue
