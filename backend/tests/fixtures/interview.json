@@ -1,0 +1,7 @@
+[
+  { "speaker": "Speaker 1", "text": "Welcome to the interview. Could you tell me about your previous experience?" },
+  { "speaker": "Speaker 2", "text": "I have been working as a software engineer for 5 years. I love building scalable systems." },
+  { "speaker": "Speaker 1", "text": "That's great. What was the most challenging project you worked on?" },
+  { "speaker": "Speaker 2", "text": "I led the migration of a monolithic application to microservices. It took 6 months." },
+  { "speaker": "Speaker 1", "text": "I see. We'll get back to you by the end of the week." }
+]

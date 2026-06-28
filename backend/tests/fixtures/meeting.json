@@ -1,0 +1,8 @@
+[
+  { "speaker": "Speaker 1", "text": "Let's start the weekly sync. Did anyone review the latest deployment?" },
+  { "speaker": "Speaker 2", "text": "Yes, I did. There were a few minor bugs but nothing critical." },
+  { "speaker": "Speaker 1", "text": "Great. Please fix those bugs by Friday. I'll make a note of it." },
+  { "speaker": "Speaker 2", "text": "I will handle the bug fixes by Friday." },
+  { "speaker": "Speaker 3", "text": "I've also updated the documentation for the API." },
+  { "speaker": "Speaker 1", "text": "Perfect, let's approve the budget for the new servers." }
+]

@@ -142,11 +142,14 @@ export default function DashboardPage() {
   };
 
   // --- Session validation -----------------------------------------------------
+  const [activeSessionMode, setActiveSessionMode] = useState(null);
+
   useEffect(() => {
     const initializeSession = async () => {
       if (!sessionId) return;
       try {
-        await getSession(sessionId);
+        const sessionData = await getSession(sessionId);
+        setActiveSessionMode(sessionData?.mode || null);
         setValidatedSessionId(sessionId);
       } catch (err) {
         console.warn(`[DashboardPage] Session ${sessionId} invalid/expired.`, err);
@@ -161,6 +164,15 @@ export default function DashboardPage() {
   // --- Cleanup audio capture on unmount --------------------------------------
   useEffect(() => {
     return () => {
+      // Send "end" and close socket on unmount to properly complete the session
+      if (audioWsRef.current && audioWsRef.current.readyState === WebSocket.OPEN) {
+        try {
+          audioWsRef.current.send("end");
+        } catch (e) {
+          console.warn("[DashboardPage] Failed to send 'end' on unmount", e);
+        }
+        audioWsRef.current.close(1000, "Component unmounted");
+      }
       cleanupCapture();
     };
   }, [cleanupCapture]);
@@ -178,8 +190,28 @@ export default function DashboardPage() {
    */
   const startMicrophone = useCallback(() => {
     if (!validatedSessionId) return;
-    if (audioWsRef.current && audioWsRef.current.readyState <= WebSocket.OPEN) {
-      console.warn("[DashboardPage] Audio WebSocket already open or connecting.");
+    
+    // If we ALREADY have an open WebSocket, we just need to restart capture!
+    if (audioWsRef.current && audioWsRef.current.readyState === WebSocket.OPEN) {
+      console.log("[DashboardPage] Audio WebSocket already open. Resuming capture.");
+      setAudioStatus("streaming");
+      try {
+        startCapture({
+          onAudioChunk: (buffer) => {
+            if (audioWsRef.current && audioWsRef.current.readyState === WebSocket.OPEN) {
+              audioWsRef.current.send(buffer);
+            }
+          },
+        });
+      } catch (err) {
+        console.error("[DashboardPage] startCapture failed:", err);
+        setAudioStatus("error");
+      }
+      return;
+    }
+
+    if (audioWsRef.current && audioWsRef.current.readyState === WebSocket.CONNECTING) {
+      console.warn("[DashboardPage] Audio WebSocket is connecting.");
       return;
     }
 
@@ -227,24 +259,14 @@ export default function DashboardPage() {
   }, [validatedSessionId, startCapture, stopCapture, navigate]);
 
   /**
-   * Stops microphone capture and closes the audio WebSocket.
-   * Sends the "end" text command to signal session completion to the backend.
+   * Stops microphone capture but keeps the audio WebSocket open.
+   * This allows the user to restart recording in the same session.
    */
   const stopMicrophone = useCallback(() => {
-    // 1. Stop PCM capture first to prevent chunks being sent on a closing socket.
+    // 1. Stop PCM capture to pause audio ingestion.
     stopCapture();
-
-    // 2. Send the "end" command and close the WebSocket.
-    const ws = audioWsRef.current;
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      try {
-        ws.send("end");
-      } catch (err) {
-        console.warn("[DashboardPage] Failed to send 'end' command:", err);
-      }
-      ws.close(1000, "User stopped recording");
-    }
-    audioWsRef.current = null;
+    
+    // Do NOT send "end" or close the WebSocket here so we can restart.
     setAudioStatus("idle");
   }, [stopCapture]);
 
@@ -592,6 +614,7 @@ export default function DashboardPage() {
         sessionStatus={sessionStatus || "unknown"}
         connectionState={connectionState || "disconnected"}
         lastSyncAt={lastSyncAt}
+        mode={activeSessionMode}
       />
 
       {/* --- Microphone controls --- */}

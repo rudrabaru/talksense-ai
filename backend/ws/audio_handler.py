@@ -217,7 +217,7 @@ async def _process_chunk(
     if flushed_data is None:
         return  # buffer not ready yet
 
-    flushed, time_offset, is_partial, _, _ = flushed_data
+    flushed, time_offset, is_partial = flushed_data
 
     logger.info(
         f"Session {session_id[:8]}…: buffer flushed {len(flushed)}B → sending to Whisper (partial={is_partial})"  # noqa: E501
@@ -397,7 +397,7 @@ async def _flush_final(session_id: str, transcriber, diarizer, manager) -> None:
 
     remaining_data = session.audio_buffer.flush_remaining()
     if remaining_data:
-        flushed, time_offset, is_partial, _, _ = remaining_data
+        flushed, time_offset, is_partial = remaining_data
         logger.info(
             f"Session {session_id[:8]}…: flushing {len(flushed)}B remaining audio"
         )

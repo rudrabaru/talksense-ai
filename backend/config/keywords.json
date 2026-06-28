@@ -146,8 +146,7 @@
                 "competitor",
                 "current provider",
                 "incumbent",
-                "switch",
-                "contract"
+                "switch"
             ],
             "NoIntent": [
                 "just exploring",
@@ -165,7 +164,17 @@
                 "not this quarter",
                 "later this year"
             ]
-        }
+        },
+        "buying_signals": [
+            "sounds good",
+            "interested",
+            "contract",
+            "schedule a follow-up",
+            "follow-up",
+            "next steps",
+            "send over",
+            "let's review"
+        ]
     },
     "nlp_enrichment": {
         "action_item": [

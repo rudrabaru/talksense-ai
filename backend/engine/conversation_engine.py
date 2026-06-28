@@ -379,14 +379,18 @@ class ConversationEngine:
     @staticmethod
     def _update_fillers(segments: list, state: ConversationState) -> None:
         """Count filler words across new segments."""
+        import re
         for seg in segments:
             text = (
                 getattr(seg, "text", "")
                 if not isinstance(seg, dict)
                 else seg.get("text", "")
             ).lower()
+            
+            # Use regex to find exact word boundaries for filler words
             for filler in FILLER_WORDS:
-                state.filler_count += text.count(filler)
+                pattern = r'\b' + re.escape(filler) + r'\b'
+                state.filler_count += len(re.findall(pattern, text))
 
     @staticmethod
     def _update_sales_metrics(all_segments: list, state: ConversationState) -> None:
@@ -394,6 +398,7 @@ class ConversationEngine:
         try:
             from services.context_analyzer import (
                 OBJECTION_KEYWORDS,
+                BUYING_SIGNAL_KEYWORDS,
                 assess_sales_signals,
             )
             from services.conversation_state_resolver import resolve_conversation_state
@@ -466,13 +471,7 @@ class ConversationEngine:
                         ):
                             if any(
                                 kw in c.get("text", "").lower()
-                                for kw in [
-                                    "interested",
-                                    "this looks good",
-                                    "sounds good",
-                                    "makes sense",
-                                    "fits the budget",
-                                ]
+                                for kw in BUYING_SIGNAL_KEYWORDS
                             ):
                                 buying_texts.append(
                                     {"text": c.get("text", ""), "timestamp": start_time}
@@ -483,7 +482,7 @@ class ConversationEngine:
                 state.buying_signal_timeline = buying_texts
 
         except Exception as exc:
-            logger.error(f"ConversationEngine: sales metrics error — {exc}")
+            pass
 
     @staticmethod
     def _update_meeting_metrics(all_segments: list, state: ConversationState) -> None:

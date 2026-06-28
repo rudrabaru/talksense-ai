@@ -188,7 +188,7 @@ HARD_AUTHORITY_RISK_TERMS = [
 ]
 
 # STEP 5: Buying Signal Keywords (for context-aware actions)
-BUYING_SIGNAL_KEYWORDS = [
+BUYING_SIGNAL_KEYWORDS = KEYWORDS_CONFIG.get("sales", {}).get("buying_signals", [
     "interested",
     "this looks good",
     "sounds good",
@@ -197,7 +197,7 @@ BUYING_SIGNAL_KEYWORDS = [
     "this helps",
     "solves our problem",
     "addresses our need",
-]
+])
 
 
 def aggregate_sentiment(segments):

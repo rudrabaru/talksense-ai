@@ -1,0 +1,10 @@
+[
+  { "speaker": "Speaker 1", "text": "Hello, thanks for taking the time to meet with us today." },
+  { "speaker": "Speaker 2", "text": "Yeah, no problem. I'm eager to hear what you have to say." },
+  { "speaker": "Speaker 1", "text": "We offer a very scalable AI solution for your sales team." },
+  { "speaker": "Speaker 2", "text": "I like the idea, but it's just too expensive right now." },
+  { "speaker": "Speaker 1", "text": "I completely understand. Budget is always a concern. But think of the ROI." },
+  { "speaker": "Speaker 2", "text": "I need to discuss this with my team first, maybe next quarter." },
+  { "speaker": "Speaker 1", "text": "Let's schedule a follow-up for next week so we can review the pricing details." },
+  { "speaker": "Speaker 2", "text": "Okay, that sounds like a good plan. Send me the contract for review." }
+]

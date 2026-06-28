@@ -3,7 +3,8 @@ import React, { memo } from "react";
 const SessionStatusBar = memo(({ 
   sessionStatus, 
   connectionState, 
-  lastSyncAt 
+  lastSyncAt,
+  mode
 }) => {
   const getStatusColor = (status) => {
     switch (status) {
@@ -67,6 +68,11 @@ const SessionStatusBar = memo(({
       aria-live="polite"
       style={{ display: "flex", justifyContent: "space-between", alignItems: "center", border: "1px solid #ccc", padding: "12px", background: "#fafafa" }}
     >
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <strong>Mode:</strong>
+        <span style={{ textTransform: "capitalize" }}>{mode || "Unknown"}</span>
+      </div>
+
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
         <strong>Session Status:</strong>
         <span 
