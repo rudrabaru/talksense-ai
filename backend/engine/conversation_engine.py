@@ -310,7 +310,7 @@ class ConversationEngine:
                 text = ""
 
             word_count = len(text.split())
-            
+
             # Try to get start_time/start, defaulting to 0.0 if not found or None
             start_val = (
                 seg.get("start_time", seg.get("start", 0.0))
