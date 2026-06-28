@@ -86,7 +86,9 @@ class SpeakerDiarizer:
                 use_auth_token=hf_token,
             )
             if model is None:
-                raise ValueError("Model.from_pretrained returned None. Check HF token/network.")
+                raise ValueError(
+                    "Model.from_pretrained returned None. Check HF token/network."
+                )
             self._model = model
             self._model.to(torch.device(device))
             self._model.eval()
