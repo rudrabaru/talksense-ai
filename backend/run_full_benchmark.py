@@ -122,16 +122,16 @@ def run_sample(pipeline, transcriber, sample_dir, audio_dir):
     # Diarize
     audio_int16 = np.frombuffer(pcm, dtype=np.int16)
     audio_float32 = audio_int16.astype(np.float32) / 32768.0
-    
+
     # Phase 3: VAD Prefilter
     # Simply zero-out audio below a strict energy threshold if enabled
     if os.environ.get("STRICT_VAD_PREFILTER") == "1":
         # Simple energy-based strict VAD mock for benchmark
-        frame_size = int(SAMPLE_RATE * 0.05) # 50ms
+        frame_size = int(SAMPLE_RATE * 0.05)  # 50ms
         for i in range(0, len(audio_float32), frame_size):
-            chunk = audio_float32[i:i+frame_size]
-            if len(chunk) > 0 and np.mean(np.abs(chunk)) < 0.005: # strict threshold
-                audio_float32[i:i+frame_size] = 0.0
+            chunk = audio_float32[i : i + frame_size]
+            if len(chunk) > 0 and np.mean(np.abs(chunk)) < 0.005:  # strict threshold
+                audio_float32[i : i + frame_size] = 0.0
 
     audio_tensor = torch.from_numpy(audio_float32).unsqueeze(0)
     waveform = {"waveform": audio_tensor, "sample_rate": SAMPLE_RATE}
@@ -147,10 +147,14 @@ def run_sample(pipeline, transcriber, sample_dir, audio_dir):
     # Apply Pyannote Configuration Overrides (Phase 1)
     params = {}
     if os.environ.get("PYANNOTE_MIN_DURATION_OFF"):
-        params["segmentation"] = {"min_duration_off": float(os.environ["PYANNOTE_MIN_DURATION_OFF"])}
+        params["segmentation"] = {
+            "min_duration_off": float(os.environ["PYANNOTE_MIN_DURATION_OFF"])
+        }
     if os.environ.get("PYANNOTE_CLUSTERING_THRESHOLD"):
-        params["clustering"] = {"threshold": float(os.environ["PYANNOTE_CLUSTERING_THRESHOLD"])}
-    
+        params["clustering"] = {
+            "threshold": float(os.environ["PYANNOTE_CLUSTERING_THRESHOLD"])
+        }
+
     if params:
         try:
             pipeline.instantiate(params)
@@ -179,11 +183,11 @@ def run_sample(pipeline, transcriber, sample_dir, audio_dir):
                 mapped = f"Speaker {num + 1}"
             except (ValueError, IndexError):
                 pass
-                
+
         # Phase 2: Short Utterance Filtering
         if (turn.end - turn.start) < short_filter_s:
             continue
-            
+
         turns.append((turn.start, turn.end, mapped))
 
     # Assign speakers
@@ -473,7 +477,7 @@ def main():
         try:
             result = run_sample(pipeline, transcriber, sample_dir, AUDIO_DIR)
             all_results.append(result)
-            
+
             if "failures" in result:
                 for f in result["failures"]:
                     f["audio_file"] = result["recording"]

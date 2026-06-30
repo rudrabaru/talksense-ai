@@ -1,7 +1,6 @@
 import sys
 import os
 
-
 # Ensure we can import from backend
 # Script is in scripts/, so backend is at ../backend
 script_dir = os.path.dirname(os.path.abspath(__file__))

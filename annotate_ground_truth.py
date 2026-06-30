@@ -24,7 +24,6 @@ import sys
 import subprocess
 from datetime import datetime
 
-
 SAMPLE_RATE = 16000
 AUDIO_DIR = os.path.abspath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "sample_audio")

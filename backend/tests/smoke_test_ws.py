@@ -128,15 +128,10 @@ async def test_websocket_integration():
                     timeout=2,
                 )
 
-                logging.info(
-                    f"Received server response: {response}"
-                )
+                logging.info(f"Received server response: {response}")
 
             except asyncio.TimeoutError:
-                logging.info(
-                    "No immediate WebSocket response "
-                    "(this is acceptable)."
-                )
+                logging.info("No immediate WebSocket response " "(this is acceptable).")
 
             ###########################################################
 
@@ -172,32 +167,22 @@ async def test_websocket_integration():
         objections = dashboard_data.get("objections", [])
 
         if not objections:
-            raise RuntimeError(
-                "ConversationEngine produced zero objections."
-            )
+            raise RuntimeError("ConversationEngine produced zero objections.")
 
-        logging.info(
-            f"✓ Objection detected: {objections[0]}"
-        )
+        logging.info(f"✓ Objection detected: {objections[0]}")
 
         ###############################################################
         # Optional transcript validation
         ###############################################################
 
         transcripts = (
-            dashboard_data.get("transcripts")
-            or dashboard_data.get("segments")
-            or []
+            dashboard_data.get("transcripts") or dashboard_data.get("segments") or []
         )
 
         if transcripts:
-            logging.info(
-                f"✓ Transcript count: {len(transcripts)}"
-            )
+            logging.info(f"✓ Transcript count: {len(transcripts)}")
         else:
-            logging.info(
-                "Transcript list not exposed by dashboard API."
-            )
+            logging.info("Transcript list not exposed by dashboard API.")
 
         ###############################################################
         # Optional objection validation
@@ -209,9 +194,7 @@ async def test_websocket_integration():
 
             objection_type = objection.get("type")
 
-            logging.info(
-                f"Objection type: {objection_type}"
-            )
+            logging.info(f"Objection type: {objection_type}")
 
             expected = {
                 "budget",
@@ -219,14 +202,8 @@ async def test_websocket_integration():
                 "cost",
             }
 
-            if (
-                objection_type
-                and objection_type.lower() not in expected
-            ):
-                logging.warning(
-                    "Unexpected objection category "
-                    f"'{objection_type}'"
-                )
+            if objection_type and objection_type.lower() not in expected:
+                logging.warning("Unexpected objection category " f"'{objection_type}'")
 
         ###############################################################
 
@@ -257,14 +234,10 @@ async def test_websocket_integration():
                 if delete.status_code == 200:
                     logging.info("✓ Session deleted")
                 else:
-                    logging.warning(
-                        f"Cleanup returned {delete.status_code}"
-                    )
+                    logging.warning(f"Cleanup returned {delete.status_code}")
 
             except Exception as exc:
-                logging.warning(
-                    f"Cleanup failed: {exc}"
-                )
+                logging.warning(f"Cleanup failed: {exc}")
 
 
 if __name__ == "__main__":

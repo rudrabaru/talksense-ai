@@ -9,6 +9,7 @@ project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.join(project_root, "backend"))
 
 from services.prediction.feature_builder import feature_builder
+
 # Actually, pattern miner calculates sim.
 # For this export script, to match the plan "Input: session summary, patterns, embeddings",
 # we ideally read the *output* of the offline analysis.
