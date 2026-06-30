@@ -582,6 +582,8 @@ def _compute_metric_hash(conv: ConversationState) -> str:
         "speaker_switches": conv.speaker_switches,
         "objection_timeline": conv.objection_timeline,
         "buying_signal_timeline": conv.buying_signal_timeline,
+        "objections": conv.objections,
+        "buying_signals": conv.buying_signals,
     }
     serialised = json.dumps(payload, sort_keys=True, default=str)
     return hashlib.md5(serialised.encode()).hexdigest()
@@ -674,6 +676,14 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
                 {
                     "metric_name": "buying_signal_timeline",
                     "metric_value": conv.buying_signal_timeline,
+                },
+                {
+                    "metric_name": "objections",
+                    "metric_value": conv.objections,
+                },
+                {
+                    "metric_name": "buying_signals",
+                    "metric_value": conv.buying_signals,
                 },
             ]
     # ── Lock released — DB IO begins ──────────────────────────────────────────
