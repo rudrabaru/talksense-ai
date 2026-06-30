@@ -1,13 +1,12 @@
-import subprocess
 import json
 import os
-import time
+import subprocess
 
 
 def run_benchmark(env_vars, name):
-    print(f"\n==============================")
+    print("\n==============================")
     print(f"Running Benchmark: {name}")
-    print(f"==============================")
+    print("==============================")
     env = os.environ.copy()
     env.update(env_vars)
 
