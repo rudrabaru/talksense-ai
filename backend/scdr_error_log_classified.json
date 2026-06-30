@@ -1,0 +1,333 @@
+[
+  {
+    "start": 12.72,
+    "end": 15.0,
+    "predicted_raw": "Speaker 2",
+    "predicted_mapped": "A",
+    "expected": "B",
+    "text": "We might need to optimize later.",
+    "audio_file": "meeting_short.mp3",
+    "sample_name": "meeting_short",
+    "category": "Whisper Segmentation",
+    "overlapping_gt_speakers": [
+      "B",
+      "A"
+    ]
+  },
+  {
+    "start": 26.56,
+    "end": 28.36,
+    "predicted_raw": "Speaker 2",
+    "predicted_mapped": "A",
+    "expected": "B",
+    "text": "Yes, I will keep an eye on it.",
+    "audio_file": "meeting_short.mp3",
+    "sample_name": "meeting_short",
+    "category": "Pyannote Clustering",
+    "overlapping_gt_speakers": [
+      "B"
+    ]
+  },
+  {
+    "start": 26.52,
+    "end": 30.52,
+    "predicted_raw": "Speaker 1",
+    "predicted_mapped": "A",
+    "expected": "B",
+    "text": "Who else would typically be involved in the decision?",
+    "audio_file": "sales_ambiguous.mp3",
+    "sample_name": "sales_ambiguous",
+    "category": "Pyannote Clustering",
+    "overlapping_gt_speakers": [
+      "B"
+    ]
+  },
+  {
+    "start": 32.96,
+    "end": 35.68,
+    "predicted_raw": "Speaker 1",
+    "predicted_mapped": "A",
+    "expected": "B",
+    "text": "Would it make sense to loop them into a demo?",
+    "audio_file": "sales_ambiguous.mp3",
+    "sample_name": "sales_ambiguous",
+    "category": "Pyannote Clustering",
+    "overlapping_gt_speakers": [
+      "B"
+    ]
+  },
+  {
+    "start": 9.42,
+    "end": 11.88,
+    "predicted_raw": "Speaker 1",
+    "predicted_mapped": "A",
+    "expected": "B",
+    "text": "Can you explain what exactly this product does?",
+    "audio_file": "SalesMeeting.mp3",
+    "sample_name": "sales_meeting",
+    "category": "Whisper Segmentation",
+    "overlapping_gt_speakers": [
+      "A",
+      "B"
+    ]
+  },
+  {
+    "start": 32.52,
+    "end": 35.24,
+    "predicted_raw": "Speaker 1",
+    "predicted_mapped": "A",
+    "expected": "B",
+    "text": "What kind of support do you provide once we buy it?",
+    "audio_file": "SalesMeeting.mp3",
+    "sample_name": "sales_meeting",
+    "category": "Pyannote Clustering",
+    "overlapping_gt_speakers": [
+      "B"
+    ]
+  },
+  {
+    "start": 44.36,
+    "end": 47.16,
+    "predicted_raw": "Speaker 1",
+    "predicted_mapped": "A",
+    "expected": "B",
+    "text": "All right, what would be the next steps from here?",
+    "audio_file": "SalesMeeting.mp3",
+    "sample_name": "sales_meeting",
+    "category": "Whisper Segmentation",
+    "overlapping_gt_speakers": [
+      "A",
+      "B"
+    ]
+  },
+  {
+    "start": 46.2,
+    "end": 48.04,
+    "predicted_raw": "Speaker 6",
+    "predicted_mapped": "F",
+    "expected": "G",
+    "text": "All right, I'll follow up with",
+    "audio_file": "BuisinessMeeting.mp3",
+    "sample_name": "business_meeting",
+    "category": "Whisper Segmentation",
+    "overlapping_gt_speakers": [
+      "G",
+      "B",
+      "F"
+    ]
+  },
+  {
+    "start": 56.88,
+    "end": 58.28,
+    "predicted_raw": "Speaker 6",
+    "predicted_mapped": "F",
+    "expected": "E",
+    "text": "Yes, that should work.",
+    "audio_file": "BuisinessMeeting.mp3",
+    "sample_name": "business_meeting",
+    "category": "Pyannote Clustering",
+    "overlapping_gt_speakers": [
+      "E"
+    ]
+  },
+  {
+    "start": 20.04,
+    "end": 21.32,
+    "predicted_raw": "Speaker 3",
+    "predicted_mapped": "C",
+    "expected": "B",
+    "text": "Could be both.",
+    "audio_file": "meeting_messy.mp3",
+    "sample_name": "meeting_messy",
+    "category": "Pyannote Clustering",
+    "overlapping_gt_speakers": [
+      "B"
+    ]
+  },
+  {
+    "start": 23.92,
+    "end": 27.32,
+    "predicted_raw": "Speaker 3",
+    "predicted_mapped": "C",
+    "expected": "A",
+    "text": "Okay, so maybe we need to improve onboarding.",
+    "audio_file": "meeting_messy.mp3",
+    "sample_name": "meeting_messy",
+    "category": "Pyannote Clustering",
+    "overlapping_gt_speakers": [
+      "A"
+    ]
+  },
+  {
+    "start": 27.32,
+    "end": 30.12,
+    "predicted_raw": "Speaker 3",
+    "predicted_mapped": "C",
+    "expected": "B",
+    "text": "Or maybe we just need better documentation.",
+    "audio_file": "meeting_messy.mp3",
+    "sample_name": "meeting_messy",
+    "category": "Pyannote Clustering",
+    "overlapping_gt_speakers": [
+      "B"
+    ]
+  },
+  {
+    "start": 30.12,
+    "end": 33.12,
+    "predicted_raw": "Speaker 3",
+    "predicted_mapped": "C",
+    "expected": "A",
+    "text": "Oh, we should probably look into it.",
+    "audio_file": "meeting_messy.mp3",
+    "sample_name": "meeting_messy",
+    "category": "Pyannote Clustering",
+    "overlapping_gt_speakers": [
+      "A"
+    ]
+  },
+  {
+    "start": 33.12,
+    "end": 36.04,
+    "predicted_raw": "Speaker 3",
+    "predicted_mapped": "C",
+    "expected": "A",
+    "text": "All right, let's think about it and discuss again later.",
+    "audio_file": "meeting_messy.mp3",
+    "sample_name": "meeting_messy",
+    "category": "Pyannote Clustering",
+    "overlapping_gt_speakers": [
+      "A"
+    ]
+  },
+  {
+    "start": 8.6,
+    "end": 9.56,
+    "predicted_raw": "Speaker 2",
+    "predicted_mapped": "B",
+    "expected": "A",
+    "text": "Sure.",
+    "audio_file": "sales_bad.mp3",
+    "sample_name": "sales_bad",
+    "category": "Pyannote Clustering",
+    "overlapping_gt_speakers": [
+      "A"
+    ]
+  },
+  {
+    "start": 9.56,
+    "end": 14.52,
+    "predicted_raw": "Speaker 2",
+    "predicted_mapped": "B",
+    "expected": "A",
+    "text": "It depends on usage, but typically it starts around 40,000 r",
+    "audio_file": "sales_bad.mp3",
+    "sample_name": "sales_bad",
+    "category": "Pyannote Clustering",
+    "overlapping_gt_speakers": [
+      "A"
+    ]
+  },
+  {
+    "start": 18.44,
+    "end": 19.76,
+    "predicted_raw": "Speaker 2",
+    "predicted_mapped": "B",
+    "expected": "A",
+    "text": "I understand.",
+    "audio_file": "sales_bad.mp3",
+    "sample_name": "sales_bad",
+    "category": "Pyannote Clustering",
+    "overlapping_gt_speakers": [
+      "A"
+    ]
+  },
+  {
+    "start": 19.76,
+    "end": 22.72,
+    "predicted_raw": "Speaker 2",
+    "predicted_mapped": "B",
+    "expected": "A",
+    "text": "Can I ask what you're currently using and what's missing?",
+    "audio_file": "sales_bad.mp3",
+    "sample_name": "sales_bad",
+    "category": "Pyannote Clustering",
+    "overlapping_gt_speakers": [
+      "A"
+    ]
+  },
+  {
+    "start": 27.12,
+    "end": 30.48,
+    "predicted_raw": "Speaker 2",
+    "predicted_mapped": "B",
+    "expected": "A",
+    "text": "Okay, would it help if I showed a quick example?",
+    "audio_file": "sales_bad.mp3",
+    "sample_name": "sales_bad",
+    "category": "Pyannote Clustering",
+    "overlapping_gt_speakers": [
+      "A"
+    ]
+  },
+  {
+    "start": 112.04,
+    "end": 124.2,
+    "predicted_raw": "Speaker 2",
+    "predicted_mapped": "B",
+    "expected": "A",
+    "text": "details, but we think he's a great fit. Great idea! Well, le",
+    "audio_file": "0001_Business_English_Conversations_ESL_Business_Meeting_Conversation.m4a",
+    "sample_name": "business_english_long",
+    "category": "Whisper Segmentation",
+    "overlapping_gt_speakers": [
+      "A",
+      "B"
+    ]
+  },
+  {
+    "start": 175.24,
+    "end": 186.44,
+    "predicted_raw": "Speaker 2",
+    "predicted_mapped": "B",
+    "expected": "A",
+    "text": "for us. We need to give back to the community. I couldn't ag",
+    "audio_file": "0001_Business_English_Conversations_ESL_Business_Meeting_Conversation.m4a",
+    "sample_name": "business_english_long",
+    "category": "Whisper Segmentation",
+    "overlapping_gt_speakers": [
+      "B",
+      "A"
+    ]
+  },
+  {
+    "start": 211.2,
+    "end": 212.2,
+    "predicted_raw": "Speaker 3",
+    "predicted_mapped": "C",
+    "expected": "A",
+    "text": "Okay.",
+    "audio_file": "0001_Winner_Best_Pitch_Competition_Willy_Green_Party_on_Demand.m4a",
+    "sample_name": "pitch_competition_long",
+    "category": "Whisper Segmentation",
+    "overlapping_gt_speakers": [
+      "A",
+      "C"
+    ]
+  },
+  {
+    "start": 228.88,
+    "end": 230.88,
+    "predicted_raw": "Speaker 1",
+    "predicted_mapped": "A",
+    "expected": "C",
+    "text": "Will you be expand to other markets?",
+    "audio_file": "0001_Winner_Best_Pitch_Competition_Willy_Green_Party_on_Demand.m4a",
+    "sample_name": "pitch_competition_long",
+    "category": "Whisper Segmentation",
+    "overlapping_gt_speakers": [
+      "A",
+      "C"
+    ]
+  }
+]

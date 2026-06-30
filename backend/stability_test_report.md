@@ -1,6 +1,6 @@
 # TalkSense AI - 15-Minute Stability Validation Report
 
-*Run Date: 2026-06-24T21:44:24.572852+00:00*
+*Run Date: 2026-06-30T08:40:05.951250+00:00*
 
 ## Verdict: **PASS**
 
@@ -9,25 +9,25 @@ A 15-minute simulated meeting validation was executed at 5x speed (15 minutes of
 
 ### Performance Metrics
 - **Simulated Duration:** 15.0 minutes (900.0 seconds)
-- **Actual Execution Time:** 225.4 seconds (speedup ratio: 3.99x)
+- **Actual Execution Time:** 223.5 seconds (speedup ratio: 4.03x)
 
 #### CPU & Memory Profile
 - **CPU Usage:** Min=0.0%, Max=0.0%, Avg=0.0%
-- **Memory Usage:** Start=4.4 MB, End=4.4 MB, Peak=4.4 MB
-- **Memory Leak Delta:** -0.0 MB
+- **Memory Usage:** Start=3.5 MB, End=3.5 MB, Peak=3.5 MB
+- **Memory Leak Delta:** 0.0 MB
 
 #### WebSocket Subscriptions Events Received
 - `ws/transcript`: 25 events
 - `ws/metrics`: 25 events
-- `ws/alerts`: 5 events
+- `ws/alerts`: 3 events
 - `ws/status`: 2 events
 
 #### Database Persistence
 - **Session clean completion:** Yes
 - **Transcript Segments Persisted:** 25
-- **Metrics Batches Persisted:** 5
-- **Alerts Persisted:** 5
-- **Analysis Result Upserted:** No
+- **Metrics Batches Persisted:** 19
+- **Alerts Persisted:** 3
+- **Analysis Result Upserted:** Yes
 - **Audio WAV File Path Persisted:** Yes
 
 ### Verdict Details & Defect Logs

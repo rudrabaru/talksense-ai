@@ -40,6 +40,9 @@ export default function DashboardPage() {
     cleanup: cleanupCapture,
     isCapturing,
     permissionError,
+    availableSources,
+    selectedSourceType,
+    setSourceType
   } = useAudioCapture();
 
   const {
@@ -541,6 +544,38 @@ export default function DashboardPage() {
                       : "Interview mode focuses on candidate evaluation and does not use client relationship briefing memory."}
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Audio Source Configuration */}
+            <div className="mt-8 pt-6 border-t border-gray-150">
+              <label className="block text-sm font-bold text-gray-900 mb-4">
+                Audio Source
+              </label>
+              <div className="flex gap-4">
+                {availableSources?.map((source) => (
+                  <label
+                    key={source.id}
+                    className={`flex items-center gap-3 p-4 border rounded-xl cursor-pointer transition-all ${
+                      selectedSourceType === source.id
+                        ? "border-indigo-600 bg-indigo-50 ring-1 ring-indigo-600"
+                        : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="audioSource"
+                      value={source.id}
+                      checked={selectedSourceType === source.id}
+                      onChange={() => setSourceType(source.id)}
+                      className="text-indigo-600 focus:ring-indigo-500 w-4 h-4"
+                    />
+                    <div>
+                      <div className="font-semibold text-gray-900 text-sm">{source.displayName}</div>
+                      <div className="text-xs text-gray-500 mt-0.5">{source.description}</div>
+                    </div>
+                  </label>
+                ))}
               </div>
             </div>
 

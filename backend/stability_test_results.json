@@ -4,15 +4,15 @@
   "audio": {
     "duration_s": 900.0,
     "duration_m": 15.0,
-    "stream_time_s": 225.375,
-    "speedup": 3.9933444259567388
+    "stream_time_s": 223.49245570000494,
+    "speedup": 4.026981569382703
   },
   "websockets": {
     "stream_success": true,
     "events_received": {
       "transcript": 25,
       "metrics": 25,
-      "alerts": 5,
+      "alerts": 3,
       "status": 2
     }
   },
@@ -20,9 +20,9 @@
     "session_completed": true,
     "has_audio_file_path": true,
     "segments_persisted": 25,
-    "metrics_persisted": 5,
-    "alerts_persisted": 5,
-    "analysis_result_persisted": false
+    "metrics_persisted": 19,
+    "alerts_persisted": 3,
+    "analysis_result_persisted": true
   },
   "performance": {
     "cpu_percent": {
@@ -31,10 +31,10 @@
       "avg": 0.0
     },
     "memory_mb": {
-      "start": 4.375,
-      "end": 4.35546875,
-      "max": 4.375,
-      "leak": -0.01953125
+      "start": 3.51953125,
+      "end": 3.51953125,
+      "max": 3.51953125,
+      "leak": 0.0
     }
   }
 }

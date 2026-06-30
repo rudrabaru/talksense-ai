@@ -1,5 +1,8 @@
 import { useState, useRef, useCallback } from "react";
 import { AudioSourceManager } from "../audio/AudioSourceManager";
+import { MicrophoneSource } from "../audio/MicrophoneSource";
+import { SystemAudioSource } from "../audio/SystemAudioSource";
+import { MixedAudioSource } from "../audio/MixedAudioSource";
 
 /**
  * useAudioCapture
@@ -22,7 +25,17 @@ export function useAudioCapture() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [permissionError, setPermissionError] = useState(null);
 
-  const [manager] = useState(() => new AudioSourceManager());
+  const [manager] = useState(() => {
+    const mgr = new AudioSourceManager();
+    mgr.registerSource(new MicrophoneSource());
+    mgr.registerSource(new SystemAudioSource());
+    mgr.registerSource(new MixedAudioSource());
+    return mgr;
+  });
+  
+  const availableSources = manager.getAvailableSources();
+  const [selectedSourceType, setSourceType] = useState('microphone');
+
   const isStartingRef = useRef(false);
 
   const start = useCallback(async ({ onAudioChunk } = {}) => {
@@ -34,39 +47,52 @@ export function useAudioCapture() {
     setPermissionError(null);
 
     try {
+      // Initialize the chosen source before starting
+      await manager.initialize(selectedSourceType);
+      
       // AudioSourceManager handles the complexity.
-      // We pass onAudioChunk directly to it.
-      await manager.start({ onAudioChunk });
+      await manager.start({
+        onAudioChunk: (payload) => {
+          if (onAudioChunk) onAudioChunk(payload.buffer);
+        }
+      });
       
       setIsCapturing(true);
       console.log("[useAudioCapture] Capture started via AudioSourceManager.");
     } catch (err) {
-      const errorMessages = {
-        NotAllowedError:
-          "Microphone access was denied. Click the camera icon in your address bar to allow microphone access, then try again.",
-        NotFoundError:
-          "No microphone found. Please connect a microphone and try again.",
-        NotReadableError:
-          "Microphone is in use by another application. Close other apps using the microphone and try again.",
-        OverconstrainedError:
-          "Your microphone does not support the required audio format. TalkSense requires 16kHz mono audio.",
-        APIUnavailableError:
-          "Microphone access requires a secure connection (HTTPS or localhost). Please use a supported environment.",
-        AbortError:
-          "Microphone access was interrupted by a hardware or browser error. Please refresh and try again.",
-      };
+      if (err?.name === 'AudioSourceError') {
+        setPermissionError(err.message);
+        if (err.recommendedAction) {
+          console.error(`[useAudioCapture] Action: ${err.recommendedAction}`);
+        }
+      } else {
+        const errorMessages = {
+          NotAllowedError:
+            "Microphone access was denied. Click the camera icon in your address bar to allow microphone access, then try again.",
+          NotFoundError:
+            "No microphone found. Please connect a microphone and try again.",
+          NotReadableError:
+            "Microphone is in use by another application. Close other apps using the microphone and try again.",
+          OverconstrainedError:
+            "Your microphone does not support the required audio format. TalkSense requires 16kHz mono audio.",
+          APIUnavailableError:
+            "Microphone access requires a secure connection (HTTPS or localhost). Please use a supported environment.",
+          AbortError:
+            "Microphone access was interrupted by a hardware or browser error. Please refresh and try again.",
+        };
 
-      const message =
-        errorMessages[err?.name] ??
-        `Audio capture error: ${err?.message ?? "An unknown error occurred."}`;
+        const message =
+          errorMessages[err?.name] ??
+          `Audio capture error: ${err?.message ?? "An unknown error occurred."}`;
 
-      console.error(`[useAudioCapture] start() failed (${err?.name}):`, err);
-      setPermissionError(message);
+        console.error(`[useAudioCapture] start() failed (${err?.name}):`, err);
+        setPermissionError(message);
+      }
       setIsCapturing(false);
     } finally {
       isStartingRef.current = false;
     }
-  }, [isCapturing, manager]);
+  }, [isCapturing, manager, selectedSourceType]);
 
   const stop = useCallback(() => {
     if (!isCapturing) {
@@ -91,11 +117,14 @@ export function useAudioCapture() {
     console.log("[useAudioCapture] Cleanup complete.");
   }, [manager]);
 
-  return {
-    start,
-    stop,
-    cleanup,
-    isCapturing,
+  return { 
+    start, 
+    stop, 
+    cleanup, 
+    isCapturing, 
     permissionError,
+    availableSources,
+    selectedSourceType,
+    setSourceType
   };
 }

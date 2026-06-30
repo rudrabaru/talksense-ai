@@ -1,4 +1,5 @@
 import { AudioSource } from './AudioSource';
+import { AudioSourceError } from './AudioSourceError';
 
 const TARGET_SAMPLE_RATE  = 16000;
 const CHUNK_INTERVAL_MS   = 250;
@@ -128,17 +129,45 @@ export class MicrophoneSource extends AudioSource {
     this.workletBlobUrl = null;
     this.onAudioChunk = null;
     this.pcmBuffer = [];
+
+    this._status = 'idle';
+    this._health = {
+      status: 'idle',
+      lastFrameTimestamp: 0,
+      frameCount: 0,
+      droppedFrames: 0
+    };
+  }
+
+  async checkAvailability() {
+    const isSupported = typeof navigator?.mediaDevices?.getUserMedia === 'function';
+    return {
+      available: isSupported,
+      reason: isSupported ? null : 'getUserMedia is not supported by this browser.',
+      recommendedAction: isSupported ? null : 'Use a modern browser with HTTPS or localhost.'
+    };
+  }
+
+  getStatus() {
+    return this._status;
+  }
+
+  getHealth() {
+    return { ...this._health, status: this._status };
   }
 
   async initialize() {
-    // API availability guard
-    if (!navigator.mediaDevices?.getUserMedia) {
-      throw Object.assign(
-        new Error("getUserMedia is not available in this browser or context. Use HTTPS or localhost."),
-        { name: "APIUnavailableError" }
-      );
+    this._setStatus('initializing');
+    const { available, reason, recommendedAction } = await this.checkAvailability();
+    if (!available) {
+      this._setStatus('error');
+      throw new AudioSourceError('UNSUPPORTED_BROWSER', reason, false, recommendedAction);
     }
-    // For microphone, we can just defer actual capture to start() to prevent early permission prompts.
+    this._setStatus('ready');
+  }
+
+  _setStatus(newStatus) {
+    this._status = newStatus;
   }
 
   async start({ onAudioChunk }) {
@@ -166,9 +195,11 @@ export class MicrophoneSource extends AudioSource {
       }
 
       if (!this.audioContext.audioWorklet) {
-        throw Object.assign(
-          new Error("AudioWorklet is not available in this browser or context. Use HTTPS or localhost."),
-          { name: "APIUnavailableError" }
+        throw new AudioSourceError(
+          'UNSUPPORTED_BROWSER',
+          "AudioWorklet is not available in this browser or context.",
+          false,
+          "Use a secure context (HTTPS) or localhost."
         );
       }
 
@@ -186,9 +217,13 @@ export class MicrophoneSource extends AudioSource {
       this.workletNode.port.onmessage = (event) => {
         const int16Chunk = event.data;
         const buffer = int16Chunk.buffer;
+        
+        const timestamp = Date.now();
+        this._health.lastFrameTimestamp = timestamp;
+        this._health.frameCount++;
 
         if (this.onAudioChunk) {
-          this.onAudioChunk(buffer);
+          this.onAudioChunk({ buffer, timestamp, sourceId: 'microphone' });
           if (this.workletNode) {
             this.workletNode.port.postMessage(buffer, [buffer]);
           }
@@ -196,6 +231,7 @@ export class MicrophoneSource extends AudioSource {
           this.pcmBuffer.push(int16Chunk);
           if (this.pcmBuffer.length > 40) {
             this.pcmBuffer.shift();
+            this._health.droppedFrames++;
             console.warn("[MicrophoneSource] PCM buffer exceeded 10s -- dropping oldest chunk.");
           }
         }
@@ -204,22 +240,52 @@ export class MicrophoneSource extends AudioSource {
       this.sourceNode = this.audioContext.createMediaStreamSource(this.stream);
       this.sourceNode.connect(this.workletNode);
 
+      this._setStatus('recording');
+
     } catch (err) {
+      this._setStatus('error');
       this._disconnectAudioGraph();
       this._releaseMicTracks();
       await this._closeAudioContext();
-      throw err; // Caller handles DOMExceptions
+      
+      if (err instanceof AudioSourceError) {
+        throw err;
+      }
+      
+      let code = 'UNKNOWN_ERROR';
+      let message = err.message || 'Failed to start microphone.';
+      let recoverable = false;
+      let recommendedAction = 'Check your hardware and refresh the page.';
+
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        code = 'PERMISSION_DENIED';
+        message = 'Microphone access was denied.';
+        recommendedAction = 'Please allow microphone access in your browser settings.';
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        code = 'HARDWARE_MISSING';
+        message = 'No microphone found.';
+        recoverable = true;
+        recommendedAction = 'Please plug in a microphone and try again.';
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        code = 'DEVICE_UNAVAILABLE';
+        message = 'Microphone is already in use by another application.';
+        recoverable = true;
+      }
+
+      throw new AudioSourceError(code, message, recoverable, recommendedAction);
     }
   }
 
   stop() {
     this._disconnectAudioGraph();
     this._releaseMicTracks();
+    this._setStatus('stopped');
   }
 
   async destroy() {
     this.stop();
     await this._closeAudioContext();
+    this._setStatus('destroyed');
   }
 
   _releaseMicTracks() {
@@ -256,5 +322,23 @@ export class MicrophoneSource extends AudioSource {
       await this.audioContext.close();
     }
     this.audioContext = null;
+  }
+
+  getMetadata() {
+    return {
+      id: 'microphone',
+      displayName: 'Microphone',
+      description: 'Capture audio from the default microphone.',
+      icon: 'mic'
+    };
+  }
+
+  getCapabilities() {
+    return {
+      microphone: true,
+      systemAudio: false,
+      mixing: false,
+      fileInput: false
+    };
   }
 }

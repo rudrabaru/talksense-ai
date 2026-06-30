@@ -1,0 +1,65 @@
+{
+  "Phase 1: Baseline": {
+    "avg_macro_f1": 0.8141,
+    "avg_accuracy": 84.5,
+    "avg_scdr": 55.2,
+    "f1_pass": true,
+    "accuracy_pass": true,
+    "scdr_pass": false,
+    "production_ready": false
+  },
+  "Phase 1: Strict Pyannote Cluster Threshold (0.7)": {
+    "avg_macro_f1": 0.8141,
+    "avg_accuracy": 84.5,
+    "avg_scdr": 55.2,
+    "f1_pass": true,
+    "accuracy_pass": true,
+    "scdr_pass": false,
+    "production_ready": false
+  },
+  "Phase 1: Loose Pyannote Cluster Threshold (0.5)": {
+    "avg_macro_f1": 0.8479,
+    "avg_accuracy": 87.7,
+    "avg_scdr": 61.3,
+    "f1_pass": true,
+    "accuracy_pass": true,
+    "scdr_pass": false,
+    "production_ready": false
+  },
+  "Phase 1: Long Min Duration Off (0.5)": {
+    "avg_macro_f1": 0.8124,
+    "avg_accuracy": 84.4,
+    "avg_scdr": 54.4,
+    "f1_pass": true,
+    "accuracy_pass": true,
+    "scdr_pass": false,
+    "production_ready": false
+  },
+  "Phase 2: Short Utterance Filtering (0.5s)": {
+    "avg_macro_f1": 0.8141,
+    "avg_accuracy": 84.5,
+    "avg_scdr": 55.2,
+    "f1_pass": true,
+    "accuracy_pass": true,
+    "scdr_pass": false,
+    "production_ready": false
+  },
+  "Phase 3: Strict VAD Prefilter": {
+    "avg_macro_f1": 0.8069,
+    "avg_accuracy": 83.9,
+    "avg_scdr": 54.3,
+    "f1_pass": true,
+    "accuracy_pass": true,
+    "scdr_pass": false,
+    "production_ready": false
+  },
+  "Phase 4: Combined Optimization": {
+    "avg_macro_f1": 0.8052,
+    "avg_accuracy": 83.8,
+    "avg_scdr": 53.4,
+    "f1_pass": true,
+    "accuracy_pass": true,
+    "scdr_pass": false,
+    "production_ready": false
+  }
+}
