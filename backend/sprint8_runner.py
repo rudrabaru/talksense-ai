@@ -15,8 +15,9 @@ def run_benchmark(env_vars, name):
         cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
     )
 
-    for line in proc.stdout:
-        print(line, end="")
+    if proc.stdout:
+        for line in proc.stdout:
+            print(line, end="")
     proc.wait()
 
     result_path = "benchmark_results.json"

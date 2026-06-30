@@ -33,8 +33,9 @@ def run_subsystem(name, cmd_args):
         proc = subprocess.Popen(
             cmd_args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
         )
-        for line in proc.stdout:
-            print("  " + line.strip())
+        if proc.stdout:
+            for line in proc.stdout:
+                print("  " + line.strip())
         proc.wait()
 
         # Try to find the output json
