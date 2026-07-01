@@ -250,6 +250,11 @@ export class MixedAudioSource extends AudioSource {
     }
   }
 
+  async destroy() {
+    this.stop();
+    this._setStatus('destroyed');
+  }
+
   _handleError(err) {
     if (err.name === 'NotAllowedError') {
       throw new AudioSourceError(

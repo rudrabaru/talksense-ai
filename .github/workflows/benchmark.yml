@@ -1,0 +1,66 @@
+name: Benchmark Pipeline
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 0' # Weekly benchmark at 03:00 on Sunday
+  push:
+    branches:
+      - dev
+    paths:
+      - 'backend/**'
+      - 'evaluation_dataset/**'
+
+jobs:
+  benchmark:
+    name: Continuous Model Evaluation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          
+      - name: Cache Hugging Face models
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/huggingface
+          key: ${{ runner.os }}-huggingface-${{ hashFiles('backend/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-huggingface-
+            
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Execute End-to-End Evaluation
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          cd backend
+          python run_complete_evaluation.py
+          
+      - name: Validate Production Thresholds & Generate Report
+        run: |
+          cd backend
+          python generate_benchmark_report.py
+          
+      - name: Upload Benchmark Reports & Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-artifacts
+          path: |
+            backend/final_scorecard.md
+            backend/benchmark_results.json
+            backend/sprint8_results.json
+            backend/*_report.md
+            backend/*.json
+          retention-days: 30
