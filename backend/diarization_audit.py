@@ -234,7 +234,7 @@ def run_post_session(pcm_data: bytes, transcriber, diarizer) -> list[EvalSegment
 
     # Build turn timeline
     turns = []
-    for turn, _, speaker in annotation.itertracks(yield_label=True):
+    for turn, _, speaker in annotation.itertracks(yield_label=True):  # type: ignore
         mapped = speaker
         if speaker.startswith("SPEAKER_"):
             try:

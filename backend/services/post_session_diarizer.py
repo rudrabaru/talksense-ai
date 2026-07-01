@@ -589,7 +589,7 @@ def _run_pyannote_sync(
         annotation = getattr(diarization, "speaker_diarization", diarization)
 
         turns: list[tuple[float, float, str]] = []
-        for turn, _, speaker in annotation.itertracks(yield_label=True):
+        for turn, _, speaker in annotation.itertracks(yield_label=True):  # type: ignore
             # Map "SPEAKER_00" → "Speaker 1", "SPEAKER_01" → "Speaker 2", etc.
             mapped = speaker
             if speaker.startswith("SPEAKER_"):

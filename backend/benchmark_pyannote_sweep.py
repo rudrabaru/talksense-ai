@@ -85,7 +85,7 @@ def main():
 
             # Simple hash of boundaries to detect drift
             annotation = getattr(diarization, "speaker_diarization", diarization)
-            turn_count = len(list(annotation.itertracks()))
+            turn_count = len(list(annotation.itertracks()))  # type: ignore
 
             print(f"  Latency: {latency:.1f}ms")
             print(f"  Peak VRAM: {vram:.1f} MB")
