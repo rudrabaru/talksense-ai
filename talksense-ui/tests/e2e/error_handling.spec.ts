@@ -34,6 +34,9 @@ test.describe('Error Handling', () => {
     });
 
     await page.goto('/dashboard');
+    const meetingModeBtn = page.getByText(/Meeting/i, { exact: false }).first();
+    await meetingModeBtn.click();
+    
     const startBtn = page.locator('button', { hasText: /Start Session|Launch/i }).first();
     await expect(startBtn).toBeVisible({ timeout: 10000 });
     await startBtn.click();
