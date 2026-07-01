@@ -1,6 +1,7 @@
 import json
 import os
 import subprocess
+import sys
 import time
 from datetime import datetime
 
@@ -133,7 +134,7 @@ def generate_scorecard(results, total_time):
 def main():
     print("Initializing TalkSense AI End-to-End Evaluation Pipeline...")
 
-    python_exe = r"venv\Scripts\python.exe"
+    python_exe = sys.executable
 
     evaluations = [
         ("Transcription Validation", [python_exe, "evaluate_transcription.py"]),

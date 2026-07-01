@@ -1,6 +1,7 @@
 import json
 import os
 import subprocess
+import sys
 
 
 def run_benchmark(env_vars, name):
@@ -10,7 +11,7 @@ def run_benchmark(env_vars, name):
     env = os.environ.copy()
     env.update(env_vars)
 
-    cmd = [r"venv\Scripts\python.exe", "run_full_benchmark.py"]
+    cmd = [sys.executable, "run_full_benchmark.py"]
     proc = subprocess.Popen(
         cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
     )
