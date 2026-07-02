@@ -1,8 +1,32 @@
-import React, { memo, useRef, useEffect } from "react";
+import React, { memo, useRef, useEffect, useMemo } from "react";
+
+// A palette of distinct background colors for speaker differentiation
+const SPEAKER_COLORS = [
+  "#f0f4ff", // soft blue
+  "#f0fff4", // soft green
+  "#fff7f0", // soft orange
+  "#fdf0ff", // soft purple
+  "#f0feff", // soft cyan
+  "#fffbf0", // soft yellow
+];
 
 const TranscriptPanelComponent = ({ transcript }) => {
   const bottomRef = useRef(null);
   const prevLengthRef = useRef(0);
+
+  // Build a stable speaker → color index map from the current transcript
+  const speakerColorMap = useMemo(() => {
+    const map = {};
+    let idx = 0;
+    (transcript || []).forEach((seg) => {
+      const speaker = seg.speaker || "Unknown Speaker";
+      if (!(speaker in map)) {
+        map[speaker] = SPEAKER_COLORS[idx % SPEAKER_COLORS.length];
+        idx++;
+      }
+    });
+    return map;
+  }, [transcript]);
 
   useEffect(() => {
     const currentLength = transcript ? transcript.length : 0;
@@ -47,6 +71,8 @@ const TranscriptPanelComponent = ({ transcript }) => {
               const sentimentClass = seg.sentiment_label && typeof seg.sentiment_label === "string"
                 ? `sentiment-badge-${seg.sentiment_label.toLowerCase()}`
                 : "";
+              const speakerLabel = seg.speaker || "Unknown Speaker";
+              const bgColor = speakerColorMap[speakerLabel] || SPEAKER_COLORS[0];
 
               return (
                 <div 
@@ -56,10 +82,10 @@ const TranscriptPanelComponent = ({ transcript }) => {
                     margin: "8px 0", 
                     padding: "8px", 
                     borderRadius: "4px", 
-                    background: seg.speaker === "Speaker A" ? "#f0f0f0" : "#e0e0ff" 
+                    background: bgColor
                   }}
                 >
-                  <strong>{seg.speaker || "Unknown Speaker"}:</strong> 
+                  <strong>{speakerLabel}:</strong> 
                   <span style={{ fontSize: "0.8em", color: "#666", marginLeft: "8px" }}>
                     [{startVal.toFixed(1)}s - {endVal.toFixed(1)}s]
                   </span>

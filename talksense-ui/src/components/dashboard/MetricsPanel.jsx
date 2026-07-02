@@ -131,6 +131,7 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt }) => {
     metrics &&
     (
       metrics.speakerAttributionStatus !== undefined ||
+      (metrics.health_score != null && !isNaN(Number(metrics.health_score))) ||
       (metrics.duration_seconds != null && !isNaN(Number(metrics.duration_seconds))) ||
       (metrics.participation != null &&
         typeof metrics.participation === "object" &&
@@ -243,12 +244,12 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt }) => {
             </div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
               <span>Filler Penalty:</span>
-              <strong style={{ color: filler_penalty < 50 ? "#ef4444" : "#1e293b" }}>{filler_penalty != null ? `${filler_penalty.toFixed(0)}` : "N/A"}</strong>
+              <strong style={{ color: filler_penalty == null ? "#1e293b" : filler_penalty > 15 ? "#ef4444" : filler_penalty > 5 ? "#f59e0b" : "#10b981" }}>{filler_penalty != null ? `${filler_penalty.toFixed(0)}` : "N/A"}</strong>
             </div>
             {pause_penalty != null && (
               <div style={{ display: "flex", justifyContent: "space-between" }}>
                 <span>Pause Penalty:</span>
-                <strong style={{ color: pause_penalty < 50 ? "#ef4444" : "#1e293b" }}>{pause_penalty.toFixed(0)}</strong>
+                <strong style={{ color: pause_penalty > 15 ? "#ef4444" : pause_penalty > 5 ? "#f59e0b" : "#10b981" }}>{pause_penalty.toFixed(0)}</strong>
               </div>
             )}
             <div style={{ display: "flex", justifyContent: "space-between" }}>

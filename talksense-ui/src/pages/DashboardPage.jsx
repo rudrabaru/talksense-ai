@@ -57,7 +57,7 @@ export default function DashboardPage() {
   } = useSessionWebSocket(validatedSessionId);
 
   // --- Client memory / Launcher states ---------------------------------------
-  const [launcherMode, setLauncherMode] = useState("sales"); // "meeting" | "sales"
+  const [launcherMode, setLauncherMode] = useState("meeting"); // "meeting" | "sales" | "interview"
   const [clients, setClients] = useState([]);
   const [selectedClientId, setSelectedClientId] = useState("");
   const [clientBriefing, setClientBriefing] = useState(null);
@@ -842,11 +842,15 @@ export default function DashboardPage() {
                 cursor: audioStatus === "connecting" ? "wait" : "pointer",
                 letterSpacing: "0.03em",
               }}
-              aria-label="Start microphone capture"
+              aria-label={`Start ${selectedSourceType.replace('_', ' ')} capture`}
             >
               {audioStatus === "connecting"
                 ? "⏳ Connecting…"
-                : "🎙 Start Microphone"}
+                : selectedSourceType === "system_audio"
+                  ? "🖥️ Start System Audio"
+                  : selectedSourceType === "mixed"
+                    ? "🎙+🖥️ Start Mixed Audio"
+                    : "🎙 Start Microphone"}
             </button>
           ) : (
             <button
@@ -863,9 +867,13 @@ export default function DashboardPage() {
                 cursor: "pointer",
                 letterSpacing: "0.03em",
               }}
-              aria-label="Stop microphone capture"
+              aria-label={`Stop ${selectedSourceType.replace('_', ' ')} capture`}
             >
-              ⏹ Stop Microphone
+              {selectedSourceType === "system_audio"
+                ? "⏹ Stop System Audio"
+                : selectedSourceType === "mixed"
+                  ? "⏹ Stop Mixed Audio"
+                  : "⏹ Stop Microphone"}
             </button>
           )}
         </div>

@@ -657,6 +657,7 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
                     "metric_name": "sentiment_score",
                     "metric_value": conv.sentiment_score,
                 },
+                {"metric_name": "sentiment", "metric_value": conv.sentiment},
                 {"metric_name": "filler_count", "metric_value": conv.filler_count},
                 {"metric_name": "speaking_ratio", "metric_value": conv.speaking_ratio},
                 {"metric_name": "participation", "metric_value": conv.participation},

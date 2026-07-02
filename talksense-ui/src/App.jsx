@@ -6,6 +6,8 @@ import DashboardPage from "./pages/DashboardPage"
 import SessionsPage from "./pages/SessionsPage"
 import ComparisonPage from "./pages/ComparisonPage"
 import SystemAudioTester from "./pages/SystemAudioTester"
+import NotFoundPage from "./pages/NotFoundPage"
+import { Navigate } from "react-router-dom"
 
 export default function App() {
   return (
@@ -17,8 +19,10 @@ export default function App() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/dashboard/:sessionId" element={<DashboardPage />} />
         <Route path="/sessions" element={<SessionsPage />} />
+        <Route path="/history" element={<Navigate to="/sessions" replace />} />
         <Route path="/compare" element={<ComparisonPage />} />
         <Route path="/test-system-audio" element={<SystemAudioTester />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   )
