@@ -140,7 +140,7 @@ class WhisperTranscriber:
                 compression_ratio_threshold=2.2,  # was 2.4; reject repetitive hallucinations  # noqa: E501
                 condition_on_previous_text=True,  # Use prior context across chunks
                 initial_prompt=initial_prompt,  # Pass context manually
-                vad_filter=False,  # VAD handled externally by Silero
+                vad_filter=True,  # Required for word_timestamps=True on long audio
                 word_timestamps=True,
             )
 
@@ -226,7 +226,7 @@ class WhisperTranscriber:
                 compression_ratio_threshold=2.2,
                 condition_on_previous_text=True,
                 initial_prompt=initial_prompt,
-                vad_filter=False,
+                vad_filter=True,
                 word_timestamps=True,
             )
             # exhaust generator to execute inference immediately on GPU

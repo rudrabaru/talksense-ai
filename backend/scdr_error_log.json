@@ -20,7 +20,7 @@
     "sample_name": "meeting_short"
   },
   {
-    "start": 26.42,
+    "start": 26.4,
     "end": 29.78,
     "predicted_raw": "Speaker 1",
     "predicted_mapped": "A",
@@ -190,22 +190,62 @@
     "sample_name": "sales_bad"
   },
   {
-    "start": 113.5,
-    "end": 123.84,
+    "start": 117.21940625,
+    "end": 118.74,
     "predicted_raw": "Speaker 2",
     "predicted_mapped": "B",
     "expected": "A",
-    "text": "but we think he's a great fit. Great idea. Well, let's set a",
+    "text": "Great idea.",
     "audio_file": "0001_Business_English_Conversations_ESL_Business_Meeting_Conversation.m4a",
     "sample_name": "business_english_long"
   },
   {
-    "start": 270.4,
-    "end": 270.7,
+    "start": 120.24,
+    "end": 124.26,
+    "predicted_raw": "Speaker 2",
+    "predicted_mapped": "B",
+    "expected": "A",
+    "text": "Well, let's set aside more time at the next meeting",
+    "audio_file": "0001_Business_English_Conversations_ESL_Business_Meeting_Conversation.m4a",
+    "sample_name": "business_english_long"
+  },
+  {
+    "start": 138.06846875000002,
+    "end": 139.76,
     "predicted_raw": "Speaker 1",
     "predicted_mapped": "A",
     "expected": "B",
-    "text": "Absolutely.",
+    "text": "Okay, Tony.",
+    "audio_file": "0001_Business_English_Conversations_ESL_Business_Meeting_Conversation.m4a",
+    "sample_name": "business_english_long"
+  },
+  {
+    "start": 139.76,
+    "end": 144.81003125,
+    "predicted_raw": "Speaker 1",
+    "predicted_mapped": "A",
+    "expected": "B",
+    "text": "I will be ready to present to everyone then.",
+    "audio_file": "0001_Business_English_Conversations_ESL_Business_Meeting_Conversation.m4a",
+    "sample_name": "business_english_long"
+  },
+  {
+    "start": 178.32,
+    "end": 194.26,
+    "predicted_raw": "Speaker 4",
+    "predicted_mapped": "D",
+    "expected": "A",
+    "text": "All right, I'll let the judges weigh in.",
+    "audio_file": "0001_Winner_Best_Pitch_Competition_Willy_Green_Party_on_Demand.m4a",
+    "sample_name": "pitch_competition_long"
+  },
+  {
+    "start": 337.34,
+    "end": 338.29034375000003,
+    "predicted_raw": "Speaker 1",
+    "predicted_mapped": "A",
+    "expected": "C",
+    "text": "Are great.",
     "audio_file": "0001_Winner_Best_Pitch_Competition_Willy_Green_Party_on_Demand.m4a",
     "sample_name": "pitch_competition_long"
   }

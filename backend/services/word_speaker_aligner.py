@@ -79,4 +79,25 @@ def align_words_to_speakers(
             "confidence": w_conf
         })
         
+    # Smooth speaker assignments using a sliding window to remove Pyannote jitter leaks
+    # This prevents single words from causing spurious speaker changes (A -> B -> A).
+    window_size = 5
+    if len(aligned_words) >= window_size:
+        smoothed = []
+        for i in range(len(aligned_words)):
+            start_idx = max(0, i - window_size // 2)
+            end_idx = min(len(aligned_words), i + window_size // 2 + 1)
+            window = [w["speaker"] for w in aligned_words[start_idx:end_idx]]
+            
+            counts = {}
+            for spk in window:
+                counts[spk] = counts.get(spk, 0) + 1
+            majority_spk = max(counts.keys(), key=lambda k: counts[k])
+            
+            new_w = dict(aligned_words[i])
+            new_w["speaker"] = majority_spk
+            smoothed.append(new_w)
+            
+        aligned_words = smoothed
+
     return aligned_words

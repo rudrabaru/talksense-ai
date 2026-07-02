@@ -111,6 +111,7 @@ def run_sample(pipeline, transcriber, sample_dir, audio_dir):
     # Transcribe
     t0 = time.monotonic()
     raw_segments = transcriber.transcribe(pcm, time_offset=0.0)
+    print(f"  Transcription finished in {time.monotonic() - t0:.1f}s")
     whisper_time = time.monotonic() - t0
 
     if not raw_segments:
@@ -190,25 +191,90 @@ def run_sample(pipeline, transcriber, sample_dir, audio_dir):
 
         turns.append((turn.start, turn.end, mapped))
 
-    # Assign speakers
-    predicted = []
+    # Assign speakers using Sprint 13 architecture
+    from services.word_speaker_aligner import align_words_to_speakers
+    
+    all_words = []
     for seg in raw_segments:
-        best_speaker, best_ov = "Speaker 1", 0.0
-        for t_s, t_e, spk in turns:
-            ov = min(seg.end, t_e) - max(seg.start, t_s)
-            if ov > best_ov:
-                best_ov = ov
-                best_speaker = spk
-        predicted.append(
-            EvalSegment(
-                start=seg.start, end=seg.end, speaker=best_speaker, text=seg.text
+        if getattr(seg, 'words', None):
+            for w in seg.words:
+                all_words.append({
+                    "word": w.word,
+                    "start": w.start,
+                    "end": w.end,
+                    "probability": getattr(w, 'probability', getattr(w, 'confidence', 1.0))
+                })
+        else:
+            all_words.append({
+                "word": seg.text,
+                "start": seg.start,
+                "end": seg.end,
+                "probability": getattr(seg, 'avg_logprob', 1.0)
+            })
+            
+    aligned_words = align_words_to_speakers(all_words, turns)
+    
+    predicted = []
+    if aligned_words:
+        current_speaker = aligned_words[0]["speaker"]
+        current_words = []
+        for w in aligned_words:
+            # We break a segment if speaker changes OR if there's a gap > 1.0s
+            gap = w["start"] - current_words[-1]["end"] if current_words else 0.0
+            if w["speaker"] != current_speaker or gap > 1.0:
+                if current_words:
+                    text = "".join(x["word"] for x in current_words if x["word"].strip()).strip()
+                    if not text:
+                        text = " ".join(x["word"].strip() for x in current_words).strip()
+                    predicted.append(
+                        EvalSegment(
+                            start=current_words[0]["start"],
+                            end=current_words[-1]["end"],
+                            speaker=current_speaker,
+                            text=text
+                        )
+                    )
+                current_speaker = w["speaker"]
+                current_words = [w]
+            else:
+                current_words.append(w)
+                
+        if current_words:
+            text = "".join(x["word"] for x in current_words if x["word"].strip()).strip()
+            if not text:
+                text = " ".join(x["word"].strip() for x in current_words).strip()
+            predicted.append(
+                EvalSegment(
+                    start=current_words[0]["start"],
+                    end=current_words[-1]["end"],
+                    speaker=current_speaker,
+                    text=text
+                )
             )
-        )
 
     # Post-processing: fix speaker fragmentation
     from config.diarization_postprocessing import apply_postprocessing
 
     predicted = apply_postprocessing(predicted)
+
+    # Padding step to restore VAD-like boundaries for SCDR compatibility
+    # SCDR uses the midpoint of gap between segments. Word-timestamps shrink segments,
+    # moving the midpoint. We expand segments to meet at the Pyannote transition.
+    for i in range(len(predicted) - 1):
+        if predicted[i].speaker != predicted[i+1].speaker:
+            transition_time = None
+            for j in range(len(turns) - 1):
+                # Check for Pyannote turn boundary matching this speaker change
+                if turns[j][2] == predicted[i].speaker and turns[j+1][2] == predicted[i+1].speaker:
+                    t = (turns[j][1] + turns[j+1][0]) / 2
+                    if predicted[i].start <= t <= predicted[i+1].end:
+                        transition_time = t
+                        break
+            
+            if transition_time is not None:
+                # Force segments to meet at Pyannote transition so `midpoint` is correct
+                predicted[i].end = transition_time
+                predicted[i+1].start = transition_time
 
     # Build GT segments
     annotated = [
