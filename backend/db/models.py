@@ -273,6 +273,7 @@ class TranscriptSegment(Base):
     text: Mapped[str] = mapped_column(Text, nullable=False)
     sentiment: Mapped[float | None] = mapped_column(Float, nullable=True)
     sentiment_label: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    words: Mapped[list | None] = mapped_column(JSONB, nullable=True)
 
     # ── Indexes ───────────────────────────────────────────────────────────────
     __table_args__ = (

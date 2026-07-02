@@ -186,65 +186,113 @@ class SpeakerDiarizer:
         fallback_speaker: str,
         speaker_profile: SpeakerProfile,
     ) -> list[DiarizedSegment]:
-        """Extract embeddings for each segment and assign via SpeakerProfile."""
+        """Extract sliding window embeddings and align via word overlap."""
         if self._model is None:
             raise ValueError("Diarizer model is not loaded.")
         try:
             import torch
+            from services.word_speaker_aligner import align_words_to_speakers
+            from audio.transcriber import TranscriptWord
 
             # Convert PCM → float32 tensor
             audio_int16 = np.frombuffer(pcm_bytes, dtype=np.int16)
             audio_float32 = audio_int16.astype(np.float32) / 32768.0
 
-            diarized: list[DiarizedSegment] = []
-            current_speaker = fallback_speaker
             device = next(self._model.parameters()).device
+            
+            speaker_segments = []
+            window_samples = int(1.0 * SAMPLE_RATE)
+            stride_samples = int(0.5 * SAMPLE_RATE)
+            total_samples = len(audio_float32)
+            
+            # Sliding window to get Pyannote speaker segments
+            if total_samples < window_samples and total_samples >= SAMPLE_RATE * 0.5:
+                tensor = torch.from_numpy(audio_float32).unsqueeze(0).unsqueeze(0).to(device)
+                with torch.inference_mode():
+                    emb = self._model(tensor).cpu().numpy()[0]
+                speaker = speaker_profile.match_or_create(emb)
+                speaker_segments.append((chunk_time_offset, chunk_time_offset + (total_samples / SAMPLE_RATE), speaker))
+            elif total_samples >= window_samples:
+                for start_sample in range(0, total_samples, stride_samples):
+                    end_sample = min(total_samples, start_sample + window_samples)
+                    seg_audio = audio_float32[start_sample:end_sample]
+                    if len(seg_audio) >= SAMPLE_RATE * 0.5:
+                        tensor = torch.from_numpy(seg_audio).unsqueeze(0).unsqueeze(0).to(device)
+                        with torch.inference_mode():
+                            emb = self._model(tensor).cpu().numpy()[0]
+                        speaker = speaker_profile.match_or_create(emb)
+                        w_start = chunk_time_offset + (start_sample / SAMPLE_RATE)
+                        w_end = chunk_time_offset + (end_sample / SAMPLE_RATE)
+                        speaker_segments.append((w_start, w_end, speaker))
 
+            diarized: list[DiarizedSegment] = []
+            
             for seg in segments:
-                # Calculate sample indices relative to the provided pcm chunk
-                local_start = max(0.0, seg.start - chunk_time_offset)
-                local_end = max(0.0, seg.end - chunk_time_offset)
-
-                start_sample = int(local_start * SAMPLE_RATE)
-                end_sample = int(local_end * SAMPLE_RATE)
-
-                # Bounds check
-                end_sample = min(len(audio_float32), end_sample)
-                start_sample = min(end_sample, start_sample)
-
-                seg_audio = audio_float32[start_sample:end_sample]
-
-                # If segment is too short (< 0.5s), embedding will be noisy.
-                # Just use the previous speaker (or fallback).
-                if len(seg_audio) < SAMPLE_RATE * 0.5:
-                    speaker = current_speaker
+                words_dicts = []
+                if seg.words:
+                    for w in seg.words:
+                        words_dicts.append({
+                            "word": w.word,
+                            "start": w.start,
+                            "end": w.end,
+                            "probability": w.probability
+                        })
                 else:
-                    tensor = (
-                        torch.from_numpy(seg_audio).unsqueeze(0).unsqueeze(0)
-                    )  # [1, 1, samples]
-                    tensor = tensor.to(device)
-
-                    with torch.inference_mode():
-                        emb = self._model(tensor).cpu().numpy()[0]
-
-                    speaker = speaker_profile.match_or_create(emb)
-                    current_speaker = speaker
-
-                diarized.append(
-                    DiarizedSegment(
-                        start=seg.start,
-                        end=seg.end,
-                        text=seg.text,
-                        speaker=speaker,
-                        language=seg.language,
-                        avg_logprob=seg.avg_logprob,
+                    words_dicts.append({
+                        "word": seg.text,
+                        "start": seg.start,
+                        "end": seg.end,
+                        "probability": seg.avg_logprob
+                    })
+                    
+                aligned = align_words_to_speakers(words_dicts, speaker_segments, fallback_speaker)
+                
+                if not aligned:
+                    continue
+                    
+                current_seg_speaker = aligned[0]["speaker"]
+                current_seg_words = []
+                
+                for w in aligned:
+                    if w["speaker"] != current_seg_speaker:
+                        if current_seg_words:
+                            text = "".join(x["word"] for x in current_seg_words).strip()
+                            t_words = [TranscriptWord(word=x["word"], start=x["start"], end=x["end"], probability=x["confidence"]) for x in current_seg_words]
+                            diarized.append(
+                                DiarizedSegment(
+                                    start=current_seg_words[0]["start"],
+                                    end=current_seg_words[-1]["end"],
+                                    text=text,
+                                    speaker=current_seg_speaker,
+                                    language=seg.language,
+                                    avg_logprob=seg.avg_logprob,
+                                    words=t_words
+                                )
+                            )
+                        current_seg_speaker = w["speaker"]
+                        current_seg_words = [w]
+                    else:
+                        current_seg_words.append(w)
+                        
+                if current_seg_words:
+                    text = "".join(x["word"] for x in current_seg_words).strip()
+                    t_words = [TranscriptWord(word=x["word"], start=x["start"], end=x["end"], probability=x["confidence"]) for x in current_seg_words]
+                    diarized.append(
+                        DiarizedSegment(
+                            start=current_seg_words[0]["start"],
+                            end=current_seg_words[-1]["end"],
+                            text=text,
+                            speaker=current_seg_speaker,
+                            language=seg.language,
+                            avg_logprob=seg.avg_logprob,
+                            words=t_words
+                        )
                     )
-                )
 
             return diarized
 
         except Exception as exc:
-            logger.error(f"Diarizer: Embedding inference error — {exc}. Falling back.")
+            logger.error(f"Diarizer: Embedding inference error — {exc}. Falling back.", exc_info=True)
             return self._diarize_heuristic(segments, fallback_speaker)
 
     async def _diarize_with_embeddings_async(
@@ -259,10 +307,10 @@ class SpeakerDiarizer:
         if self._model is None:
             raise ValueError("Diarizer model is not loaded.")
         import asyncio
-
         import torch
-
         from audio.gpu_manager import get_gpu_semaphore
+        from services.word_speaker_aligner import align_words_to_speakers
+        from audio.transcriber import TranscriptWord
 
         loop = asyncio.get_running_loop()
         device = next(self._model.parameters()).device
@@ -273,35 +321,26 @@ class SpeakerDiarizer:
             audio_float32 = audio_int16.astype(np.float32) / 32768.0
 
             tensors = []
-            metas = []
-
-            for seg in segments:
-                local_start = max(0.0, seg.start - chunk_time_offset)
-                local_end = max(0.0, seg.end - chunk_time_offset)
-
-                start_sample = int(local_start * SAMPLE_RATE)
-                end_sample = int(local_end * SAMPLE_RATE)
-                end_sample = min(len(audio_float32), end_sample)
-                start_sample = min(end_sample, start_sample)
-
-                seg_audio = audio_float32[start_sample:end_sample]
-                if len(seg_audio) < SAMPLE_RATE * 0.5:
-                    metas.append({"type": "short", "seg": seg})
-                else:
-                    tensor = (
-                        torch.from_numpy(seg_audio).unsqueeze(0).unsqueeze(0).to(device)
-                    )
-                    tensors.append(tensor)
-                    metas.append({"type": "infer", "seg": seg})
-            return tensors, metas
+            window_samples = int(1.0 * SAMPLE_RATE)
+            stride_samples = int(0.5 * SAMPLE_RATE)
+            total_samples = len(audio_float32)
+            
+            if total_samples < window_samples and total_samples >= SAMPLE_RATE * 0.5:
+                tensors.append(torch.from_numpy(audio_float32).unsqueeze(0).unsqueeze(0).to(device))
+            elif total_samples >= window_samples:
+                for start_sample in range(0, total_samples, stride_samples):
+                    end_sample = min(total_samples, start_sample + window_samples)
+                    seg_audio = audio_float32[start_sample:end_sample]
+                    if len(seg_audio) >= SAMPLE_RATE * 0.5:
+                        tensors.append(torch.from_numpy(seg_audio).unsqueeze(0).unsqueeze(0).to(device))
+            return tensors
 
         try:
-            tensors, metas = await loop.run_in_executor(None, _prep)
+            tensors = await loop.run_in_executor(None, _prep)
 
             # 2. GPU Inference
             embs = []
             if tensors:
-
                 def _infer():
                     out = []
                     with torch.inference_mode():
@@ -314,34 +353,95 @@ class SpeakerDiarizer:
 
             # 3. CPU Post
             def _post():
-                diarized = []
-                current_speaker = fallback_speaker
-                emb_idx = 0
-                for meta in metas:
-                    seg = meta["seg"]
-                    if meta["type"] == "short":
-                        speaker = current_speaker
-                    else:
+                speaker_segments = []
+                window_samples = int(1.0 * SAMPLE_RATE)
+                stride_samples = int(0.5 * SAMPLE_RATE)
+                total_samples = len(np.frombuffer(pcm_bytes, dtype=np.int16))
+                
+                if embs:
+                    emb_idx = 0
+                    if total_samples < window_samples and total_samples >= SAMPLE_RATE * 0.5:
                         speaker = speaker_profile.match_or_create(embs[emb_idx])
-                        current_speaker = speaker
-                        emb_idx += 1
+                        speaker_segments.append((chunk_time_offset, chunk_time_offset + (total_samples / SAMPLE_RATE), speaker))
+                    elif total_samples >= window_samples:
+                        for start_sample in range(0, total_samples, stride_samples):
+                            end_sample = min(total_samples, start_sample + window_samples)
+                            if end_sample - start_sample >= SAMPLE_RATE * 0.5:
+                                speaker = speaker_profile.match_or_create(embs[emb_idx])
+                                w_start = chunk_time_offset + (start_sample / SAMPLE_RATE)
+                                w_end = chunk_time_offset + (end_sample / SAMPLE_RATE)
+                                speaker_segments.append((w_start, w_end, speaker))
+                                emb_idx += 1
 
-                    diarized.append(
-                        DiarizedSegment(
-                            start=seg.start,
-                            end=seg.end,
-                            text=seg.text,
-                            speaker=speaker,
-                            language=seg.language,
-                            avg_logprob=seg.avg_logprob,
+                diarized = []
+                for seg in segments:
+                    words_dicts = []
+                    if seg.words:
+                        for w in seg.words:
+                            words_dicts.append({
+                                "word": w.word,
+                                "start": w.start,
+                                "end": w.end,
+                                "probability": w.probability
+                            })
+                    else:
+                        words_dicts.append({
+                            "word": seg.text,
+                            "start": seg.start,
+                            "end": seg.end,
+                            "probability": seg.avg_logprob
+                        })
+                        
+                    aligned = align_words_to_speakers(words_dicts, speaker_segments, fallback_speaker)
+                    
+                    if not aligned:
+                        continue
+                        
+                    current_seg_speaker = aligned[0]["speaker"]
+                    current_seg_words = []
+                    
+                    for w in aligned:
+                        if w["speaker"] != current_seg_speaker:
+                            if current_seg_words:
+                                text = "".join(x["word"] for x in current_seg_words).strip()
+                                t_words = [TranscriptWord(word=x["word"], start=x["start"], end=x["end"], probability=x["confidence"]) for x in current_seg_words]
+                                diarized.append(
+                                    DiarizedSegment(
+                                        start=current_seg_words[0]["start"],
+                                        end=current_seg_words[-1]["end"],
+                                        text=text,
+                                        speaker=current_seg_speaker,
+                                        language=seg.language,
+                                        avg_logprob=seg.avg_logprob,
+                                        words=t_words
+                                    )
+                                )
+                            current_seg_speaker = w["speaker"]
+                            current_seg_words = [w]
+                        else:
+                            current_seg_words.append(w)
+                            
+                    if current_seg_words:
+                        text = "".join(x["word"] for x in current_seg_words).strip()
+                        t_words = [TranscriptWord(word=x["word"], start=x["start"], end=x["end"], probability=x["confidence"]) for x in current_seg_words]
+                        diarized.append(
+                            DiarizedSegment(
+                                start=current_seg_words[0]["start"],
+                                end=current_seg_words[-1]["end"],
+                                text=text,
+                                speaker=current_seg_speaker,
+                                language=seg.language,
+                                avg_logprob=seg.avg_logprob,
+                                words=t_words
+                            )
                         )
-                    )
+
                 return diarized
 
             return await loop.run_in_executor(None, _post)
 
         except Exception as exc:
-            logger.error(f"Diarizer: Async embedding error — {exc}. Falling back.")
+            logger.error(f"Diarizer: Async embedding error — {exc}. Falling back.", exc_info=True)
             return self._diarize_heuristic(segments, fallback_speaker)
 
     # ── Heuristic fallback ────────────────────────────────────────────────────

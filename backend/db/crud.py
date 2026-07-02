@@ -347,12 +347,13 @@ async def save_transcript_segments(
     rows = [
         DBTranscriptSegment(
             session_id=sid,
-            speaker_id=seg.get("speaker", seg.get("speaker_id")),
-            start_time=seg.get("start", seg.get("start_time", 0.0)),
-            end_time=seg.get("end", seg.get("end_time", 0.0)),
-            text=seg.get("text", ""),
-            sentiment=seg.get("sentiment"),
-            sentiment_label=seg.get("sentiment_label"),
+            speaker_id=seg.speaker if hasattr(seg, "speaker") else seg.get("speaker", seg.get("speaker_id")),
+            start_time=seg.start if hasattr(seg, "start") else seg.get("start", seg.get("start_time", 0.0)),
+            end_time=seg.end if hasattr(seg, "end") else seg.get("end", seg.get("end_time", 0.0)),
+            text=seg.text if hasattr(seg, "text") else seg.get("text", ""),
+            sentiment=seg.sentiment if hasattr(seg, "sentiment") else seg.get("sentiment"),
+            sentiment_label=seg.sentiment_label if hasattr(seg, "sentiment_label") else seg.get("sentiment_label"),
+            words=[{"word": w.word, "start": w.start, "end": w.end, "probability": w.probability} for w in seg.words] if hasattr(seg, "words") and seg.words else (seg.get("words") if isinstance(seg, dict) else None),
         )
         for seg in segments
     ]
@@ -362,6 +363,24 @@ async def save_transcript_segments(
         len(rows),
         session_id[:8],
     )
+
+
+async def replace_transcript_segments(
+    db: AsyncSession,
+    session_id: str,
+    segments: list[dict],
+) -> None:
+    """
+    Deletes all existing transcript segments for a session and inserts new ones.
+    Used by the post-session diarizer to rebuild transcript segments from words.
+    Does NOT commit.
+    """
+    sid = uuid.UUID(session_id)
+    from sqlalchemy import delete
+    from db.models import TranscriptSegment as DBTranscriptSegment
+    stmt = delete(DBTranscriptSegment).where(DBTranscriptSegment.session_id == sid)
+    await db.execute(stmt)
+    await save_transcript_segments(db, session_id, segments)
 
 
 async def save_session_metrics_batch(

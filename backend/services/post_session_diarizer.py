@@ -617,7 +617,7 @@ def _run_pyannote_sync(
             "post_session_diarizer — session %s: Pyannote error — %s",
             session_id[:8],
             exc,
-            exc_info=True,
+                        exc_info=True,
         )
         return None
 
@@ -625,68 +625,19 @@ def _run_pyannote_sync(
 # ── DB helpers ────────────────────────────────────────────────────────────────
 
 
-async def _set_attribution_status(session_id: str, status: str) -> None:
-    """Update speaker_attribution_status on the session row and commit."""
-    try:
-        from db import crud
-        from db.database import AsyncSessionLocal
-
-        async with AsyncSessionLocal() as db:
-            await crud.update_session_speaker_attribution_status(db, session_id, status)
-            await db.commit()
-
-        # Synchronise memory state
-        from ws.session_manager import get_session_manager
-
-        manager = get_session_manager()
-        session = manager.get(session_id)
-        if session:
-            session.speaker_attribution_status = status
-
-        logger.info(
-            "speaker attribution status=%s session=%s",
-            status,
-            session_id,
-        )
-        logger.debug(
-            "post_session_diarizer — session %s: attribution status → %s",
-            session_id[:8],
-            status,
-        )
-    except Exception:  # noqa: BLE001
-        logger.exception(
-            "post_session_diarizer — session %s: failed to set status=%s",
-            session_id[:8],
-            status,
-        )
-
-
 async def _apply_speaker_updates(
     session_id: str,
     turns: list[tuple[float, float, str]],
 ) -> dict:
     """
-    Fetch all transcript segments for the session, compute the best speaker
-    for each using a two-stage algorithm, then batch-update speaker_id.
-
-    Stage 1 — winner-take-all overlap: the Pyannote turn with the greatest
-    temporal overlap with the segment wins.
-
-    Stage 2 — nearest-turn proximity: when no overlap exists (segment falls
-    in a gap between Pyannote turns), assign the turn whose nearest boundary
-    is temporally closest to the segment.  This handles timestamp drift
-    between Whisper and Pyannote and short gap intervals.
-
-    Returns a dict with:
-        segments_updated  int  — number of rows whose speaker_id changed
-        total_segments    int  — total number of transcript segments in DB
-        overlap_count     int  — segments resolved by overlap
-        proximity_count   int  — segments resolved by proximity fallback
+    Fetch all transcript segments for the session, extract their words,
+    align words to Pyannote turns, reconstruct the segments based on aligned speakers,
+    and replace the existing segments in the database.
     """
     if not turns:
         logger.info(
             "post_session_diarizer — session %s: no speaker turns detected, "
-            "speaker_id fields unchanged",
+            "segments unchanged",
             session_id[:8],
         )
         return {
@@ -698,6 +649,7 @@ async def _apply_speaker_updates(
 
     from db import crud
     from db.database import AsyncSessionLocal
+    from services.word_speaker_aligner import align_words_to_speakers
 
     async with AsyncSessionLocal() as db:
         segments = await crud.get_all_transcript_segments(db, session_id)
@@ -715,101 +667,83 @@ async def _apply_speaker_updates(
                 "proximity_count": 0,
             }
 
-        speaker_updates: list[dict] = []
-        overlap_count = 0
-        proximity_count = 0
-
         logger.debug(
-            "post_session_diarizer — session %s: matching %d segment(s) against "
+            "post_session_diarizer — session %s: aligning words from %d segment(s) against "
             "%d Pyannote turn(s)",
             session_id[:8],
             total,
             len(turns),
         )
-
+        
+        # 1. Extract words from all DB segments
+        all_words = []
         for seg in segments:
-            new_speaker, reason, quality = _find_best_speaker(
-                seg.start_time, seg.end_time, turns
-            )
-
-            if reason.startswith("overlap"):
-                overlap_count += 1
-                logger.debug(
-                    "  MATCHED  seg=%-4s [%6.2f-%6.2f] → %-12s | %s",
-                    seg.id,
-                    seg.start_time,
-                    seg.end_time,
-                    new_speaker,
-                    reason,
-                )
-            elif reason.startswith("nearest"):
-                proximity_count += 1
-                logger.debug(
-                    "  PROXIM   seg=%-4s [%6.2f-%6.2f] → %-12s | %s",
-                    seg.id,
-                    seg.start_time,
-                    seg.end_time,
-                    new_speaker,
-                    reason,
-                )
+            if seg.words:
+                all_words.extend(seg.words)
             else:
-                logger.debug(
-                    "  UNMATCH  seg=%-4s [%6.2f-%6.2f] → %-12s | %s",
-                    seg.id,
-                    seg.start_time,
-                    seg.end_time,
-                    new_speaker,
-                    reason,
-                )
-
-            if new_speaker != seg.speaker_id:
-                speaker_updates.append(
-                    {
-                        "segment_id": seg.id,
-                        "speaker": new_speaker,
-                    }
-                )
-
+                all_words.append({
+                    "word": seg.text,
+                    "start": seg.start_time,
+                    "end": seg.end_time,
+                    "probability": seg.sentiment if seg.sentiment is not None else 0.0
+                })
+                
+        # 2. Align words to speaker turns
+        aligned_words = align_words_to_speakers(all_words, turns)
+        
+        # 3. Reconstruct segments
+        new_segments = []
+        if aligned_words:
+            current_seg_speaker = aligned_words[0]["speaker"]
+            current_seg_words = []
+            
+            for w in aligned_words:
+                if w["speaker"] != current_seg_speaker:
+                    if current_seg_words:
+                        text = "".join(x["word"] for x in current_seg_words).strip()
+                        new_segments.append({
+                            "speaker": current_seg_speaker,
+                            "start": current_seg_words[0]["start"],
+                            "end": current_seg_words[-1]["end"],
+                            "text": text,
+                            "words": current_seg_words,
+                            "sentiment": None,
+                            "sentiment_label": None
+                        })
+                    current_seg_speaker = w["speaker"]
+                    current_seg_words = [w]
+                else:
+                    current_seg_words.append(w)
+                    
+            if current_seg_words:
+                text = "".join(x["word"] for x in current_seg_words).strip()
+                new_segments.append({
+                    "speaker": current_seg_speaker,
+                    "start": current_seg_words[0]["start"],
+                    "end": current_seg_words[-1]["end"],
+                    "text": text,
+                    "words": current_seg_words,
+                    "sentiment": None,
+                    "sentiment_label": None
+                })
+                
         logger.info(
-            "post_session_diarizer — session %s: assignment summary — "
-            "overlap=%d, proximity=%d, unmatched=%d (total=%d)",
+            "post_session_diarizer — session %s: reconstructed %d segment(s) from %d aligned words",
             session_id[:8],
-            overlap_count,
-            proximity_count,
-            total - overlap_count - proximity_count,
-            total,
+            len(new_segments),
+            len(aligned_words),
         )
 
-        if not speaker_updates:
-            logger.info(
-                "post_session_diarizer — session %s: all %d segment(s) already have "
-                "correct speaker labels — no updates needed",
-                session_id[:8],
-                total,
-            )
-            return {
-                "segments_updated": 0,
-                "total_segments": total,
-                "overlap_count": overlap_count,
-                "proximity_count": proximity_count,
-            }
-
         with profile_stage(session_id, "Database writes"):
-            count = await crud.update_segment_speakers(db, session_id, speaker_updates)
+            await crud.replace_transcript_segments(db, session_id, new_segments)
             await db.commit()
 
-    logger.info(
-        "post_session_diarizer — session %s: updated %d / %d segment speaker labels",
-        session_id[:8],
-        count,
-        total,
-    )
-    return {
-        "segments_updated": count,
-        "total_segments": total,
-        "overlap_count": overlap_count,
-        "proximity_count": proximity_count,
-    }
+        return {
+            "segments_updated": len(new_segments),
+            "total_segments": len(new_segments),
+            "overlap_count": len(aligned_words),
+            "proximity_count": 0,
+        }
 
 
 async def _persist_attribution_diagnostics(

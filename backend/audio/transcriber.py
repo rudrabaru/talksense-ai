@@ -26,6 +26,16 @@ SAMPLE_RATE = 16_000
 
 
 @dataclass
+class TranscriptWord:
+    """A single transcribed word with timestamps."""
+
+    word: str
+    start: float
+    end: float
+    probability: float
+
+
+@dataclass
 class TranscriptSegment:
     """A single transcribed speech segment."""
 
@@ -35,7 +45,7 @@ class TranscriptSegment:
     speaker: str | None = None  # filled in by Diarizer later
     language: str | None = None
     avg_logprob: float = 0.0  # whisper confidence proxy
-
+    words: list[TranscriptWord] | None = None
 
 class WhisperTranscriber:
     """
@@ -131,7 +141,7 @@ class WhisperTranscriber:
                 condition_on_previous_text=True,  # Use prior context across chunks
                 initial_prompt=initial_prompt,  # Pass context manually
                 vad_filter=False,  # VAD handled externally by Silero
-                word_timestamps=False,  # not needed; reduces per-segment overhead
+                word_timestamps=True,
             )
 
             segments: list[TranscriptSegment] = []
@@ -139,6 +149,19 @@ class WhisperTranscriber:
                 text = seg.text.strip()
                 if not text:
                     continue
+                
+                segment_words = []
+                if seg.words:
+                    for w in seg.words:
+                        segment_words.append(
+                            TranscriptWord(
+                                word=w.word,
+                                start=round(w.start + time_offset, 3),
+                                end=round(w.end + time_offset, 3),
+                                probability=round(w.probability, 3),
+                            )
+                        )
+                
                 segments.append(
                     TranscriptSegment(
                         start=round(seg.start + time_offset, 2),
@@ -146,6 +169,7 @@ class WhisperTranscriber:
                         text=text,
                         language=info.language,
                         avg_logprob=round(seg.avg_logprob, 3),
+                        words=segment_words,
                     )
                 )
 
@@ -203,7 +227,7 @@ class WhisperTranscriber:
                 condition_on_previous_text=True,
                 initial_prompt=initial_prompt,
                 vad_filter=False,
-                word_timestamps=False,
+                word_timestamps=True,
             )
             # exhaust generator to execute inference immediately on GPU
             return list(raw_segments), info, time.monotonic() - t0
@@ -224,6 +248,19 @@ class WhisperTranscriber:
                 text = seg.text.strip()
                 if not text:
                     continue
+                    
+                segment_words = []
+                if seg.words:
+                    for w in seg.words:
+                        segment_words.append(
+                            TranscriptWord(
+                                word=w.word,
+                                start=round(w.start + time_offset, 3),
+                                end=round(w.end + time_offset, 3),
+                                probability=round(w.probability, 3),
+                            )
+                        )
+                        
                 segments.append(
                     TranscriptSegment(
                         start=round(seg.start + time_offset, 2),
@@ -231,6 +268,7 @@ class WhisperTranscriber:
                         text=text,
                         language=info.language,
                         avg_logprob=round(seg.avg_logprob, 3),
+                        words=segment_words,
                     )
                 )
             return segments, inference_time, info.language

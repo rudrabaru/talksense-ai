@@ -1,13 +1,13 @@
 {
-  "timestamp": "2026-06-30T15:10:22",
+  "timestamp": "2026-07-02T20:45:40",
   "total_samples": 10,
   "valid_samples": 10,
   "errored_samples": 0,
-  "total_time_s": 62.9,
+  "total_time_s": 61.3,
   "aggregate": {
-    "avg_macro_f1": 0.8052,
-    "avg_accuracy": 83.8,
-    "avg_scdr": 53.4,
+    "avg_macro_f1": 0.8337,
+    "avg_accuracy": 85.1,
+    "avg_scdr": 47.2,
     "f1_pass": true,
     "accuracy_pass": true,
     "scdr_pass": false,
@@ -30,14 +30,6 @@
       "speakers_expected": 2,
       "speakers_detected": 2,
       "per_speaker": {
-        "A": {
-          "precision": 0.7143,
-          "recall": 1.0,
-          "f1": 0.8333,
-          "tp": 5,
-          "fp": 2,
-          "fn": 0
-        },
         "B": {
           "precision": 1.0,
           "recall": 0.3333,
@@ -45,6 +37,14 @@
           "tp": 1,
           "fp": 0,
           "fn": 2
+        },
+        "A": {
+          "precision": 0.7143,
+          "recall": 1.0,
+          "f1": 0.8333,
+          "tp": 5,
+          "fp": 2,
+          "fn": 0
         }
       },
       "label_map": {
@@ -53,8 +53,8 @@
       },
       "failures": [
         {
-          "start": 12.72,
-          "end": 15.0,
+          "start": 12.82,
+          "end": 14.66,
           "predicted_raw": "Speaker 2",
           "predicted_mapped": "A",
           "expected": "B",
@@ -63,8 +63,8 @@
           "sample_name": "meeting_short"
         },
         {
-          "start": 26.56,
-          "end": 28.36,
+          "start": 26.74,
+          "end": 28.22,
           "predicted_raw": "Speaker 2",
           "predicted_mapped": "A",
           "expected": "B",
@@ -73,8 +73,8 @@
           "sample_name": "meeting_short"
         }
       ],
-      "whisper_time_s": 1.1,
-      "pyannote_time_s": 1.3
+      "whisper_time_s": 1.8,
+      "pyannote_time_s": 2.4
     },
     {
       "sample": "sales_ambiguous",
@@ -84,40 +84,40 @@
       "segments_matched": 21,
       "total_annotated": 21,
       "total_predicted": 21,
-      "accuracy": 85.7,
-      "macro_f1": 0.8558,
-      "scdr": 54.5,
-      "scdr_detected": 6,
+      "accuracy": 90.5,
+      "macro_f1": 0.9045,
+      "scdr": 45.5,
+      "scdr_detected": 5,
       "scdr_total": 11,
       "speakers_expected": 2,
       "speakers_detected": 2,
       "per_speaker": {
+        "B": {
+          "precision": 1.0,
+          "recall": 0.8182,
+          "f1": 0.9,
+          "tp": 9,
+          "fp": 0,
+          "fn": 2
+        },
         "A": {
           "precision": 0.8333,
-          "recall": 0.9091,
-          "f1": 0.8696,
+          "recall": 1.0,
+          "f1": 0.9091,
           "tp": 10,
           "fp": 2,
-          "fn": 1
-        },
-        "B": {
-          "precision": 0.8889,
-          "recall": 0.8,
-          "f1": 0.8421,
-          "tp": 8,
-          "fp": 1,
-          "fn": 2
+          "fn": 0
         }
       },
       "label_map": {
-        "Speaker 2": "A",
-        "Speaker 1": "B"
+        "Speaker 1": "A",
+        "Speaker 2": "B"
       },
       "failures": [
         {
-          "start": 26.52,
-          "end": 30.52,
-          "predicted_raw": "Speaker 2",
+          "start": 26.42,
+          "end": 29.78,
+          "predicted_raw": "Speaker 1",
           "predicted_mapped": "A",
           "expected": "B",
           "text": "Who else would typically be involved in the decision?",
@@ -125,27 +125,17 @@
           "sample_name": "sales_ambiguous"
         },
         {
-          "start": 32.96,
-          "end": 35.68,
-          "predicted_raw": "Speaker 2",
+          "start": 32.88,
+          "end": 35.22,
+          "predicted_raw": "Speaker 1",
           "predicted_mapped": "A",
           "expected": "B",
           "text": "Would it make sense to loop them into a demo?",
           "audio_file": "sales_ambiguous.mp3",
           "sample_name": "sales_ambiguous"
-        },
-        {
-          "start": 52.32,
-          "end": 53.32,
-          "predicted_raw": "Speaker 1",
-          "predicted_mapped": "B",
-          "expected": "A",
-          "text": "Sounds good.",
-          "audio_file": "sales_ambiguous.mp3",
-          "sample_name": "sales_ambiguous"
         }
       ],
-      "whisper_time_s": 1.8,
+      "whisper_time_s": 1.6,
       "pyannote_time_s": 1.5
     },
     {
@@ -164,19 +154,19 @@
       "speakers_expected": 2,
       "speakers_detected": 2,
       "per_speaker": {
-        "A": {
-          "precision": 1.0,
-          "recall": 1.0,
-          "f1": 1.0,
-          "tp": 21,
-          "fp": 0,
-          "fn": 0
-        },
         "B": {
           "precision": 1.0,
           "recall": 1.0,
           "f1": 1.0,
           "tp": 10,
+          "fp": 0,
+          "fn": 0
+        },
+        "A": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 21,
           "fp": 0,
           "fn": 0
         }
@@ -186,7 +176,7 @@
         "Speaker 2": "B"
       },
       "failures": [],
-      "whisper_time_s": 2.6,
+      "whisper_time_s": 2.3,
       "pyannote_time_s": 2.2
     },
     {
@@ -205,14 +195,6 @@
       "speakers_expected": 2,
       "speakers_detected": 2,
       "per_speaker": {
-        "A": {
-          "precision": 0.75,
-          "recall": 1.0,
-          "f1": 0.8571,
-          "tp": 9,
-          "fp": 3,
-          "fn": 0
-        },
         "B": {
           "precision": 1.0,
           "recall": 0.5,
@@ -220,6 +202,14 @@
           "tp": 3,
           "fp": 0,
           "fn": 3
+        },
+        "A": {
+          "precision": 0.75,
+          "recall": 1.0,
+          "f1": 0.8571,
+          "tp": 9,
+          "fp": 3,
+          "fn": 0
         }
       },
       "label_map": {
@@ -228,8 +218,8 @@
       },
       "failures": [
         {
-          "start": 9.42,
-          "end": 11.88,
+          "start": 9.66,
+          "end": 11.9,
           "predicted_raw": "Speaker 1",
           "predicted_mapped": "A",
           "expected": "B",
@@ -238,8 +228,8 @@
           "sample_name": "sales_meeting"
         },
         {
-          "start": 32.52,
-          "end": 35.24,
+          "start": 32.68,
+          "end": 35.3,
           "predicted_raw": "Speaker 1",
           "predicted_mapped": "A",
           "expected": "B",
@@ -248,17 +238,17 @@
           "sample_name": "sales_meeting"
         },
         {
-          "start": 44.36,
-          "end": 47.16,
+          "start": 44.52,
+          "end": 46.86,
           "predicted_raw": "Speaker 1",
           "predicted_mapped": "A",
           "expected": "B",
-          "text": "All right, what would be the next steps from here?",
+          "text": "Alright, what would be the next steps from here?",
           "audio_file": "SalesMeeting.mp3",
           "sample_name": "sales_meeting"
         }
       ],
-      "whisper_time_s": 2.0,
+      "whisper_time_s": 1.6,
       "pyannote_time_s": 1.4
     },
     {
@@ -266,46 +256,38 @@
       "category": "3_speaker",
       "recording": "BuisinessMeeting.mp3",
       "duration_s": 70.2,
-      "segments_matched": 29,
+      "segments_matched": 32,
       "total_annotated": 36,
-      "total_predicted": 29,
-      "accuracy": 93.1,
-      "macro_f1": 0.8311,
-      "scdr": 60.0,
-      "scdr_detected": 6,
+      "total_predicted": 32,
+      "accuracy": 93.8,
+      "macro_f1": 0.9611,
+      "scdr": 50.0,
+      "scdr_detected": 5,
       "scdr_total": 10,
       "speakers_expected": 7,
       "speakers_detected": 6,
       "per_speaker": {
+        "F": {
+          "precision": 0.875,
+          "recall": 1.0,
+          "f1": 0.9333,
+          "tp": 14,
+          "fp": 2,
+          "fn": 0
+        },
+        "E": {
+          "precision": 1.0,
+          "recall": 0.7143,
+          "f1": 0.8333,
+          "tp": 5,
+          "fp": 0,
+          "fn": 2
+        },
         "D": {
           "precision": 1.0,
           "recall": 1.0,
           "f1": 1.0,
           "tp": 4,
-          "fp": 0,
-          "fn": 0
-        },
-        "G": {
-          "precision": 0.0,
-          "recall": 0.0,
-          "f1": 0.0,
-          "tp": 0,
-          "fp": 0,
-          "fn": 1
-        },
-        "E": {
-          "precision": 1.0,
-          "recall": 0.8,
-          "f1": 0.8889,
-          "tp": 4,
-          "fp": 0,
-          "fn": 1
-        },
-        "B": {
-          "precision": 1.0,
-          "recall": 1.0,
-          "f1": 1.0,
-          "tp": 2,
           "fp": 0,
           "fn": 0
         },
@@ -317,6 +299,14 @@
           "fp": 0,
           "fn": 0
         },
+        "B": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 3,
+          "fp": 0,
+          "fn": 0
+        },
         "A": {
           "precision": 1.0,
           "recall": 1.0,
@@ -324,38 +314,30 @@
           "tp": 2,
           "fp": 0,
           "fn": 0
-        },
-        "F": {
-          "precision": 0.8667,
-          "recall": 1.0,
-          "f1": 0.9286,
-          "tp": 13,
-          "fp": 2,
-          "fn": 0
         }
       },
       "label_map": {
         "Speaker 6": "F",
-        "Speaker 4": "D",
         "Speaker 5": "E",
+        "Speaker 4": "D",
+        "Speaker 2": "B",
         "Speaker 1": "A",
-        "Speaker 3": "C",
-        "Speaker 2": "B"
+        "Speaker 3": "C"
       },
       "failures": [
         {
-          "start": 46.2,
-          "end": 48.04,
+          "start": 56.36,
+          "end": 56.64,
           "predicted_raw": "Speaker 6",
           "predicted_mapped": "F",
-          "expected": "G",
-          "text": "All right, I'll follow up with",
+          "expected": "E",
+          "text": "correct?",
           "audio_file": "BuisinessMeeting.mp3",
           "sample_name": "business_meeting"
         },
         {
           "start": 56.88,
-          "end": 58.28,
+          "end": 58.14,
           "predicted_raw": "Speaker 6",
           "predicted_mapped": "F",
           "expected": "E",
@@ -364,7 +346,7 @@
           "sample_name": "business_meeting"
         }
       ],
-      "whisper_time_s": 2.5,
+      "whisper_time_s": 2.4,
       "pyannote_time_s": 2.0
     },
     {
@@ -383,19 +365,19 @@
       "speakers_expected": 3,
       "speakers_detected": 3,
       "per_speaker": {
-        "A": {
-          "precision": 1.0,
-          "recall": 1.0,
-          "f1": 1.0,
-          "tp": 4,
-          "fp": 0,
-          "fn": 0
-        },
         "B": {
           "precision": 1.0,
           "recall": 1.0,
           "f1": 1.0,
           "tp": 14,
+          "fp": 0,
+          "fn": 0
+        },
+        "A": {
+          "precision": 1.0,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 4,
           "fp": 0,
           "fn": 0
         },
@@ -414,7 +396,7 @@
         "Speaker 3": "C"
       },
       "failures": [],
-      "whisper_time_s": 1.8,
+      "whisper_time_s": 1.5,
       "pyannote_time_s": 1.3
     },
     {
@@ -433,19 +415,19 @@
       "speakers_expected": 3,
       "speakers_detected": 3,
       "per_speaker": {
-        "A": {
-          "precision": 1.0,
-          "recall": 0.5,
-          "f1": 0.6667,
-          "tp": 3,
-          "fp": 0,
-          "fn": 3
-        },
         "B": {
           "precision": 1.0,
           "recall": 0.5714,
           "f1": 0.7273,
           "tp": 4,
+          "fp": 0,
+          "fn": 3
+        },
+        "A": {
+          "precision": 1.0,
+          "recall": 0.5,
+          "f1": 0.6667,
+          "tp": 3,
           "fp": 0,
           "fn": 3
         },
@@ -466,7 +448,7 @@
       "failures": [
         {
           "start": 20.04,
-          "end": 21.32,
+          "end": 20.78,
           "predicted_raw": "Speaker 3",
           "predicted_mapped": "C",
           "expected": "B",
@@ -476,7 +458,7 @@
         },
         {
           "start": 23.92,
-          "end": 27.32,
+          "end": 27.24,
           "predicted_raw": "Speaker 3",
           "predicted_mapped": "C",
           "expected": "A",
@@ -485,8 +467,8 @@
           "sample_name": "meeting_messy"
         },
         {
-          "start": 27.32,
-          "end": 30.12,
+          "start": 27.24,
+          "end": 29.88,
           "predicted_raw": "Speaker 3",
           "predicted_mapped": "C",
           "expected": "B",
@@ -495,22 +477,22 @@
           "sample_name": "meeting_messy"
         },
         {
-          "start": 30.12,
-          "end": 33.12,
+          "start": 30.16,
+          "end": 32.76,
           "predicted_raw": "Speaker 3",
           "predicted_mapped": "C",
           "expected": "A",
-          "text": "Oh, we should probably look into it.",
+          "text": "We should probably look into it.",
           "audio_file": "meeting_messy.mp3",
           "sample_name": "meeting_messy"
         },
         {
           "start": 33.12,
-          "end": 36.04,
+          "end": 35.86,
           "predicted_raw": "Speaker 3",
           "predicted_mapped": "C",
           "expected": "A",
-          "text": "All right, let's think about it and discuss again later.",
+          "text": "Alright, let's think about it and discuss again later.",
           "audio_file": "meeting_messy.mp3",
           "sample_name": "meeting_messy"
         }
@@ -534,14 +516,6 @@
       "speakers_expected": 2,
       "speakers_detected": 2,
       "per_speaker": {
-        "A": {
-          "precision": 1.0,
-          "recall": 0.2,
-          "f1": 0.3333,
-          "tp": 2,
-          "fp": 0,
-          "fn": 8
-        },
         "B": {
           "precision": 0.5,
           "recall": 1.0,
@@ -549,6 +523,14 @@
           "tp": 8,
           "fp": 8,
           "fn": 0
+        },
+        "A": {
+          "precision": 1.0,
+          "recall": 0.2,
+          "f1": 0.3333,
+          "tp": 2,
+          "fp": 0,
+          "fn": 8
         }
       },
       "label_map": {
@@ -557,8 +539,8 @@
       },
       "failures": [
         {
-          "start": 8.6,
-          "end": 9.56,
+          "start": 8.64,
+          "end": 8.9,
           "predicted_raw": "Speaker 2",
           "predicted_mapped": "B",
           "expected": "A",
@@ -567,8 +549,8 @@
           "sample_name": "sales_bad"
         },
         {
-          "start": 9.56,
-          "end": 14.52,
+          "start": 9.54,
+          "end": 14.42,
           "predicted_raw": "Speaker 2",
           "predicted_mapped": "B",
           "expected": "A",
@@ -577,8 +559,8 @@
           "sample_name": "sales_bad"
         },
         {
-          "start": 18.44,
-          "end": 19.76,
+          "start": 18.4,
+          "end": 18.98,
           "predicted_raw": "Speaker 2",
           "predicted_mapped": "B",
           "expected": "A",
@@ -587,8 +569,8 @@
           "sample_name": "sales_bad"
         },
         {
-          "start": 19.76,
-          "end": 22.72,
+          "start": 19.74,
+          "end": 22.48,
           "predicted_raw": "Speaker 2",
           "predicted_mapped": "B",
           "expected": "A",
@@ -597,8 +579,8 @@
           "sample_name": "sales_bad"
         },
         {
-          "start": 27.12,
-          "end": 30.48,
+          "start": 26.74,
+          "end": 30.22,
           "predicted_raw": "Speaker 2",
           "predicted_mapped": "B",
           "expected": "A",
@@ -607,8 +589,8 @@
           "sample_name": "sales_bad"
         }
       ],
-      "whisper_time_s": 1.7,
-      "pyannote_time_s": 1.1
+      "whisper_time_s": 1.4,
+      "pyannote_time_s": 1.0
     },
     {
       "sample": "business_english_long",
@@ -618,85 +600,75 @@
       "segments_matched": 19,
       "total_annotated": 19,
       "total_predicted": 19,
-      "accuracy": 89.5,
-      "macro_f1": 0.8782,
-      "scdr": 60.0,
-      "scdr_detected": 3,
+      "accuracy": 94.7,
+      "macro_f1": 0.9361,
+      "scdr": 0.0,
+      "scdr_detected": 0,
       "scdr_total": 5,
       "speakers_expected": 2,
       "speakers_detected": 2,
       "per_speaker": {
+        "B": {
+          "precision": 0.9286,
+          "recall": 1.0,
+          "f1": 0.963,
+          "tp": 13,
+          "fp": 1,
+          "fn": 0
+        },
         "A": {
           "precision": 1.0,
-          "recall": 0.7143,
-          "f1": 0.8333,
+          "recall": 0.8333,
+          "f1": 0.9091,
           "tp": 5,
           "fp": 0,
-          "fn": 2
-        },
-        "B": {
-          "precision": 0.8571,
-          "recall": 1.0,
-          "f1": 0.9231,
-          "tp": 12,
-          "fp": 2,
-          "fn": 0
+          "fn": 1
         }
       },
       "label_map": {
-        "Speaker 1": "B",
-        "Speaker 2": "A"
+        "Speaker 2": "B",
+        "Speaker 1": "A"
       },
       "failures": [
         {
-          "start": 112.04,
-          "end": 124.2,
-          "predicted_raw": "Speaker 1",
+          "start": 113.5,
+          "end": 123.84,
+          "predicted_raw": "Speaker 2",
           "predicted_mapped": "B",
           "expected": "A",
-          "text": "details, but we think he's a great fit. Great idea! Well, le",
-          "audio_file": "0001_Business_English_Conversations_ESL_Business_Meeting_Conversation.m4a",
-          "sample_name": "business_english_long"
-        },
-        {
-          "start": 175.24,
-          "end": 186.44,
-          "predicted_raw": "Speaker 1",
-          "predicted_mapped": "B",
-          "expected": "A",
-          "text": "for us. We need to give back to the community. I couldn't ag",
+          "text": "but we think he's a great fit. Great idea. Well, let's set a",
           "audio_file": "0001_Business_English_Conversations_ESL_Business_Meeting_Conversation.m4a",
           "sample_name": "business_english_long"
         }
       ],
-      "whisper_time_s": 4.3,
-      "pyannote_time_s": 6.4
+      "whisper_time_s": 3.8,
+      "pyannote_time_s": 6.1
     },
     {
       "sample": "pitch_competition_long",
       "category": "long_form",
       "recording": "0001_Winner_Best_Pitch_Competition_Willy_Green_Party_on_Demand.m4a",
       "duration_s": 348.6,
-      "segments_matched": 116,
+      "segments_matched": 107,
       "total_annotated": 122,
-      "total_predicted": 117,
-      "accuracy": 96.6,
-      "macro_f1": 0.9272,
-      "scdr": 33.3,
-      "scdr_detected": 4,
+      "total_predicted": 107,
+      "accuracy": 99.1,
+      "macro_f1": 0.9758,
+      "scdr": 50.0,
+      "scdr_detected": 6,
       "scdr_total": 12,
       "speakers_expected": 4,
       "speakers_detected": 4,
       "per_speaker": {
-        "A": {
-          "precision": 0.978,
-          "recall": 0.9889,
-          "f1": 0.9834,
-          "tp": 89,
-          "fp": 2,
+        "B": {
+          "precision": 1.0,
+          "recall": 0.8333,
+          "f1": 0.9091,
+          "tp": 5,
+          "fp": 0,
           "fn": 1
         },
-        "B": {
+        "D": {
           "precision": 1.0,
           "recall": 1.0,
           "f1": 1.0,
@@ -704,73 +676,43 @@
           "fp": 0,
           "fn": 0
         },
-        "C": {
-          "precision": 0.7778,
-          "recall": 0.7778,
-          "f1": 0.7778,
-          "tp": 7,
-          "fp": 2,
-          "fn": 2
+        "A": {
+          "precision": 0.9885,
+          "recall": 1.0,
+          "f1": 0.9942,
+          "tp": 86,
+          "fp": 1,
+          "fn": 0
         },
-        "D": {
+        "C": {
           "precision": 1.0,
-          "recall": 0.9,
-          "f1": 0.9474,
-          "tp": 9,
+          "recall": 1.0,
+          "f1": 1.0,
+          "tp": 8,
           "fp": 0,
-          "fn": 1
+          "fn": 0
         }
       },
       "label_map": {
         "Speaker 1": "A",
-        "Speaker 2": "C",
+        "Speaker 3": "C",
         "Speaker 4": "D",
-        "Speaker 3": "B"
+        "Speaker 2": "B"
       },
       "failures": [
         {
-          "start": 187.64,
-          "end": 197.84,
-          "predicted_raw": "Speaker 2",
-          "predicted_mapped": "C",
-          "expected": "D",
-          "text": "All right, I'll let the judges weigh in.",
-          "audio_file": "0001_Winner_Best_Pitch_Competition_Willy_Green_Party_on_Demand.m4a",
-          "sample_name": "pitch_competition_long"
-        },
-        {
-          "start": 211.2,
-          "end": 212.2,
-          "predicted_raw": "Speaker 2",
-          "predicted_mapped": "C",
-          "expected": "A",
-          "text": "Okay.",
-          "audio_file": "0001_Winner_Best_Pitch_Competition_Willy_Green_Party_on_Demand.m4a",
-          "sample_name": "pitch_competition_long"
-        },
-        {
-          "start": 228.88,
-          "end": 230.88,
+          "start": 270.4,
+          "end": 270.7,
           "predicted_raw": "Speaker 1",
           "predicted_mapped": "A",
-          "expected": "C",
-          "text": "Will you be expand to other markets?",
-          "audio_file": "0001_Winner_Best_Pitch_Competition_Willy_Green_Party_on_Demand.m4a",
-          "sample_name": "pitch_competition_long"
-        },
-        {
-          "start": 337.24,
-          "end": 339.24,
-          "predicted_raw": "Speaker 1",
-          "predicted_mapped": "A",
-          "expected": "C",
-          "text": "Thank you very much, Willi.",
+          "expected": "B",
+          "text": "Absolutely.",
           "audio_file": "0001_Winner_Best_Pitch_Competition_Willy_Green_Party_on_Demand.m4a",
           "sample_name": "pitch_competition_long"
         }
       ],
-      "whisper_time_s": 12.4,
-      "pyannote_time_s": 11.3
+      "whisper_time_s": 11.4,
+      "pyannote_time_s": 10.6
     }
   ]
 }
