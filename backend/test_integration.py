@@ -89,6 +89,7 @@ if __name__ == "__main__":
 
     try:
         results = []
+
         def run_test(name, func):
             try:
                 func()
