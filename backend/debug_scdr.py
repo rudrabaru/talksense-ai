@@ -128,9 +128,9 @@ def run_ledger():
         assert diarization is not None
         diarization_list = [
             (turn.start, turn.end, speaker)
-            for turn, _, speaker in diarization.itertracks(
+            for turn, _, speaker in diarization.itertracks(  # pyright: ignore[reportAttributeAccessIssue]
                 yield_label=True
-            )  # pyright: ignore
+            )
         ]
 
         predicted_dicts = align_words_to_speakers(words, diarization_list)

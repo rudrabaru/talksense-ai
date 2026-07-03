@@ -505,6 +505,7 @@ def generate_report(results, output_path):
 
 
 def main():
+    import sys
     import warnings
 
     print("=" * 70)
@@ -539,7 +540,13 @@ def main():
         )
         from pyannote.audio import Pipeline
 
-    hf_token = settings.hf_token or os.environ.get("HF_TOKEN") or True
+    hf_token = settings.hf_token or os.environ.get("HF_TOKEN")
+    if not hf_token:
+        print("\n  [WARNING] HF_TOKEN is missing. Pyannote requires authentication.")
+        print("  Skipping Pyannote-dependent benchmark. Exiting gracefully.")
+        import sys
+        sys.exit(0)
+
     pipeline = Pipeline.from_pretrained(
         "pyannote/speaker-diarization-3.1", token=hf_token
     )
