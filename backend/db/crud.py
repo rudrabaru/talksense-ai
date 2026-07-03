@@ -347,13 +347,49 @@ async def save_transcript_segments(
     rows = [
         DBTranscriptSegment(
             session_id=sid,
-            speaker_id=seg.speaker if hasattr(seg, "speaker") else seg.get("speaker", seg.get("speaker_id")),
-            start_time=seg.start if hasattr(seg, "start") else seg.get("start", seg.get("start_time", 0.0)),
-            end_time=seg.end if hasattr(seg, "end") else seg.get("end", seg.get("end_time", 0.0)),
-            text=seg.text if hasattr(seg, "text") else seg.get("text", ""),
-            sentiment=seg.sentiment if hasattr(seg, "sentiment") else seg.get("sentiment"),
-            sentiment_label=seg.sentiment_label if hasattr(seg, "sentiment_label") else seg.get("sentiment_label"),
-            words=[{"word": w.word, "start": w.start, "end": w.end, "probability": w.probability} for w in seg.words] if hasattr(seg, "words") and seg.words else (seg.get("words") if isinstance(seg, dict) else None),
+            speaker_id=(
+                getattr(seg, "speaker", None)
+                if getattr(seg, "speaker", None) is not None
+                else (seg.get("speaker", seg.get("speaker_id")) if isinstance(seg, dict) else None)
+            ),
+            start_time=(
+                getattr(seg, "start", None)
+                if getattr(seg, "start", None) is not None
+                else (seg.get("start", seg.get("start_time", 0.0)) if isinstance(seg, dict) else 0.0)
+            ),
+            end_time=(
+                getattr(seg, "end", None)
+                if getattr(seg, "end", None) is not None
+                else (seg.get("end", seg.get("end_time", 0.0)) if isinstance(seg, dict) else 0.0)
+            ),
+            text=(
+                getattr(seg, "text", None)
+                if getattr(seg, "text", None) is not None
+                else (seg.get("text", "") if isinstance(seg, dict) else "")
+            ),
+            sentiment=(
+                getattr(seg, "sentiment", None)
+                if getattr(seg, "sentiment", None) is not None
+                else (seg.get("sentiment") if isinstance(seg, dict) else None)
+            ),
+            sentiment_label=(
+                getattr(seg, "sentiment_label", None)
+                if getattr(seg, "sentiment_label", None) is not None
+                else (seg.get("sentiment_label") if isinstance(seg, dict) else None)
+            ),
+            words=(
+                [
+                    {
+                        "word": getattr(w, "word", ""),
+                        "start": getattr(w, "start", 0.0),
+                        "end": getattr(w, "end", 0.0),
+                        "probability": getattr(w, "probability", 0.0),
+                    }
+                    for w in getattr(seg, "words", [])
+                ]
+                if getattr(seg, "words", None)
+                else (seg.get("words") if isinstance(seg, dict) else None)
+            ),
         )
         for seg in segments
     ]
@@ -377,7 +413,9 @@ async def replace_transcript_segments(
     """
     sid = uuid.UUID(session_id)
     from sqlalchemy import delete
+
     from db.models import TranscriptSegment as DBTranscriptSegment
+
     stmt = delete(DBTranscriptSegment).where(DBTranscriptSegment.session_id == sid)
     await db.execute(stmt)
     await save_transcript_segments(db, session_id, segments)

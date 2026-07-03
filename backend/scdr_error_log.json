@@ -1,83 +1,23 @@
 [
   {
-    "start": 12.82,
-    "end": 14.66,
-    "predicted_raw": "Speaker 2",
-    "predicted_mapped": "A",
-    "expected": "B",
-    "text": "We might need to optimize later.",
-    "audio_file": "meeting_short.mp3",
-    "sample_name": "meeting_short"
-  },
-  {
-    "start": 26.74,
-    "end": 28.22,
-    "predicted_raw": "Speaker 2",
-    "predicted_mapped": "A",
-    "expected": "B",
-    "text": "Yes, I will keep an eye on it.",
-    "audio_file": "meeting_short.mp3",
-    "sample_name": "meeting_short"
-  },
-  {
-    "start": 26.4,
-    "end": 29.78,
+    "start": 22.86284375,
+    "end": 38.69159375,
     "predicted_raw": "Speaker 1",
     "predicted_mapped": "A",
     "expected": "B",
-    "text": "Who else would typically be involved in the decision?",
+    "text": "That's interesting. We do struggle with that sometimes. Who ",
     "audio_file": "sales_ambiguous.mp3",
     "sample_name": "sales_ambiguous"
   },
   {
-    "start": 32.88,
-    "end": 35.22,
-    "predicted_raw": "Speaker 1",
-    "predicted_mapped": "A",
-    "expected": "B",
-    "text": "Would it make sense to loop them into a demo?",
+    "start": 44.82,
+    "end": 46.9,
+    "predicted_raw": "Speaker 2",
+    "predicted_mapped": "B",
+    "expected": "A",
+    "text": "Yes. Send that over. Great.",
     "audio_file": "sales_ambiguous.mp3",
     "sample_name": "sales_ambiguous"
-  },
-  {
-    "start": 9.66,
-    "end": 11.9,
-    "predicted_raw": "Speaker 1",
-    "predicted_mapped": "A",
-    "expected": "B",
-    "text": "Can you explain what exactly this product does?",
-    "audio_file": "SalesMeeting.mp3",
-    "sample_name": "sales_meeting"
-  },
-  {
-    "start": 32.68,
-    "end": 35.3,
-    "predicted_raw": "Speaker 1",
-    "predicted_mapped": "A",
-    "expected": "B",
-    "text": "What kind of support do you provide once we buy it?",
-    "audio_file": "SalesMeeting.mp3",
-    "sample_name": "sales_meeting"
-  },
-  {
-    "start": 44.52,
-    "end": 46.86,
-    "predicted_raw": "Speaker 1",
-    "predicted_mapped": "A",
-    "expected": "B",
-    "text": "Alright, what would be the next steps from here?",
-    "audio_file": "SalesMeeting.mp3",
-    "sample_name": "sales_meeting"
-  },
-  {
-    "start": 56.36,
-    "end": 56.64,
-    "predicted_raw": "Speaker 6",
-    "predicted_mapped": "F",
-    "expected": "E",
-    "text": "correct?",
-    "audio_file": "BuisinessMeeting.mp3",
-    "sample_name": "business_meeting"
   },
   {
     "start": 56.88,
@@ -90,102 +30,12 @@
     "sample_name": "business_meeting"
   },
   {
-    "start": 20.04,
-    "end": 20.78,
-    "predicted_raw": "Speaker 3",
-    "predicted_mapped": "C",
-    "expected": "B",
-    "text": "Could be both.",
-    "audio_file": "meeting_messy.mp3",
-    "sample_name": "meeting_messy"
-  },
-  {
-    "start": 23.92,
-    "end": 27.24,
-    "predicted_raw": "Speaker 3",
-    "predicted_mapped": "C",
-    "expected": "A",
-    "text": "Okay, so maybe we need to improve onboarding.",
-    "audio_file": "meeting_messy.mp3",
-    "sample_name": "meeting_messy"
-  },
-  {
-    "start": 27.24,
-    "end": 29.88,
-    "predicted_raw": "Speaker 3",
-    "predicted_mapped": "C",
-    "expected": "B",
-    "text": "Or maybe we just need better documentation.",
-    "audio_file": "meeting_messy.mp3",
-    "sample_name": "meeting_messy"
-  },
-  {
-    "start": 30.16,
-    "end": 32.76,
-    "predicted_raw": "Speaker 3",
-    "predicted_mapped": "C",
-    "expected": "A",
-    "text": "We should probably look into it.",
-    "audio_file": "meeting_messy.mp3",
-    "sample_name": "meeting_messy"
-  },
-  {
-    "start": 33.12,
-    "end": 35.86,
-    "predicted_raw": "Speaker 3",
-    "predicted_mapped": "C",
-    "expected": "A",
-    "text": "Alright, let's think about it and discuss again later.",
-    "audio_file": "meeting_messy.mp3",
-    "sample_name": "meeting_messy"
-  },
-  {
-    "start": 8.64,
-    "end": 8.9,
+    "start": 6.17346875,
+    "end": 41.32,
     "predicted_raw": "Speaker 2",
-    "predicted_mapped": "B",
+    "predicted_mapped": "_unmapped_Speaker 2",
     "expected": "A",
-    "text": "Sure.",
-    "audio_file": "sales_bad.mp3",
-    "sample_name": "sales_bad"
-  },
-  {
-    "start": 9.54,
-    "end": 14.42,
-    "predicted_raw": "Speaker 2",
-    "predicted_mapped": "B",
-    "expected": "A",
-    "text": "It depends on usage, but typically it starts around 40,000 r",
-    "audio_file": "sales_bad.mp3",
-    "sample_name": "sales_bad"
-  },
-  {
-    "start": 18.4,
-    "end": 18.98,
-    "predicted_raw": "Speaker 2",
-    "predicted_mapped": "B",
-    "expected": "A",
-    "text": "I understand.",
-    "audio_file": "sales_bad.mp3",
-    "sample_name": "sales_bad"
-  },
-  {
-    "start": 19.74,
-    "end": 22.48,
-    "predicted_raw": "Speaker 2",
-    "predicted_mapped": "B",
-    "expected": "A",
-    "text": "Can I ask what you're currently using and what's missing?",
-    "audio_file": "sales_bad.mp3",
-    "sample_name": "sales_bad"
-  },
-  {
-    "start": 26.74,
-    "end": 30.22,
-    "predicted_raw": "Speaker 2",
-    "predicted_mapped": "B",
-    "expected": "A",
-    "text": "Okay, would it help if I showed a quick example?",
+    "text": "Before that, can you just tell me the price? Sure. It depend",
     "audio_file": "sales_bad.mp3",
     "sample_name": "sales_bad"
   },
@@ -200,53 +50,13 @@
     "sample_name": "business_english_long"
   },
   {
-    "start": 120.24,
-    "end": 124.26,
-    "predicted_raw": "Speaker 2",
-    "predicted_mapped": "B",
-    "expected": "A",
-    "text": "Well, let's set aside more time at the next meeting",
-    "audio_file": "0001_Business_English_Conversations_ESL_Business_Meeting_Conversation.m4a",
-    "sample_name": "business_english_long"
-  },
-  {
     "start": 138.06846875000002,
-    "end": 139.76,
-    "predicted_raw": "Speaker 1",
-    "predicted_mapped": "A",
-    "expected": "B",
-    "text": "Okay, Tony.",
-    "audio_file": "0001_Business_English_Conversations_ESL_Business_Meeting_Conversation.m4a",
-    "sample_name": "business_english_long"
-  },
-  {
-    "start": 139.76,
     "end": 144.81003125,
     "predicted_raw": "Speaker 1",
     "predicted_mapped": "A",
     "expected": "B",
-    "text": "I will be ready to present to everyone then.",
+    "text": "Okay, Tony. I will be ready to present to everyone then.",
     "audio_file": "0001_Business_English_Conversations_ESL_Business_Meeting_Conversation.m4a",
     "sample_name": "business_english_long"
-  },
-  {
-    "start": 178.32,
-    "end": 194.26,
-    "predicted_raw": "Speaker 4",
-    "predicted_mapped": "D",
-    "expected": "A",
-    "text": "All right, I'll let the judges weigh in.",
-    "audio_file": "0001_Winner_Best_Pitch_Competition_Willy_Green_Party_on_Demand.m4a",
-    "sample_name": "pitch_competition_long"
-  },
-  {
-    "start": 337.34,
-    "end": 338.29034375000003,
-    "predicted_raw": "Speaker 1",
-    "predicted_mapped": "A",
-    "expected": "C",
-    "text": "Are great.",
-    "audio_file": "0001_Winner_Best_Pitch_Competition_Willy_Green_Party_on_Demand.m4a",
-    "sample_name": "pitch_competition_long"
   }
 ]

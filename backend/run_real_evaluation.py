@@ -144,7 +144,7 @@ async def run_pipeline():
     label_map = resolve_label_mapping(pairs)
     accuracy, correct, total_matched = compute_accuracy(pairs, label_map)
     per_speaker = compute_precision_recall_f1(pairs, label_map)
-    scdr, scdr_detected, scdr_total = compute_scdr(
+    scdr, scdr_detected, scdr_total, _, _ = compute_scdr(
         predicted_segs, annotated_segs, label_map
     )
     macro_f1 = (

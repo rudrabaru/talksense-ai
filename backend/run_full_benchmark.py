@@ -115,10 +115,9 @@ def run_sample(pipeline, transcriber, sample_dir, audio_dir):
     whisper_time = time.monotonic() - t0
 
     if not raw_segments:
-        return {
-            "error": "Whisper returned no segments",
-            "sample": os.path.basename(sample_dir),
-        }
+        raise RuntimeError(
+            f"Whisper returned no segments for {audio_file}. Empty transcript failure."
+        )
 
     # Diarize
     audio_int16 = np.frombuffer(pcm, dtype=np.int16)
@@ -191,90 +190,132 @@ def run_sample(pipeline, transcriber, sample_dir, audio_dir):
 
         turns.append((turn.start, turn.end, mapped))
 
-    # Assign speakers using Sprint 13 architecture
-    from services.word_speaker_aligner import align_words_to_speakers
-    
-    all_words = []
-    for seg in raw_segments:
-        if getattr(seg, 'words', None):
-            for w in seg.words:
-                all_words.append({
-                    "word": w.word,
-                    "start": w.start,
-                    "end": w.end,
-                    "probability": getattr(w, 'probability', getattr(w, 'confidence', 1.0))
-                })
-        else:
-            all_words.append({
-                "word": seg.text,
-                "start": seg.start,
-                "end": seg.end,
-                "probability": getattr(seg, 'avg_logprob', 1.0)
-            })
-            
-    aligned_words = align_words_to_speakers(all_words, turns)
-    
     predicted = []
-    if aligned_words:
-        current_speaker = aligned_words[0]["speaker"]
-        current_words = []
-        for w in aligned_words:
-            # We break a segment if speaker changes OR if there's a gap > 1.0s
-            gap = w["start"] - current_words[-1]["end"] if current_words else 0.0
-            if w["speaker"] != current_speaker or gap > 1.0:
-                if current_words:
-                    text = "".join(x["word"] for x in current_words if x["word"].strip()).strip()
-                    if not text:
-                        text = " ".join(x["word"].strip() for x in current_words).strip()
-                    predicted.append(
-                        EvalSegment(
-                            start=current_words[0]["start"],
-                            end=current_words[-1]["end"],
-                            speaker=current_speaker,
-                            text=text
-                        )
-                    )
-                current_speaker = w["speaker"]
-                current_words = [w]
-            else:
-                current_words.append(w)
-                
-        if current_words:
-            text = "".join(x["word"] for x in current_words if x["word"].strip()).strip()
-            if not text:
-                text = " ".join(x["word"].strip() for x in current_words).strip()
+
+    if os.environ.get("USE_SENTENCE_LEVEL_ALIGNMENT") == "1":
+        # Sprint 12 Baseline: Sentence-level overlap
+        for seg in raw_segments:
+            seg_dur = seg.end - seg.start
+            if seg_dur <= 0:
+                continue
+
+            best_speaker = "Speaker 1"
+            max_overlap = -1.0
+
+            for t_start, t_end, speaker in turns:
+                overlap = max(0.0, min(seg.end, t_end) - max(seg.start, t_start))
+                if overlap > max_overlap:
+                    max_overlap = overlap
+                    best_speaker = speaker
+
             predicted.append(
                 EvalSegment(
-                    start=current_words[0]["start"],
-                    end=current_words[-1]["end"],
-                    speaker=current_speaker,
-                    text=text
+                    start=seg.start, end=seg.end, speaker=best_speaker, text=seg.text
                 )
             )
+    else:
+        # Assign speakers using Sprint 13 architecture (word-level)
+        from services.word_speaker_aligner import align_words_to_speakers
+
+        all_words = []
+        for seg in raw_segments:
+            if getattr(seg, "words", None):
+                for w in seg.words:
+                    all_words.append(
+                        {
+                            "word": w.word,
+                            "start": w.start,
+                            "end": w.end,
+                            "probability": getattr(
+                                w, "probability", getattr(w, "confidence", 1.0)
+                            ),
+                        }
+                    )
+            else:
+                all_words.append(
+                    {
+                        "word": seg.text,
+                        "start": seg.start,
+                        "end": seg.end,
+                        "probability": getattr(seg, "avg_logprob", 1.0),
+                    }
+                )
+
+        aligned_words = align_words_to_speakers(all_words, turns)
+
+        predicted = []
+        if aligned_words:
+            current_speaker = aligned_words[0]["speaker"]
+            current_words = []
+            for w in aligned_words:
+                # We break a segment if speaker changes OR if there's a gap > 1.0s
+                gap = w["start"] - current_words[-1]["end"] if current_words else 0.0
+                if w["speaker"] != current_speaker or gap > 1.0:
+                    if current_words:
+                        text = "".join(
+                            x["word"] for x in current_words if x["word"].strip()
+                        ).strip()
+                        if not text:
+                            text = " ".join(
+                                x["word"].strip() for x in current_words
+                            ).strip()
+                        predicted.append(
+                            EvalSegment(
+                                start=current_words[0]["start"],
+                                end=current_words[-1]["end"],
+                                speaker=current_speaker,
+                                text=text,
+                            )
+                        )
+                    current_speaker = w["speaker"]
+                    current_words = [w]
+                else:
+                    current_words.append(w)
+
+            if current_words:
+                text = "".join(
+                    x["word"] for x in current_words if x["word"].strip()
+                ).strip()
+                if not text:
+                    text = " ".join(x["word"].strip() for x in current_words).strip()
+                predicted.append(
+                    EvalSegment(
+                        start=current_words[0]["start"],
+                        end=current_words[-1]["end"],
+                        speaker=current_speaker,
+                        text=text,
+                    )
+                )
 
     # Post-processing: fix speaker fragmentation
-    from config.diarization_postprocessing import apply_postprocessing
+    if os.environ.get("DISABLE_POSTPROCESSING") != "1":
+        from config.diarization_postprocessing import apply_postprocessing
 
-    predicted = apply_postprocessing(predicted)
+        predicted = apply_postprocessing(predicted)
 
     # Padding step to restore VAD-like boundaries for SCDR compatibility
     # SCDR uses the midpoint of gap between segments. Word-timestamps shrink segments,
     # moving the midpoint. We expand segments to meet at the Pyannote transition.
-    for i in range(len(predicted) - 1):
-        if predicted[i].speaker != predicted[i+1].speaker:
-            transition_time = None
-            for j in range(len(turns) - 1):
-                # Check for Pyannote turn boundary matching this speaker change
-                if turns[j][2] == predicted[i].speaker and turns[j+1][2] == predicted[i+1].speaker:
-                    t = (turns[j][1] + turns[j+1][0]) / 2
-                    if predicted[i].start <= t <= predicted[i+1].end:
-                        transition_time = t
-                        break
-            
-            if transition_time is not None:
-                # Force segments to meet at Pyannote transition so `midpoint` is correct
-                predicted[i].end = transition_time
-                predicted[i+1].start = transition_time
+    # ONLY do this if using word-level alignment, since sentence-level inherently spans gaps.
+    if os.environ.get("USE_SENTENCE_LEVEL_ALIGNMENT") != "1":
+        for i in range(len(predicted) - 1):
+            if predicted[i].speaker != predicted[i + 1].speaker:
+                transition_time = None
+                for j in range(len(turns) - 1):
+                    # Check for Pyannote turn boundary matching this speaker change
+                    if (
+                        turns[j][2] == predicted[i].speaker
+                        and turns[j + 1][2] == predicted[i + 1].speaker
+                    ):
+                        t = (turns[j][1] + turns[j + 1][0]) / 2
+                        if predicted[i].start <= t <= predicted[i + 1].end:
+                            transition_time = t
+                            break
+
+                if transition_time is not None:
+                    # Force segments to meet at Pyannote transition so `midpoint` is correct
+                    predicted[i].end = transition_time
+                    predicted[i + 1].start = transition_time
 
     # Build GT segments
     annotated = [
@@ -287,26 +328,16 @@ def run_sample(pipeline, transcriber, sample_dir, audio_dir):
     # Evaluate
     pairs = match_segments(predicted, annotated, min_overlap_ratio=0.10)
     if not pairs:
-        return {
-            "sample": os.path.basename(sample_dir),
-            "category": meta.get("category", "unknown"),
-            "recording": audio_file,
-            "duration_s": round(duration, 1),
-            "segments_matched": 0,
-            "total_annotated": len(annotated),
-            "macro_f1": 0.0,
-            "scdr": 0.0,
-            "accuracy": 0.0,
-            "speakers_expected": expected_speakers,
-            "speakers_detected": len(set(s.speaker for s in predicted)),
-            "whisper_time_s": round(whisper_time, 1),
-            "pyannote_time_s": round(pyannote_time, 1),
-        }
+        raise RuntimeError(
+            f"No segments matched for {audio_file}. Ground truth timestamp mismatch."
+        )
 
     label_map = resolve_label_mapping(pairs)
     accuracy, correct, total = compute_accuracy(pairs, label_map)
     per_speaker = compute_precision_recall_f1(pairs, label_map)
-    scdr, scdr_det, scdr_total = compute_scdr(predicted, annotated, label_map)
+    scdr, scdr_det, scdr_total, scdr_errors, detailed = compute_scdr(
+        predicted, annotated, label_map
+    )
     macro_f1 = (
         sum(v["f1"] for v in per_speaker.values()) / len(per_speaker)
         if per_speaker
@@ -327,6 +358,8 @@ def run_sample(pipeline, transcriber, sample_dir, audio_dir):
         "scdr": round(scdr, 1),
         "scdr_detected": scdr_det,
         "scdr_total": scdr_total,
+        "scdr_errors_ms": scdr_errors,
+        "scdr_detailed": detailed,
         "speakers_expected": expected_speakers,
         "speakers_detected": len(set(s.speaker for s in predicted)),
         "per_speaker": {
@@ -573,15 +606,99 @@ def main():
             all_results.append({"sample": sample_name, "error": str(e)})
 
     total_time = time.monotonic() - t_total
+    valid = [r for r in all_results if "error" not in r]
+
+    # Integrity Check: Did we evaluate all expected samples?
+    if len(valid) != len(samples):
+        print(
+            f"\n  [INTEGRITY FAILURE] Only {len(valid)} / {len(samples)} samples completed successfully."
+        )
+        print("  Failing the benchmark loudly.")
+        sys.exit(1)
 
     # Aggregate
-    valid = [r for r in all_results if "error" not in r]
     if valid:
         avg_f1 = sum(r["macro_f1"] for r in valid) / len(valid)
         avg_acc = sum(r["accuracy"] for r in valid) / len(valid)
         avg_scdr = sum(r["scdr"] for r in valid) / len(valid)
+
+        all_scdr_errors = []
+        for r in valid:
+            all_scdr_errors.extend(r.get("scdr_errors_ms", []))
+
+        all_scdr_errors.sort()
+        avg_boundary_err = (
+            sum(all_scdr_errors) / len(all_scdr_errors) if all_scdr_errors else 0.0
+        )
+        median_boundary_err = (
+            all_scdr_errors[len(all_scdr_errors) // 2] if all_scdr_errors else 0.0
+        )
+        p90_boundary_err = (
+            all_scdr_errors[int(len(all_scdr_errors) * 0.9)] if all_scdr_errors else 0.0
+        )
+
+        # Percentiles
+        within_100 = (
+            sum(1 for e in all_scdr_errors if e <= 100.0) / len(all_scdr_errors) * 100
+            if all_scdr_errors
+            else 0.0
+        )
+        within_250 = (
+            sum(1 for e in all_scdr_errors if e <= 250.0) / len(all_scdr_errors) * 100
+            if all_scdr_errors
+            else 0.0
+        )
+        within_500 = (
+            sum(1 for e in all_scdr_errors if e <= 500.0) / len(all_scdr_errors) * 100
+            if all_scdr_errors
+            else 0.0
+        )
+        within_750 = (
+            sum(1 for e in all_scdr_errors if e <= 750.0) / len(all_scdr_errors) * 100
+            if all_scdr_errors
+            else 0.0
+        )
+        within_1000 = (
+            sum(1 for e in all_scdr_errors if e <= 1000.0) / len(all_scdr_errors) * 100
+            if all_scdr_errors
+            else 0.0
+        )
+
+        # Detailed SCDR Metrics
+        total_gt_transitions = sum(
+            r.get("scdr_detailed", {}).get("gt_count", 0) for r in valid
+        )
+        total_pred_transitions = sum(
+            r.get("scdr_detailed", {}).get("pred_count", 0) for r in valid
+        )
+        total_tp = sum(r.get("scdr_detailed", {}).get("tp", 0) for r in valid)
+        total_fn = sum(r.get("scdr_detailed", {}).get("fn", 0) for r in valid)
+        total_fp = sum(r.get("scdr_detailed", {}).get("fp", 0) for r in valid)
+        total_wrong_spk = sum(
+            r.get("scdr_detailed", {}).get("wrong_spk", 0) for r in valid
+        )
+
+        overall_prec = (
+            (total_tp / (total_tp + total_fp)) if (total_tp + total_fp) > 0 else 0.0
+        )
+        overall_rec = (
+            (total_tp / (total_tp + total_fn)) if (total_tp + total_fn) > 0 else 0.0
+        )
+        overall_f1 = (
+            (2 * overall_prec * overall_rec) / (overall_prec + overall_rec)
+            if (overall_prec + overall_rec) > 0
+            else 0.0
+        )
+
     else:
-        avg_f1, avg_acc, avg_scdr = 0, 0, 0
+        avg_f1 = avg_acc = avg_scdr = avg_boundary_err = median_boundary_err = (
+            p90_boundary_err
+        ) = 0.0
+        within_100 = within_250 = within_500 = within_750 = within_1000 = 0.0
+        total_gt_transitions = total_pred_transitions = total_tp = total_fn = (
+            total_fp
+        ) = total_wrong_spk = 0
+        overall_prec = overall_rec = overall_f1 = 0.0
 
     # Save results
     output = {
@@ -594,6 +711,23 @@ def main():
             "avg_macro_f1": round(avg_f1, 4),
             "avg_accuracy": round(avg_acc, 1),
             "avg_scdr": round(avg_scdr, 1),
+            "boundary_error_avg_ms": round(avg_boundary_err, 1),
+            "boundary_error_median_ms": round(median_boundary_err, 1),
+            "boundary_error_p90_ms": round(p90_boundary_err, 1),
+            "within_100ms": round(within_100, 1),
+            "within_250ms": round(within_250, 1),
+            "within_500ms": round(within_500, 1),
+            "within_750ms": round(within_750, 1),
+            "within_1000ms": round(within_1000, 1),
+            "total_gt_transitions": total_gt_transitions,
+            "total_pred_transitions": total_pred_transitions,
+            "total_tp": total_tp,
+            "total_fn": total_fn,
+            "total_fp": total_fp,
+            "total_wrong_spk": total_wrong_spk,
+            "scdr_precision": round(overall_prec, 4),
+            "scdr_recall": round(overall_rec, 4),
+            "scdr_f1": round(overall_f1, 4),
             "f1_pass": avg_f1 >= THRESHOLD_F1,
             "accuracy_pass": avg_acc / 100 >= THRESHOLD_ACCURACY if valid else False,
             "scdr_pass": avg_scdr / 100 >= THRESHOLD_SCDR if valid else False,

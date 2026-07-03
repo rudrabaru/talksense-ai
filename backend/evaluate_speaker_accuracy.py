@@ -284,19 +284,15 @@ def compute_scdr(
     annotated: List[Segment],
     label_map: Dict[str, str],
     tolerance_sec: float = 0.5,
-) -> Tuple[float, int, int]:
+) -> Tuple[float, int, int, List[float], Dict[str, float]]:
     """
     Speaker Change Detection Rate.
 
-    Identifies speaker change boundaries in both the annotated and predicted
-    timelines. A predicted change is "correct" if a corresponding annotated
-    change exists within tolerance_sec.
-
-    Returns: (scdr_pct, correctly_detected, total_annotated_changes)
+    Returns: (scdr_pct, correctly_detected, total_annotated_changes, boundary_errors_ms, detailed_metrics)
     """
 
-    def get_changes(segs: List[Segment], use_map: bool = False) -> List[float]:
-        """Return timestamps of speaker changes (midpoint between consecutive segs)."""
+    def get_changes(segs: List[Segment], use_map: bool = False):
+        """Return timestamps and surrounding speakers of speaker changes."""
         changes = []
         for i in range(1, len(segs)):
             prev_spk = segs[i - 1].speaker
@@ -306,29 +302,66 @@ def compute_scdr(
                 curr_spk = label_map.get(curr_spk, curr_spk)
             if prev_spk != curr_spk:
                 midpoint = (segs[i - 1].end + segs[i].start) / 2
-                changes.append(midpoint)
+                changes.append({"time": midpoint, "prev": prev_spk, "next": curr_spk})
         return changes
 
     annotated_changes = get_changes(annotated, use_map=False)
     predicted_changes = get_changes(predicted, use_map=True)
 
-    # For each annotated change, check if there's a predicted change within tolerance
     correctly_detected = 0
+    wrong_speaker = 0
     used_predicted_changes = set()
+    boundary_errors_ms = []
 
     for ann_change in annotated_changes:
         for j, pred_change in enumerate(predicted_changes):
-            if (
-                j not in used_predicted_changes
-                and abs(pred_change - ann_change) <= tolerance_sec
-            ):
-                correctly_detected += 1
+            err = abs(pred_change["time"] - ann_change["time"])
+            if j not in used_predicted_changes and err <= tolerance_sec:
+                # Check identity
+                if (
+                    pred_change["prev"] == ann_change["prev"]
+                    and pred_change["next"] == ann_change["next"]
+                ):
+                    correctly_detected += 1
+                else:
+                    wrong_speaker += 1
+                    # We still count it as a "correct" boundary timing-wise for legacy SCDR
+                    correctly_detected += 1
+
                 used_predicted_changes.add(j)
+                boundary_errors_ms.append(err * 1000.0)
                 break
 
-    total = len(annotated_changes)
-    scdr = (correctly_detected / total * 100) if total > 0 else 0.0
-    return scdr, correctly_detected, total
+    total_annotated = len(annotated_changes)
+    total_predicted = len(predicted_changes)
+
+    tp = correctly_detected
+    fn = total_annotated - tp
+    fp = total_predicted - tp
+
+    precision = (tp / (tp + fp)) if (tp + fp) > 0 else 0.0
+    recall = (tp / (tp + fn)) if (tp + fn) > 0 else 0.0
+    f1 = (
+        (2 * precision * recall) / (precision + recall)
+        if (precision + recall) > 0
+        else 0.0
+    )
+
+    scdr = (correctly_detected / total_annotated * 100) if total_annotated > 0 else 0.0
+
+    detailed = {
+        "gt_count": total_annotated,
+        "pred_count": total_predicted,
+        "tp": tp,
+        "fn": fn,
+        "fp": fp,
+        "wrong_spk": wrong_speaker,
+        "precision": precision,
+        "recall": recall,
+        "f1": f1,
+    }
+
+    return scdr, correctly_detected, total_annotated, boundary_errors_ms, detailed
 
 
 # ── Failure analysis ──────────────────────────────────────────────────────────
@@ -508,7 +541,7 @@ async def run_evaluation(
     print("\nComputing metrics...")
     accuracy, correct, total_matched = compute_accuracy(pairs, label_map)
     per_speaker = compute_precision_recall_f1(pairs, label_map)
-    scdr, scdr_detected, scdr_total = compute_scdr(
+    scdr, scdr_detected, scdr_total, _, _ = compute_scdr(
         predicted_segs, annotated_segs, label_map
     )
     failures = collect_failures(pairs, label_map)

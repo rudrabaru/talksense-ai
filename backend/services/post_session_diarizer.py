@@ -42,6 +42,13 @@ logger = logging.getLogger(__name__)
 
 # ── Public entry point ────────────────────────────────────────────────────────
 
+async def _set_attribution_status(session_id: str, status: str) -> None:
+    from db import crud
+    from db.database import AsyncSessionLocal
+    async with AsyncSessionLocal() as db:
+        await crud.update_session_attribution_status(db, session_id, status) # pyright: ignore
+
+
 
 async def run_post_session_diarization(
     session_id: str,
@@ -617,7 +624,7 @@ def _run_pyannote_sync(
             "post_session_diarizer — session %s: Pyannote error — %s",
             session_id[:8],
             exc,
-                        exc_info=True,
+            exc_info=True,
         )
         return None
 
@@ -674,59 +681,92 @@ async def _apply_speaker_updates(
             total,
             len(turns),
         )
-        
+
         # 1. Extract words from all DB segments
         all_words = []
         for seg in segments:
             if seg.words:
                 all_words.extend(seg.words)
             else:
-                all_words.append({
-                    "word": seg.text,
-                    "start": seg.start_time,
-                    "end": seg.end_time,
-                    "probability": seg.sentiment if seg.sentiment is not None else 0.0
-                })
-                
+                all_words.append(
+                    {
+                        "word": seg.text,
+                        "start": seg.start_time,
+                        "end": seg.end_time,
+                        "probability": (
+                            seg.sentiment if seg.sentiment is not None else 0.0
+                        ),
+                    }
+                )
+
         # 2. Align words to speaker turns
         aligned_words = align_words_to_speakers(all_words, turns)
-        
+
         # 3. Reconstruct segments
         new_segments = []
         if aligned_words:
             current_seg_speaker = aligned_words[0]["speaker"]
             current_seg_words = []
-            
+
             for w in aligned_words:
                 if w["speaker"] != current_seg_speaker:
                     if current_seg_words:
                         text = "".join(x["word"] for x in current_seg_words).strip()
-                        new_segments.append({
-                            "speaker": current_seg_speaker,
-                            "start": current_seg_words[0]["start"],
-                            "end": current_seg_words[-1]["end"],
-                            "text": text,
-                            "words": current_seg_words,
-                            "sentiment": None,
-                            "sentiment_label": None
-                        })
+                        new_segments.append(
+                            {
+                                "speaker": current_seg_speaker,
+                                "start": current_seg_words[0]["start"],
+                                "end": current_seg_words[-1]["end"],
+                                "text": text,
+                                "words": current_seg_words,
+                                "sentiment": None,
+                                "sentiment_label": None,
+                            }
+                        )
                     current_seg_speaker = w["speaker"]
                     current_seg_words = [w]
                 else:
                     current_seg_words.append(w)
-                    
+
             if current_seg_words:
                 text = "".join(x["word"] for x in current_seg_words).strip()
-                new_segments.append({
-                    "speaker": current_seg_speaker,
-                    "start": current_seg_words[0]["start"],
-                    "end": current_seg_words[-1]["end"],
-                    "text": text,
-                    "words": current_seg_words,
-                    "sentiment": None,
-                    "sentiment_label": None
-                })
-                
+                new_segments.append(
+                    {
+                        "speaker": current_seg_speaker,
+                        "start": current_seg_words[0]["start"],
+                        "end": current_seg_words[-1]["end"],
+                        "text": text,
+                        "words": current_seg_words,
+                        "sentiment": None,
+                        "sentiment_label": None,
+                    }
+                )
+
+        # --- Apply Variant C Post-Processing ---
+        from config.diarization_postprocessing import apply_postprocessing
+
+        class TmpSeg:
+            def __init__(self, d):
+                self.start = d["start"]
+                self.end = d["end"]
+                self.speaker = d["speaker"]
+                self.text = d["text"]
+                self.original_dict = d
+
+        tmp_segs = [TmpSeg(d) for d in new_segments]
+        processed_segs = apply_postprocessing(tmp_segs)
+
+        # Reconstruct dicts with updated speakers
+        final_segments = []
+        for p in processed_segs:
+            d = p.original_dict.copy()
+            d["speaker"] = p.speaker
+            d["start"] = p.start
+            d["end"] = p.end
+            final_segments.append(d)
+        new_segments = final_segments
+        # ----------------------------------------
+
         logger.info(
             "post_session_diarizer — session %s: reconstructed %d segment(s) from %d aligned words",
             session_id[:8],

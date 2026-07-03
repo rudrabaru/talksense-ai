@@ -35,11 +35,12 @@ TalkSense AI is an **offline-first conversation intelligence platform** designed
    - Advanced analytics for objection handling response time and resolution.
 
 ## Current State & Recent Progress
-- **Real-Time Transition:** The platform recently shifted to a robust real-time WebSocket architecture.
+- **Architecture Frozen:** Word-level Pyannote attribution enabled and 5-word smoothing permanently removed (Variant C selected).
+- **Core Metrics (v4 Canonical):** **91.3% Speaker Accuracy**, **0.925 Macro F1**, **48.4% Legacy Boundary Recall @ 500ms**.
+- **Diagnostics Frameworks:** Command-line tools (e.g. `run_full_benchmark.py`) correctly prove that the 48.4% Boundary Recall is driven entirely by sub-500ms transition tolerances rather than speaker misattributions.
 - **Bug Fixes:** Resolved the "WAV Truncation Bug" ensuring live audio chunks map perfectly to the on-disk WAV file. Also mitigated the "Phantom Speaker" Pyannote clustering bug.
 - **Advanced Sales Analytics:** Added automated objection handling quality scoring based on rep response times and customer follow-up signals.
 - **UI Enhancements:** The frontend now features live panels for scrolling transcripts, metric visualizers (Talk Timeline, Objection Scorecard), and system alerts.
-- **Diagnostics Frameworks:** Command-line evaluation tools have been built to benchmark speaker attribution accuracy and classification tasks.
 
 ## Active Environment
 Currently, both the backend API and frontend development server are actively running:

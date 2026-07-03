@@ -168,9 +168,15 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
         # Pass the current session status to preserve interrupted/failed states in DB
         await manager.end(session_id, session.status)
         # Broadcast the actual terminal status (completed/interrupted/failed)
-        terminal_status = session.status.value if hasattr(session.status, 'value') else str(session.status)
+        terminal_status = (
+            session.status.value
+            if hasattr(session.status, "value")
+            else str(session.status)
+        )
         await broadcast_status(session.ws_status, terminal_status)
-        logger.info(f"Session {session_id[:8]}…: audio handler closed (status={terminal_status})")
+        logger.info(
+            f"Session {session_id[:8]}…: audio handler closed (status={terminal_status})"
+        )
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────

@@ -211,7 +211,7 @@ def main():
                     label_map = resolve_label_mapping(pairs)
                     accuracy, _, _ = compute_accuracy(pairs, label_map)
                     per_speaker = compute_precision_recall_f1(pairs, label_map)
-                    scdr, _, _ = compute_scdr(pred_eval, annotated, label_map)
+                    scdr, _, _, _, _ = compute_scdr(pred_eval, annotated, label_map)
                     macro_f1 = (
                         sum(v["f1"] for v in per_speaker.values()) / len(per_speaker)
                         if per_speaker

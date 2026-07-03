@@ -50,7 +50,7 @@ jobs:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           cd backend
-          python run_complete_evaluation.py
+          python run_full_benchmark.py
           
       - name: Validate Production Thresholds & Generate Report
         run: |

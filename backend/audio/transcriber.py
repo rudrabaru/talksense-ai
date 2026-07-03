@@ -47,6 +47,7 @@ class TranscriptSegment:
     avg_logprob: float = 0.0  # whisper confidence proxy
     words: list[TranscriptWord] | None = None
 
+
 class WhisperTranscriber:
     """
     Faster Whisper singleton.
@@ -149,7 +150,7 @@ class WhisperTranscriber:
                 text = seg.text.strip()
                 if not text:
                     continue
-                
+
                 segment_words = []
                 if seg.words:
                     for w in seg.words:
@@ -161,7 +162,7 @@ class WhisperTranscriber:
                                 probability=round(w.probability, 3),
                             )
                         )
-                
+
                 segments.append(
                     TranscriptSegment(
                         start=round(seg.start + time_offset, 2),
@@ -248,7 +249,7 @@ class WhisperTranscriber:
                 text = seg.text.strip()
                 if not text:
                     continue
-                    
+
                 segment_words = []
                 if seg.words:
                     for w in seg.words:
@@ -260,7 +261,7 @@ class WhisperTranscriber:
                                 probability=round(w.probability, 3),
                             )
                         )
-                        
+
                 segments.append(
                     TranscriptSegment(
                         start=round(seg.start + time_offset, 2),
