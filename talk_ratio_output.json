@@ -1,40 +1,4 @@
 {
-  "talk_ratio_summary": {
-    "summary": {
-      "monologue_risk": "LOW",
-      "dominance_percent": 66.7,
-      "interruption_count": 0,
-      "conversation_balance": "WARNING",
-      "speaker_switch_count": 1,
-      "total_duration_seconds": 8.2,
-      "silence_duration_seconds": 0.0,
-      "longest_monologue_seconds": 4.0,
-      "longest_monologue_speaker": "Speaker 2",
-      "average_turn_length_seconds": 3.0
-    },
-    "overall_participation": {
-      "Speaker 1": 33.3,
-      "Speaker 2": 66.7
-    }
-  },
-  "talk_timeline": {
-    "timeline": [
-      {
-        "speakers": {
-          "Speaker 1": {
-            "dominance": 33.3,
-            "talk_time": 2.0,
-            "participation": 33.3
-          },
-          "Speaker 2": {
-            "dominance": 66.7,
-            "talk_time": 4.0,
-            "participation": 66.7
-          }
-        },
-        "window_end": 30.0,
-        "window_start": 0.0
-      }
-    ]
-  }
+  "talk_ratio_summary": null,
+  "talk_timeline": null
 }
