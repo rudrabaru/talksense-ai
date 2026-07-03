@@ -19,7 +19,6 @@ def test_health():
     data = response.json()
     assert "status" in data
     print(f"✅ Health check passed: {data}")
-    return True
 
 
 def test_analyze_meeting():
@@ -29,7 +28,7 @@ def test_analyze_meeting():
     audio_file = os.path.join(SAMPLE_AUDIO_DIR, "meeting_short.mp3")
     if not os.path.exists(audio_file):
         print(f"❌ Sample file not found: {audio_file}")
-        return False
+        assert False, f"Sample file not found: {audio_file}"
 
     with open(audio_file, "rb") as f:
         files = {"file": ("meeting_short.mp3", f, "audio/mpeg")}
@@ -48,11 +47,10 @@ def test_analyze_meeting():
             f"   - Transcript segments: {len(result.get('transcript', {}).get('segments', []))}"  # noqa: E501
         )
         print(f"   - Insights keys: {list(result.get('insights', {}).keys())}")
-        return True
     else:
         print(f"❌ Analysis failed with status {response.status_code}")
         print(f"   Response: {response.text[:200]}")
-        return False
+        assert False, f"Analysis failed with status {response.status_code}"
 
 
 def test_analyze_sales():
@@ -62,7 +60,7 @@ def test_analyze_sales():
     audio_file = os.path.join(SAMPLE_AUDIO_DIR, "sales_good.mp3")
     if not os.path.exists(audio_file):
         print(f"❌ Sample file not found: {audio_file}")
-        return False
+        assert False, f"Sample file not found: {audio_file}"
 
     with open(audio_file, "rb") as f:
         files = {"file": ("sales_good.mp3", f, "audio/mpeg")}
@@ -78,11 +76,10 @@ def test_analyze_sales():
         print(f"   - Mode: {result.get('mode')}")
         print(f"   - Filename: {result.get('filename')}")
         print(f"   - Insights keys: {list(result.get('insights', {}).keys())}")
-        return True
     else:
         print(f"❌ Analysis failed with status {response.status_code}")
         print(f"   Response: {response.text[:200]}")
-        return False
+        assert False, f"Analysis failed with status {response.status_code}"
 
 
 if __name__ == "__main__":
@@ -92,9 +89,16 @@ if __name__ == "__main__":
 
     try:
         results = []
-        results.append(("Health Check", test_health()))
-        results.append(("Meeting Analysis", test_analyze_meeting()))
-        results.append(("Sales Analysis", test_analyze_sales()))
+        def run_test(name, func):
+            try:
+                func()
+                results.append((name, True))
+            except AssertionError:
+                results.append((name, False))
+
+        run_test("Health Check", test_health)
+        run_test("Meeting Analysis", test_analyze_meeting)
+        run_test("Sales Analysis", test_analyze_sales)
 
         print("\n" + "=" * 60)
         print("Test Results Summary:")

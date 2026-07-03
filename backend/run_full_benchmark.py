@@ -175,20 +175,21 @@ def run_sample(pipeline, transcriber, sample_dir, audio_dir):
     short_filter_val = os.environ.get("FILTER_SHORT_UTTERANCES_S")
     short_filter_s = float(short_filter_val) if short_filter_val else 0.0
 
-    for turn, _, speaker in annotation.itertracks(yield_label=True):
-        mapped = speaker
-        if speaker.startswith("SPEAKER_"):
-            try:
-                num = int(speaker.split("_")[-1])
-                mapped = f"Speaker {num + 1}"
-            except (ValueError, IndexError):
-                pass
+    if annotation is not None:
+        for turn, _, speaker in annotation.itertracks(yield_label=True):
+            mapped = speaker
+            if speaker.startswith("SPEAKER_"):
+                try:
+                    num = int(speaker.split("_")[-1])
+                    mapped = f"Speaker {num + 1}"
+                except (ValueError, IndexError):
+                    pass
 
-        # Phase 2: Short Utterance Filtering
-        if (turn.end - turn.start) < short_filter_s:
-            continue
+            # Phase 2: Short Utterance Filtering
+            if (turn.end - turn.start) < short_filter_s:
+                continue
 
-        turns.append((turn.start, turn.end, mapped))
+            turns.append((turn.start, turn.end, mapped))
 
     predicted = []
 
@@ -590,18 +591,19 @@ def main():
             result = run_sample(pipeline, transcriber, sample_dir, AUDIO_DIR)
             all_results.append(result)
 
-            if "failures" in result:
+            if "failures" in result and isinstance(result["failures"], list):
                 for f in result["failures"]:
-                    f["audio_file"] = result["recording"]
-                    f["sample_name"] = result["sample"]
+                    if isinstance(f, dict):
+                        f["audio_file"] = result.get("recording")
+                        f["sample_name"] = result.get("sample")
                 all_failures.extend(result["failures"])
 
             if "error" in result:
                 print(f"    ERROR: {result['error']}")
             else:
-                f1 = result.get("macro_f1", 0)
-                scdr = result.get("scdr", 0)
-                acc = result.get("accuracy", 0)
+                f1 = float(result.get("macro_f1", 0))
+                scdr = float(result.get("scdr", 0))
+                acc = float(result.get("accuracy", 0))
                 spk = result.get("speakers_detected", "?")
                 status = (
                     "PASS"
