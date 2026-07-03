@@ -51,13 +51,15 @@ def main():
 
     with torch.inference_mode():
         diarization = pipeline(waveform, num_speakers=2)
-    annotation = getattr(diarization, "speaker_diarization", diarization)
+    import typing
+
+    annotation = typing.cast(
+        typing.Any, getattr(diarization, "speaker_diarization", diarization)
+    )
 
     turns = []
     if annotation is not None:
-        tracks = annotation.itertracks(
-            yield_label=True
-        )  # pyright: ignore[reportAttributeAccessIssue]
+        tracks = annotation.itertracks(yield_label=True)
         for turn, _, speaker in tracks:
             mapped = (
                 f"Speaker {int(speaker.split('_')[-1]) + 1}"
