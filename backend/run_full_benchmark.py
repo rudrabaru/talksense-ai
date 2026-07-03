@@ -526,8 +526,6 @@ def main():
 
     print("\n[1/3] Loading Whisper...")
     transcriber = get_transcriber()
-    import torch
-    import os
 
     whisper_device = settings.whisper_device if torch.cuda.is_available() else "cpu"
     transcriber.load(
