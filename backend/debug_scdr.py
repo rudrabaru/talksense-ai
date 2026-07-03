@@ -107,6 +107,8 @@ def run_ledger():
         segments, _ = transcriber.transcribe(audio_path, word_timestamps=True)
         words = []
         for segment in segments:
+            if not segment.words:
+                continue
             for word in segment.words:
                 words.append(
                     {
@@ -123,11 +125,12 @@ def run_ledger():
         waveform = {"waveform": audio_tensor, "sample_rate": 16000}
 
         diarization = pipeline(waveform, num_speakers=item.get("expected_speakers", 2))
-        annotation = getattr(diarization, "speaker_diarization", diarization)
         assert diarization is not None
         diarization_list = [
             (turn.start, turn.end, speaker)
-            for turn, _, speaker in diarization.itertracks(yield_label=True) # pyright: ignore
+            for turn, _, speaker in diarization.itertracks(
+                yield_label=True
+            )  # pyright: ignore
         ]
 
         predicted_dicts = align_words_to_speakers(words, diarization_list)

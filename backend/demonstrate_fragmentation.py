@@ -14,9 +14,10 @@ warnings.filterwarnings("ignore")
 
 def decode_audio(path):
     cmd = ["ffmpeg", "-y", "-i", path, "-f", "s16le", "-ac", "1", "-ar", "16000", "-"]
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    pcm = proc.stdout.read() # pyright: ignore
-    return pcm
+    result = subprocess.run(
+        cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=True
+    )
+    return result.stdout
 
 
 def main():
@@ -30,12 +31,19 @@ def main():
     raw_segments = t_whisper.transcribe(pcm)
 
     # 2. Pyannote
-    pipeline = Pipeline.from_pretrained("pyannote/speaker-diarization-3.1")
-    pipeline.instantiate( # pyright: ignore{"clustering": {"threshold": 0.5}})
-    proc = subprocess.run(cmd, capture_output=True, check=True) # pyright: ignore
-    assert proc.stdout is not None
-    pcm = proc.stdout
-    return np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
+    import os
+
+    hf_token = os.environ.get("HF_TOKEN")
+    pipeline = Pipeline.from_pretrained(
+        "pyannote/speaker-diarization-3.1", token=hf_token
+    )
+    if pipeline is None:
+        raise RuntimeError("Failed to load pyannote pipeline (check HF_TOKEN)")
+
+    pipeline.instantiate({"clustering": {"threshold": 0.5}})  # pyright: ignore
+
+    # Convert PCM bytes to float32 tensor for Pyannote
+    audio_float32 = np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
     waveform = {
         "waveform": torch.from_numpy(audio_float32).unsqueeze(0),
         "sample_rate": 16000,
@@ -46,13 +54,14 @@ def main():
     annotation = getattr(diarization, "speaker_diarization", diarization)
 
     turns = []
-    for turn, _, speaker in annotation.itertracks(yield_label=True):
-        mapped = (
-            f"Speaker {int(speaker.split('_')[-1]) + 1}"
-            if "SPEAKER_" in speaker
-            else speaker
-        )
-        turns.append((turn.start, turn.end, mapped))
+    if annotation is not None:
+        for turn, _, speaker in annotation.itertracks(yield_label=True):
+            mapped = (
+                f"Speaker {int(speaker.split('_')[-1]) + 1}"
+                if "SPEAKER_" in speaker
+                else speaker
+            )
+            turns.append((turn.start, turn.end, mapped))
 
     # 3. Emulate post_session_diarizer.py logic
     all_words = []

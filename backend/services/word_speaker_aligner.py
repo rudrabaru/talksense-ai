@@ -6,7 +6,6 @@ Used by both the live pipeline (diarizer.py) and the offline pipeline (post_sess
 """
 
 
-
 def align_words_to_speakers(
     words: list[dict],
     speaker_segments: list[tuple[float, float, str]],

@@ -42,12 +42,14 @@ logger = logging.getLogger(__name__)
 
 # ── Public entry point ────────────────────────────────────────────────────────
 
+
 async def _set_attribution_status(session_id: str, status: str) -> None:
     from db import crud
     from db.database import AsyncSessionLocal
-    async with AsyncSessionLocal() as db:
-        await crud.update_session_attribution_status(db, session_id, status) # pyright: ignore
 
+    async with AsyncSessionLocal() as db:
+        await crud.update_session_attribution_status(db, session_id, status)
+        await db.commit()
 
 
 async def run_post_session_diarization(

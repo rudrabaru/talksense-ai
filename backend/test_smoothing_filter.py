@@ -1,4 +1,3 @@
-
 from services.word_speaker_aligner import align_words_to_speakers
 
 

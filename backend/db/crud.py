@@ -191,6 +191,35 @@ async def update_session_status(
     return row
 
 
+async def update_session_attribution_status(
+    db: AsyncSession,
+    session_id: str,
+    status: str,
+) -> DBSession | None:
+    """
+    Stage a speaker attribution status transition on a persisted session row.
+
+    Does NOT commit.
+
+    Args:
+        db:         Open AsyncSession.
+        session_id: UUID string of the session to update.
+        status:     New status string.
+
+    Returns:
+        Updated DBSession row (not yet committed), or None if not found in DB.
+    """
+    row = await get_session(db, session_id)
+    if row is None:
+        logger.warning(
+            "DB — update_session_attribution_status: session %s not found", session_id[:8]
+        )
+        return None
+
+    row.speaker_attribution_status = status
+    logger.info("DB — session %s attribution status staged → %s", session_id[:8], status)
+    return row
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Phase 2 — Client management
 # ─────────────────────────────────────────────────────────────────────────────
@@ -350,17 +379,29 @@ async def save_transcript_segments(
             speaker_id=(
                 getattr(seg, "speaker", None)
                 if getattr(seg, "speaker", None) is not None
-                else (seg.get("speaker", seg.get("speaker_id")) if isinstance(seg, dict) else None)
+                else (
+                    seg.get("speaker", seg.get("speaker_id"))
+                    if isinstance(seg, dict)
+                    else None
+                )
             ),
             start_time=(
                 getattr(seg, "start", None)
                 if getattr(seg, "start", None) is not None
-                else (seg.get("start", seg.get("start_time", 0.0)) if isinstance(seg, dict) else 0.0)
+                else (
+                    seg.get("start", seg.get("start_time", 0.0))
+                    if isinstance(seg, dict)
+                    else 0.0
+                )
             ),
             end_time=(
                 getattr(seg, "end", None)
                 if getattr(seg, "end", None) is not None
-                else (seg.get("end", seg.get("end_time", 0.0)) if isinstance(seg, dict) else 0.0)
+                else (
+                    seg.get("end", seg.get("end_time", 0.0))
+                    if isinstance(seg, dict)
+                    else 0.0
+                )
             ),
             text=(
                 getattr(seg, "text", None)

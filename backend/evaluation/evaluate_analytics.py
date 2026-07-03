@@ -78,7 +78,9 @@ async def evaluate_speaker_attribution(db, session_id, gt_data):
     label_map = resolve_label_mapping(pairs)
     accuracy, correct, total = compute_accuracy(pairs, label_map)
     per_speaker = compute_precision_recall_f1(pairs, label_map)
-    scdr, scdr_detected, scdr_total, _, _ = compute_scdr(predicted, gt_segments, label_map)
+    scdr, scdr_detected, scdr_total, _, _ = compute_scdr(
+        predicted, gt_segments, label_map
+    )
 
     macro_f1 = (
         sum(v["f1"] for v in per_speaker.values()) / len(per_speaker)

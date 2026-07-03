@@ -83,7 +83,7 @@ class SpeakerDiarizer:
 
             model = Model.from_pretrained(
                 "pyannote/wespeaker-voxceleb-resnet34-LM",
-                use_auth_token=hf_token,
+                token=hf_token,
             )
             if model is None:
                 raise ValueError(
