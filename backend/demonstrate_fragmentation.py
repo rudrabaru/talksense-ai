@@ -55,7 +55,9 @@ def main():
 
     turns = []
     if annotation is not None:
-        for turn, _, speaker in annotation.itertracks(yield_label=True):  # pyright: ignore[reportAttributeAccessIssue]
+        for turn, _, speaker in annotation.itertracks(
+            yield_label=True
+        ):  # pyright: ignore[reportAttributeAccessIssue]
             mapped = (
                 f"Speaker {int(speaker.split('_')[-1]) + 1}"
                 if "SPEAKER_" in speaker

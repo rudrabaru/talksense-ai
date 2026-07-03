@@ -545,6 +545,7 @@ def main():
         print("\n  [WARNING] HF_TOKEN is missing. Pyannote requires authentication.")
         print("  Skipping Pyannote-dependent benchmark. Exiting gracefully.")
         import sys
+
         sys.exit(0)
 
     pipeline = Pipeline.from_pretrained(
