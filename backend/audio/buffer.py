@@ -32,14 +32,14 @@ SAMPLE_RATE = 16_000  # Hz
 BYTES_PER_SAMPLE = 2  # int16
 SAMPLES_PER_MS = SAMPLE_RATE // 1000  # 16 samples per ms
 
-TARGET_DURATION_MS = (
+TARGET_DURATION_MS: int = (
     2_000  # Flush after 2.0s — Whisper accuracy peaks with longer chunks
 )
-SILENCE_GAP_MS = 600  # Flush faster after speaker stops (was 800ms)
-MIN_FLUSH_MS = (
+SILENCE_GAP_MS: int = 600  # Flush faster after speaker stops (was 800ms)
+MIN_FLUSH_MS: int = (
     800  # Reject chunks < 800ms — avoids Whisper hallucination on tiny fragments
 )
-OVERLAP_MS = 1_000  # Retain 1.0s of overlap on partial flushes
+OVERLAP_MS: int = 1_000  # Retain 1.0s of overlap on partial flushes
 
 # Directory for session WAV files (relative to backend working directory)
 SESSION_AUDIO_DIR = "session_audio"
