@@ -526,8 +526,12 @@ def main():
 
     print("\n[1/3] Loading Whisper...")
     transcriber = get_transcriber()
+    import torch
+    import os
+
+    whisper_device = settings.whisper_device if torch.cuda.is_available() else "cpu"
     transcriber.load(
-        settings.whisper_model, settings.whisper_compute_type, settings.whisper_device
+        settings.whisper_model, settings.whisper_compute_type, whisper_device
     )
 
     print("[2/3] Loading Pyannote...")
@@ -536,11 +540,14 @@ def main():
             "ignore", message=".*torchcodec.*", category=UserWarning
         )
         from pyannote.audio import Pipeline
+
+    hf_token = settings.hf_token or os.environ.get("HF_TOKEN") or True
     pipeline = Pipeline.from_pretrained(
-        "pyannote/speaker-diarization-3.1", token=settings.hf_token
+        "pyannote/speaker-diarization-3.1", token=hf_token
     )
     assert pipeline is not None
-    pipeline.to(torch.device(settings.pyannote_device))
+    pyannote_device = settings.pyannote_device if torch.cuda.is_available() else "cpu"
+    pipeline.to(torch.device(pyannote_device))
 
     print("[3/3] Scanning dataset...")
 

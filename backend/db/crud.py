@@ -212,13 +212,17 @@ async def update_session_attribution_status(
     row = await get_session(db, session_id)
     if row is None:
         logger.warning(
-            "DB — update_session_attribution_status: session %s not found", session_id[:8]
+            "DB — update_session_attribution_status: session %s not found",
+            session_id[:8],
         )
         return None
 
     row.speaker_attribution_status = status
-    logger.info("DB — session %s attribution status staged → %s", session_id[:8], status)
+    logger.info(
+        "DB — session %s attribution status staged → %s", session_id[:8], status
+    )
     return row
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Phase 2 — Client management
