@@ -686,7 +686,7 @@ export default function DashboardPage() {
 
   // --- Render: Main dashboard ------------------------------------------------
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
       {/* Navbar */}
       <nav className="border-b border-gray-200 bg-white sticky top-0 z-50 shadow-sm">
         <div className="mx-auto px-6 lg:px-12 xl:px-16 h-16 flex items-center justify-between">
@@ -730,7 +730,7 @@ export default function DashboardPage() {
       </nav>
 
       <main
-        style={{ padding: "24px 16px", flex: 1 }}
+        style={{ padding: "24px 16px", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}
         className="max-w-7xl mx-auto w-full"
       >
         {/* --- Connection banners --- */}
@@ -885,13 +885,15 @@ export default function DashboardPage() {
             gridTemplateColumns: "2fr 1fr",
             gap: "16px",
             marginTop: "16px",
+            flex: 1,
+            minHeight: 0
           }}
         >
-          <div>
+          <div style={{ height: "100%", minHeight: 0 }}>
             <TranscriptPanel transcript={transcript || []} />
           </div>
           <div
-            style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+            style={{ display: "flex", flexDirection: "column", gap: "16px", height: "100%", overflowY: "auto", minHeight: 0, paddingRight: "8px" }}
           >
             <MetricsPanel
               metrics={metrics || null}

@@ -182,22 +182,45 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
 
-def _merge_overlapping_text(text1: str, text2: str) -> str:
-    """Merge two text segments by finding word-level overlaps to avoid duplication."""
+def _merge_overlapping_text(text1: str, text2: str) -> tuple[str, str]:
+    """Merge two text segments by finding word-level overlaps to avoid duplication.
+    Returns (merged_text, diff_text)."""
     if not text1:
-        return text2
+        return text2, text2
     if not text2:
-        return text1
+        return text1, ""
+
+    import string
+    from difflib import SequenceMatcher
+
+    def strip_punc(s):
+        return s.translate(str.maketrans('', '', string.punctuation)).lower()
 
     words1 = text1.strip().split()
     words2 = text2.strip().split()
-    max_overlap = min(len(words1), len(words2))
 
-    for i in range(max_overlap, 0, -1):
-        if words1[-i:] == words2[:i]:
-            return " ".join(words1 + words2[i:])
+    search_window = 15
+    w1_window = words1[-search_window:]
+    w2_window = words2[:search_window]
 
-    return text1 + " " + text2
+    clean1 = [strip_punc(w) for w in w1_window]
+    clean2 = [strip_punc(w) for w in w2_window]
+
+    sm = SequenceMatcher(None, clean1, clean2)
+    match = sm.find_longest_match(0, len(clean1), 0, len(clean2))
+
+    if match.size >= 2 or (match.size == 1 and len(clean1) <= 2):
+        abs_i = len(words1) - len(w1_window) + match.a
+        
+        merged_words = words1[:abs_i] + words2[match.b:]
+        merged_text = " ".join(merged_words)
+        
+        diff_words = words2[match.b + match.size:]
+        diff_text = " ".join(diff_words)
+        
+        return merged_text, diff_text
+
+    return text1 + " " + text2, text2
 
 
 async def _process_chunk(
@@ -318,6 +341,7 @@ async def _transcribe_and_enrich(
 
     async with session.lock:
         # Append or Merge to transcript
+        new_segments_for_engine = []
         for seg in diarized:
             merged = False
             if session.conversation.transcript_segments:
@@ -332,7 +356,7 @@ async def _transcribe_and_enrich(
                         last_seg.get("speaker") == seg.speaker
                         and last_seg.get("end", 0) >= seg.start - 0.5
                     ):
-                        merged_text = _merge_overlapping_text(
+                        merged_text, diff_text = _merge_overlapping_text(
                             last_seg.get("text", ""), seg.text
                         )
                         last_seg["text"] = merged_text
@@ -343,15 +367,23 @@ async def _transcribe_and_enrich(
                         seg.__dict__["segment_id"] = last_seg["segment_id"]
                         seg.__dict__["text"] = merged_text
                         seg.__dict__["end"] = last_seg["end"]
+                        
+                        import copy
+                        engine_seg = copy.copy(seg)
+                        engine_seg.__dict__["text"] = diff_text
+                        if diff_text.strip():
+                            new_segments_for_engine.append(engine_seg)
+                            
                         merged = True
                         break
 
             if not merged:
                 seg.__dict__["segment_id"] = str(uuid.uuid4())
                 session.conversation.transcript_segments.append(seg.__dict__)
+                new_segments_for_engine.append(seg)
 
         updated_metrics, new_alerts = engine.process_segments(
-            diarized,
+            new_segments_for_engine,
             session.conversation,
             session.mode,
             session_id,

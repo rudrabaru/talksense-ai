@@ -9,7 +9,7 @@ class SpeakerProfile:
     Uses Cosine Similarity to match incoming segment embeddings to known speakers.
     """
 
-    def __init__(self, similarity_threshold: float = 0.15):
+    def __init__(self, similarity_threshold: float = 0.35):
         self.similarity_threshold = similarity_threshold
         # Map canonical speaker ID (e.g. "Speaker 1") to their centroid embedding
         self.centroids: Dict[str, np.ndarray] = {}

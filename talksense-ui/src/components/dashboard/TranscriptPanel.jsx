@@ -11,10 +11,15 @@ const SPEAKER_COLORS = [
 ];
 
 const TranscriptPanelComponent = ({ transcript }) => {
-  const bottomRef = useRef(null);
-  const prevLengthRef = useRef(0);
+  const containerRef = useRef(null);
+  const autoScrollRef = useRef(true);
 
-  // Build a stable speaker → color index map from the current transcript
+  const handleScroll = () => {
+    if (!containerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
+    autoScrollRef.current = scrollHeight - scrollTop - clientHeight < 50;
+  };
+
   const speakerColorMap = useMemo(() => {
     const map = {};
     let idx = 0;
@@ -29,13 +34,9 @@ const TranscriptPanelComponent = ({ transcript }) => {
   }, [transcript]);
 
   useEffect(() => {
-    const currentLength = transcript ? transcript.length : 0;
-    if (currentLength > prevLengthRef.current) {
-      if (bottomRef.current) {
-        bottomRef.current.scrollIntoView({ behavior: "smooth" });
-      }
+    if (autoScrollRef.current && containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
-    prevLengthRef.current = currentLength;
   }, [transcript]);
 
   return (
@@ -52,6 +53,8 @@ const TranscriptPanelComponent = ({ transcript }) => {
     >
       <h3>Live Transcript</h3>
       <div 
+        ref={containerRef}
+        onScroll={handleScroll}
         className="transcript-list" 
         role="log" 
         aria-live="polite" 
@@ -107,7 +110,6 @@ const TranscriptPanelComponent = ({ transcript }) => {
                 </div>
               );
             })}
-            <div ref={bottomRef} />
           </>
         ) : (
           <p>No transcription yet...</p>
