@@ -19,6 +19,7 @@ import logoImage from "../assets/logo/logo.png";
 
 // --- Constants ---------------------------------------------------------------
 const WS_BASE_URL = import.meta.env.VITE_WS_URL || "ws://localhost:8000";
+const REST_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 export default function DashboardPage() {
   const { sessionId } = useParams();
@@ -31,7 +32,9 @@ export default function DashboardPage() {
   // is an INBOUND stream (browser → server) — conceptually different from the
   // four OUTBOUND subscription channels managed by useSessionWebSocket.
   const audioWsRef = useRef(null);
+  const hasExplicitlyEnded = useRef(false);
   const [audioStatus, setAudioStatus] = useState("idle"); // idle | connecting | streaming | error
+  const [isEnding, setIsEnding] = useState(false);
 
   // --- Hooks -----------------------------------------------------------------
   const {
@@ -53,6 +56,7 @@ export default function DashboardPage() {
     connectionState,
     error,
     lastSyncAt,
+    audioUrl,
     reconnect,
   } = useSessionWebSocket(validatedSessionId);
 
@@ -181,6 +185,7 @@ export default function DashboardPage() {
     return () => {
       // Send "end" and close socket on unmount to properly complete the session
       if (
+        !hasExplicitlyEnded.current &&
         audioWsRef.current &&
         audioWsRef.current.readyState === WebSocket.OPEN
       ) {
@@ -189,6 +194,8 @@ export default function DashboardPage() {
         } catch (e) {
           console.warn("[DashboardPage] Failed to send 'end' on unmount", e);
         }
+        audioWsRef.current.close(1000, "Component unmounted");
+      } else if (audioWsRef.current) {
         audioWsRef.current.close(1000, "Component unmounted");
       }
       cleanupCapture();
@@ -304,6 +311,27 @@ export default function DashboardPage() {
 
     // Do NOT send "end" or close the WebSocket here so we can restart.
     setAudioStatus("idle");
+  }, [stopCapture]);
+
+  /**
+   * Ends the session explicitly by stopping capture and sending terminal 'end'.
+   * Leaves websocket open so backend can reply with finalization payloads.
+   */
+  const endSession = useCallback(() => {
+    if (hasExplicitlyEnded.current) return;
+    hasExplicitlyEnded.current = true;
+    setIsEnding(true);
+
+    stopCapture();
+    setAudioStatus("idle");
+
+    if (audioWsRef.current && audioWsRef.current.readyState === WebSocket.OPEN) {
+      try {
+        audioWsRef.current.send("end");
+      } catch (err) {
+        console.error("[DashboardPage] Failed to send 'end' explicitly:", err);
+      }
+    }
   }, [stopCapture]);
 
   // --- Reconnect handler -----------------------------------------------------
@@ -827,24 +855,25 @@ export default function DashboardPage() {
             <button
               id="start-mic-btn"
               onClick={startMicrophone}
-              disabled={audioStatus === "connecting" || !validatedSessionId}
+              disabled={audioStatus === "connecting" || !validatedSessionId || isEnding || sessionStatus === "completed"}
               style={{
                 padding: "12px 28px",
                 fontSize: "0.95rem",
                 fontWeight: 600,
                 color: "#fff",
                 background:
-                  audioStatus === "connecting"
+                  audioStatus === "connecting" || isEnding || sessionStatus === "completed"
                     ? "#94a3b8"
                     : "linear-gradient(135deg, #7c3aed, #4f46e5)",
                 border: "none",
                 borderRadius: "12px",
-                cursor: audioStatus === "connecting" ? "wait" : "pointer",
+                cursor: (audioStatus === "connecting" || isEnding || sessionStatus === "completed") ? "not-allowed" : "pointer",
                 letterSpacing: "0.03em",
               }}
               aria-label={`Start ${selectedSourceType.replace('_', ' ')} capture`}
             >
-              {audioStatus === "connecting"
+              {isEnding ? "Session Ended"
+                : audioStatus === "connecting"
                 ? "⏳ Connecting…"
                 : selectedSourceType === "system_audio"
                   ? "🖥️ Start System Audio"
@@ -856,26 +885,50 @@ export default function DashboardPage() {
             <button
               id="stop-mic-btn"
               onClick={stopMicrophone}
+              disabled={isEnding}
               style={{
                 padding: "12px 28px",
                 fontSize: "0.95rem",
                 fontWeight: 600,
                 color: "#fff",
-                background: "linear-gradient(135deg, #dc2626, #b91c1c)",
+                background: "linear-gradient(135deg, #f59e0b, #d97706)", // Orange/Yellow to indicate pause
                 border: "none",
                 borderRadius: "12px",
-                cursor: "pointer",
+                cursor: isEnding ? "not-allowed" : "pointer",
                 letterSpacing: "0.03em",
               }}
               aria-label={`Stop ${selectedSourceType.replace('_', ' ')} capture`}
             >
               {selectedSourceType === "system_audio"
-                ? "⏹ Stop System Audio"
+                ? "⏸ Pause System Audio"
                 : selectedSourceType === "mixed"
-                  ? "⏹ Stop Mixed Audio"
-                  : "⏹ Stop Microphone"}
+                  ? "⏸ Pause Mixed Audio"
+                  : "⏸ Pause Microphone"}
             </button>
           )}
+
+          {/* Explicit End Session Button */}
+          <button
+            id="end-session-btn"
+            onClick={endSession}
+            disabled={isEnding || sessionStatus === "completed"}
+            style={{
+              padding: "12px 28px",
+              fontSize: "0.95rem",
+              fontWeight: 600,
+              color: "#fff",
+              background: (isEnding || sessionStatus === "completed") 
+                ? "#94a3b8" 
+                : "linear-gradient(135deg, #dc2626, #b91c1c)",
+              border: "none",
+              borderRadius: "12px",
+              cursor: (isEnding || sessionStatus === "completed") ? "not-allowed" : "pointer",
+              letterSpacing: "0.03em",
+            }}
+            aria-label="End Session"
+          >
+            {isEnding ? "Ending..." : sessionStatus === "completed" ? "Completed" : "⏹ End Session"}
+          </button>
         </div>
 
         {/* --- Dashboard panels --- */}
@@ -888,6 +941,21 @@ export default function DashboardPage() {
           }}
         >
           <div>
+            {sessionStatus === "completed" && (
+              <div className="mb-6 bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M11 12v5a2 2 0 11-4 0v-5a2 2 0 114 0z" />
+                  </svg>
+                  Session Recording
+                </h3>
+                {audioUrl ? (
+                  <audio controls className="w-full" src={`${REST_BASE_URL}${audioUrl}`} />
+                ) : (
+                  <div className="text-gray-500 italic text-sm">No audio recording available for this session.</div>
+                )}
+              </div>
+            )}
             <TranscriptPanel transcript={transcript || []} />
           </div>
           <div
@@ -897,6 +965,7 @@ export default function DashboardPage() {
               metrics={metrics || null}
               sessionStatus={sessionStatus}
               lastSyncAt={lastSyncAt}
+              mode={activeSessionMode}
             />
             <CoachingPanel tips={metrics?.coachingTips || []} />
             <AlertsPanel alerts={alerts || []} />

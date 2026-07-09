@@ -73,6 +73,7 @@ export function useSessionWebSocket(sessionId) {
   const [connectionState, setConnectionState] = useState(CONNECTION_STATES.IDLE);
   const [error, setError] = useState(null);
   const [lastSyncAt, setLastSyncAt] = useState(null);
+  const [audioUrl, setAudioUrl] = useState(null);
 
   // --- Refs (survive re-renders without triggering them) ----------------------
 
@@ -364,6 +365,7 @@ export function useSessionWebSocket(sessionId) {
         // Restore session status from REST snapshot
         if (typeof data.status === "string" && data.status.trim().length > 0) {
           safeSetState(setSessionStatus, data.status);
+          safeSetState(setAudioUrl, data.audio_url || null);
         }
 
         safeSetState(setLastSyncAt, new Date());
@@ -820,6 +822,7 @@ export function useSessionWebSocket(sessionId) {
     safeSetState(setConnectionState, CONNECTION_STATES.IDLE);
     safeSetState(setError, null);
     safeSetState(setLastSyncAt, null);
+    safeSetState(setAudioUrl, null);
 
     console.log("[useSessionWebSocket] Cleanup complete.");
   }, [disconnect, safeSetState]);
@@ -924,6 +927,7 @@ export function useSessionWebSocket(sessionId) {
     connectionState,
     error,
     lastSyncAt,
+    audioUrl,
 
     // Actions
     reconnect,

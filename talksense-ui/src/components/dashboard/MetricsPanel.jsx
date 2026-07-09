@@ -109,7 +109,7 @@ const SpeakerAttributionCard = ({ attribution, attributionStatus, sessionStatus,
 
 // ── MetricsPanel ──────────────────────────────────────────────────────────────
 
-const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt }) => {
+const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt, mode }) => {
   const [secondsAgo, setSecondsAgo] = React.useState(null);
 
   React.useEffect(() => {
@@ -420,129 +420,133 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt }) => {
           </div>
         </div>
 
-        {/* ── Sales Intelligence (Objections Timeline) ── */}
-        <div style={{ margin: "16px 0 12px 0", borderTop: "1px solid #eee", paddingTop: "12px" }}>
-          <strong>⚠ Objection Timeline:</strong>
-          <span style={{
-            backgroundColor: objection_timeline && objection_timeline.length > 0 ? "#ef4444" : "#e2e8f0",
-            color: objection_timeline && objection_timeline.length > 0 ? "white" : "#475569",
-            borderRadius: "10px",
-            padding: "2px 8px",
-            fontSize: "0.8em",
-            fontWeight: "bold",
-            marginLeft: "6px",
-          }}>
-            {objection_timeline ? objection_timeline.length : 0}
-          </span>
-          {objection_timeline && objection_timeline.length > 0 ? (
-            <div style={{ marginTop: "12px", borderLeft: "2px solid #e2e8f0", paddingLeft: "12px" }}>
-              {objection_timeline.map((obj, idx) => {
-                const text = typeof obj === "string" ? obj : (obj?.text || "");
-                const cat = typeof obj === "object" && obj?.category ? `[${obj.category}] ` : "";
-                const ts = typeof obj === "object" && obj?.timestamp != null ? new Date(obj.timestamp * 1000).toISOString().substr(14, 5) : "--:--";
-                return (
-                  <div key={idx} style={{ margin: "12px 0", position: "relative" }}>
-                    <div style={{ position: "absolute", left: "-17px", top: "4px", width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#ef4444" }} />
-                    <div style={{ fontSize: "0.75em", color: "#64748b", fontWeight: "bold", marginBottom: "2px" }}>{ts}</div>
-                    <div style={{ color: "#b91c1c", fontSize: "0.9em" }}>
-                      <span style={{ fontWeight: "600" }}>{cat}</span>
-                      <span style={{ fontStyle: "italic" }}>"{text}"</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p style={{ margin: "8px 0 0 0", color: "#64748b", fontSize: "0.9em", fontStyle: "italic" }}>
-              No objections detected
-            </p>
-          )}
-        </div>
-
-        {/* ── Objection Handling Quality ── */}
-        <div style={{ margin: "16px 0 12px 0", borderTop: "1px solid #eee", paddingTop: "12px" }}>
-          <strong>Objection Handling Quality</strong>
-          {metrics.objectionHandling && metrics.objectionHandling.length > 0 ? (
-            <div style={{ marginTop: "8px", fontSize: "0.9em" }}>
-              <div style={{ display: "flex", gap: "12px", marginBottom: "8px", flexWrap: "wrap", fontWeight: "600" }}>
-                <span>Total: {metrics.objectionHandling.length}</span>
-                <span>Resolved: {metrics.objectionHandling.filter(o => o.status === "resolved").length}</span>
-                <span>Ignored: {metrics.objectionHandling.filter(o => o.status === "ignored").length}</span>
-                <span>Avg Delay: {metrics.objectionHandling.filter(o => o.response_delay_seconds !== null).length > 0 ? (metrics.objectionHandling.reduce((acc, o) => acc + (o.response_delay_seconds || 0), 0) / metrics.objectionHandling.filter(o => o.response_delay_seconds !== null).length).toFixed(1) + "s" : "N/A"}</span>
-                <span>Score: {(metrics.objectionHandling.reduce((acc, o) => acc + o.score, 0) / metrics.objectionHandling.length * 100).toFixed(0)}%</span>
-              </div>
-              <ul style={{ paddingLeft: "0", margin: "0", listStyle: "none" }}>
-                {metrics.objectionHandling.map((obj, idx) => (
-                  <li key={idx} style={{ margin: "12px 0", padding: "8px", border: "1px solid #e2e8f0", borderRadius: "6px", backgroundColor: "#f8fafc" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                      <span style={{ fontWeight: "bold", color: "#b91c1c" }}>[{obj.category}] Objection</span>
-                      <span style={{ 
-                        fontWeight: "bold",
-                        color: obj.status === "resolved" ? "#10b981" : obj.status === "addressed" ? "#3b82f6" : obj.status === "acknowledged" ? "#f59e0b" : "#ef4444" 
-                      }}>
-                        {obj.status.toUpperCase()} ({obj.score})
-                      </span>
-                    </div>
-                    <div style={{ marginBottom: "4px" }}>
-                      <span style={{ fontWeight: "bold", fontSize: "0.85em" }}>{obj.customer_speaker} (Customer):</span> 
-                      <span style={{ fontStyle: "italic", marginLeft: "4px" }}>"{obj.objection_text}"</span>
-                    </div>
-                    {obj.response_text ? (
-                      <div>
-                        <span style={{ fontWeight: "bold", fontSize: "0.85em" }}>{obj.sales_rep} (Sales Rep):</span>
-                        <span style={{ fontStyle: "italic", marginLeft: "4px" }}>"{obj.response_text}"</span>
-                        <div style={{ fontSize: "0.8em", color: "#64748b", marginTop: "4px" }}>Delay: {obj.response_delay_seconds}s</div>
+        {mode === "sales" && (
+          <>
+            {/* ── Sales Intelligence (Objections Timeline) ── */}
+            <div style={{ margin: "16px 0 12px 0", borderTop: "1px solid #eee", paddingTop: "12px" }}>
+              <strong>⚠ Objection Timeline:</strong>
+              <span style={{
+                backgroundColor: objection_timeline && objection_timeline.length > 0 ? "#ef4444" : "#e2e8f0",
+                color: objection_timeline && objection_timeline.length > 0 ? "white" : "#475569",
+                borderRadius: "10px",
+                padding: "2px 8px",
+                fontSize: "0.8em",
+                fontWeight: "bold",
+                marginLeft: "6px",
+              }}>
+                {objection_timeline ? objection_timeline.length : 0}
+              </span>
+              {objection_timeline && objection_timeline.length > 0 ? (
+                <div style={{ marginTop: "12px", borderLeft: "2px solid #e2e8f0", paddingLeft: "12px" }}>
+                  {objection_timeline.map((obj, idx) => {
+                    const text = typeof obj === "string" ? obj : (obj?.text || "");
+                    const cat = typeof obj === "object" && obj?.category ? `[${obj.category}] ` : "";
+                    const ts = typeof obj === "object" && obj?.timestamp != null ? new Date(obj.timestamp * 1000).toISOString().substr(14, 5) : "--:--";
+                    return (
+                      <div key={idx} style={{ margin: "12px 0", position: "relative" }}>
+                        <div style={{ position: "absolute", left: "-17px", top: "4px", width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#ef4444" }} />
+                        <div style={{ fontSize: "0.75em", color: "#64748b", fontWeight: "bold", marginBottom: "2px" }}>{ts}</div>
+                        <div style={{ color: "#b91c1c", fontSize: "0.9em" }}>
+                          <span style={{ fontWeight: "600" }}>{cat}</span>
+                          <span style={{ fontStyle: "italic" }}>"{text}"</span>
+                        </div>
                       </div>
-                    ) : (
-                      <div style={{ fontStyle: "italic", color: "#64748b" }}>No sales response recorded.</div>
-                    )}
-                  </li>
-                ))}
-              </ul>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p style={{ margin: "8px 0 0 0", color: "#64748b", fontSize: "0.9em", fontStyle: "italic" }}>
+                  No objections detected
+                </p>
+              )}
             </div>
-          ) : (
-            <p style={{ margin: "8px 0 0 0", color: "#64748b", fontSize: "0.9em", fontStyle: "italic" }}>
-              {sessionStatus === "completed" ? "No objections handled." : "Handling quality will be calculated post-session."}
-            </p>
-          )}
-        </div>
 
-        {/* ── Sales Intelligence (Buying Signals Timeline) ── */}
-        <div style={{ margin: "16px 0 12px 0", borderTop: "1px solid #eee", paddingTop: "12px" }}>
-          <strong>🚀 Buying Signals Timeline:</strong>
-          <span style={{
-            backgroundColor: buying_signal_timeline && buying_signal_timeline.length > 0 ? "#10b981" : "#e2e8f0",
-            color: buying_signal_timeline && buying_signal_timeline.length > 0 ? "white" : "#475569",
-            borderRadius: "10px",
-            padding: "2px 8px",
-            fontSize: "0.8em",
-            fontWeight: "bold",
-            marginLeft: "6px",
-          }}>
-            {buying_signal_timeline ? buying_signal_timeline.length : 0}
-          </span>
-          {buying_signal_timeline && buying_signal_timeline.length > 0 ? (
-            <div style={{ marginTop: "12px", borderLeft: "2px solid #e2e8f0", paddingLeft: "12px" }}>
-              {buying_signal_timeline.map((sig, idx) => {
-                const text = typeof sig === "string" ? sig : (sig?.text || String(sig));
-                const ts = typeof sig === "object" && sig?.timestamp != null ? new Date(sig.timestamp * 1000).toISOString().substr(14, 5) : "--:--";
-                return (
-                  <div key={idx} style={{ margin: "12px 0", position: "relative" }}>
-                    <div style={{ position: "absolute", left: "-17px", top: "4px", width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#10b981" }} />
-                    <div style={{ fontSize: "0.75em", color: "#64748b", fontWeight: "bold", marginBottom: "2px" }}>{ts}</div>
-                    <div style={{ color: "#065f46", fontSize: "0.9em", fontStyle: "italic" }}>
-                      "{text}"
-                    </div>
+            {/* ── Objection Handling Quality ── */}
+            <div style={{ margin: "16px 0 12px 0", borderTop: "1px solid #eee", paddingTop: "12px" }}>
+              <strong>Objection Handling Quality</strong>
+              {metrics.objectionHandling && metrics.objectionHandling.length > 0 ? (
+                <div style={{ marginTop: "8px", fontSize: "0.9em" }}>
+                  <div style={{ display: "flex", gap: "12px", marginBottom: "8px", flexWrap: "wrap", fontWeight: "600" }}>
+                    <span>Total: {metrics.objectionHandling.length}</span>
+                    <span>Resolved: {metrics.objectionHandling.filter(o => o.status === "resolved").length}</span>
+                    <span>Ignored: {metrics.objectionHandling.filter(o => o.status === "ignored").length}</span>
+                    <span>Avg Delay: {metrics.objectionHandling.filter(o => o.response_delay_seconds !== null).length > 0 ? (metrics.objectionHandling.reduce((acc, o) => acc + (o.response_delay_seconds || 0), 0) / metrics.objectionHandling.filter(o => o.response_delay_seconds !== null).length).toFixed(1) + "s" : "N/A"}</span>
+                    <span>Score: {(metrics.objectionHandling.reduce((acc, o) => acc + o.score, 0) / metrics.objectionHandling.length * 100).toFixed(0)}%</span>
                   </div>
-                );
-              })}
+                  <ul style={{ paddingLeft: "0", margin: "0", listStyle: "none" }}>
+                    {metrics.objectionHandling.map((obj, idx) => (
+                      <li key={idx} style={{ margin: "12px 0", padding: "8px", border: "1px solid #e2e8f0", borderRadius: "6px", backgroundColor: "#f8fafc" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                          <span style={{ fontWeight: "bold", color: "#b91c1c" }}>[{obj.category}] Objection</span>
+                          <span style={{ 
+                            fontWeight: "bold",
+                            color: obj.status === "resolved" ? "#10b981" : obj.status === "addressed" ? "#3b82f6" : obj.status === "acknowledged" ? "#f59e0b" : "#ef4444" 
+                          }}>
+                            {obj.status.toUpperCase()} ({obj.score})
+                          </span>
+                        </div>
+                        <div style={{ marginBottom: "4px" }}>
+                          <span style={{ fontWeight: "bold", fontSize: "0.85em" }}>{obj.customer_speaker} (Customer):</span> 
+                          <span style={{ fontStyle: "italic", marginLeft: "4px" }}>"{obj.objection_text}"</span>
+                        </div>
+                        {obj.response_text ? (
+                          <div>
+                            <span style={{ fontWeight: "bold", fontSize: "0.85em" }}>{obj.sales_rep} (Sales Rep):</span>
+                            <span style={{ fontStyle: "italic", marginLeft: "4px" }}>"{obj.response_text}"</span>
+                            <div style={{ fontSize: "0.8em", color: "#64748b", marginTop: "4px" }}>Delay: {obj.response_delay_seconds}s</div>
+                          </div>
+                        ) : (
+                          <div style={{ fontStyle: "italic", color: "#64748b" }}>No sales response recorded.</div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p style={{ margin: "8px 0 0 0", color: "#64748b", fontSize: "0.9em", fontStyle: "italic" }}>
+                  {sessionStatus === "completed" ? "No objections handled." : "Handling quality will be calculated post-session."}
+                </p>
+              )}
             </div>
-          ) : (
-            <p style={{ margin: "8px 0 0 0", color: "#64748b", fontSize: "0.9em", fontStyle: "italic" }}>
-              Awaiting buying signals
-            </p>
-          )}
-        </div>
+
+            {/* ── Sales Intelligence (Buying Signals Timeline) ── */}
+            <div style={{ margin: "16px 0 12px 0", borderTop: "1px solid #eee", paddingTop: "12px" }}>
+              <strong>🚀 Buying Signals Timeline:</strong>
+              <span style={{
+                backgroundColor: buying_signal_timeline && buying_signal_timeline.length > 0 ? "#10b981" : "#e2e8f0",
+                color: buying_signal_timeline && buying_signal_timeline.length > 0 ? "white" : "#475569",
+                borderRadius: "10px",
+                padding: "2px 8px",
+                fontSize: "0.8em",
+                fontWeight: "bold",
+                marginLeft: "6px",
+              }}>
+                {buying_signal_timeline ? buying_signal_timeline.length : 0}
+              </span>
+              {buying_signal_timeline && buying_signal_timeline.length > 0 ? (
+                <div style={{ marginTop: "12px", borderLeft: "2px solid #e2e8f0", paddingLeft: "12px" }}>
+                  {buying_signal_timeline.map((sig, idx) => {
+                    const text = typeof sig === "string" ? sig : (sig?.text || String(sig));
+                    const ts = typeof sig === "object" && sig?.timestamp != null ? new Date(sig.timestamp * 1000).toISOString().substr(14, 5) : "--:--";
+                    return (
+                      <div key={idx} style={{ margin: "12px 0", position: "relative" }}>
+                        <div style={{ position: "absolute", left: "-17px", top: "4px", width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#10b981" }} />
+                        <div style={{ fontSize: "0.75em", color: "#64748b", fontWeight: "bold", marginBottom: "2px" }}>{ts}</div>
+                        <div style={{ color: "#065f46", fontSize: "0.9em", fontStyle: "italic" }}>
+                          "{text}"
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p style={{ margin: "8px 0 0 0", color: "#64748b", fontSize: "0.9em", fontStyle: "italic" }}>
+                  Awaiting buying signals
+                </p>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
