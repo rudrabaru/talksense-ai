@@ -436,6 +436,7 @@ async def get_session(
             "elapsed_seconds": round(session.elapsed_seconds, 1),
             "health_score": session.conversation.health_score,
             "sentiment": session.conversation.sentiment,
+            "audio_url": None,
         }
 
     # DB Fallback for inactive/terminal sessions
@@ -468,6 +469,9 @@ async def get_session(
         "elapsed_seconds": elapsed,
         "health_score": health_score,
         "sentiment": sentiment,
+        "audio_url": (
+            f"/sessions/{session_id}/audio" if db_session.audio_file_path else None
+        ),
     }
 
 
@@ -479,6 +483,40 @@ async def end_session(session_id: str):
     manager = get_session_manager()
     await manager.end(session_id, SessionStatus.COMPLETED)
     return {"session_id": session_id, "status": "completed"}
+
+
+@app.get("/sessions/{session_id}/audio", tags=["Sessions"])
+async def get_session_audio(session_id: str, db: AsyncSession = Depends(get_db)):
+    import os
+
+    from fastapi.responses import FileResponse
+
+    from db import crud
+
+    db_session = await crud.get_session(db, session_id)
+    if db_session is None:
+        return JSONResponse(status_code=404, content={"error": "Session not found"})
+
+    if not db_session.audio_file_path:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "No audio recording exists for this session"},
+        )
+
+    if not os.path.exists(db_session.audio_file_path):
+        return JSONResponse(
+            status_code=404,
+            content={"error": "Audio recording file is missing from storage"},
+        )
+
+    expected_dir = os.path.abspath("session_audio")
+    actual_path = os.path.abspath(db_session.audio_file_path)
+    if not actual_path.startswith(expected_dir):
+        return JSONResponse(status_code=403, content={"error": "Invalid audio path"})
+
+    return FileResponse(
+        path=actual_path, media_type="audio/wav", filename=os.path.basename(actual_path)
+    )
 
 
 # ── Dashboard snapshot ────────────────────────────────────────────────────────
@@ -537,6 +575,7 @@ async def get_dashboard_snapshot(
             "active_alerts": conv.active_alerts,
             "transcript_segments": conv.transcript_segments[-50:],  # last 50 segments
             "last_updated": time.time(),
+            "audio_url": None,
         }
 
     # DB Fallback
@@ -729,6 +768,9 @@ async def get_dashboard_snapshot(
             "active_alerts": mapped_alerts,
             "transcript_segments": mapped_segments,
             "last_updated": latest_ts,
+            "audio_url": (
+                f"/sessions/{session_id}/audio" if db_session.audio_file_path else None
+            ),
         }
 
 
