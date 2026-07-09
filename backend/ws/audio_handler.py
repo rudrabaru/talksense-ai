@@ -319,6 +319,10 @@ async def _transcribe_and_enrich(
     async with session.lock:
         # Append or Merge to transcript
         for seg in diarized:
+            # Strip non-serializable TranscriptWord objects before saving to DB
+            if hasattr(seg, "words"):
+                seg.words = None
+
             merged = False
             if session.conversation.transcript_segments:
                 # Check recent segments for overlap
