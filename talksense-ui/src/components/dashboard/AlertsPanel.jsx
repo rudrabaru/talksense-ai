@@ -67,11 +67,16 @@ const AlertsPanel = memo(({ alerts }) => {
       .slice(0, 3);
   }, [alerts]);
 
+  const isEmpty = visibleAlerts.length === 0;
+
   return (
-    <div className="alerts-panel-placeholder" style={{ border: "1px solid #ccc", padding: "16px", height: "100%", overflowY: "auto" }}>
-      <h3>Real-Time Alerts</h3>
+    <div 
+      className="alerts-panel-placeholder bg-white rounded-xl shadow-sm border border-slate-200" 
+      style={{ padding: isEmpty ? "12px 16px" : "16px", maxHeight: "40vh", overflowY: "auto" }}
+    >
+      <h3 className={`font-semibold text-slate-800 text-lg ${isEmpty ? 'mb-1' : 'mb-3'}`}>Real-Time Alerts</h3>
       <div className="alerts-list">
-        {visibleAlerts.length > 0 ? (
+        {!isEmpty ? (
           visibleAlerts.map((alert) => {
             const rec = ALERT_RECOMMENDATIONS[alert.alert_type] || {};
             const borderColor = alert.level === 'critical' ? '#ef4444' : alert.level === 'warning' ? '#f59e0b' : '#3b82f6';
@@ -111,7 +116,7 @@ const AlertsPanel = memo(({ alerts }) => {
             </div>
           )})
         ) : (
-          <p>No active alerts.</p>
+          <p className="text-sm text-slate-500 italic">No active alerts.</p>
         )}
       </div>
     </div>

@@ -1,4 +1,4 @@
-import React, { memo, useRef, useEffect, useMemo } from "react";
+import React, { memo, useRef, useEffect, useMemo, useState } from "react";
 
 // A palette of distinct background colors for speaker differentiation
 const SPEAKER_COLORS = [
@@ -11,7 +11,7 @@ const SPEAKER_COLORS = [
 ];
 
 const TranscriptPanelComponent = ({ transcript }) => {
-  const bottomRef = useRef(null);
+  const listRef = useRef(null);
   const prevLengthRef = useRef(0);
 
   // Build a stable speaker → color index map from the current transcript
@@ -28,35 +28,88 @@ const TranscriptPanelComponent = ({ transcript }) => {
     return map;
   }, [transcript]);
 
+  const [isNearBottom, setIsNearBottom] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const isUserNearBottomRef = useRef(true);
+
+  const handleScroll = (e) => {
+    const list = e.target;
+    const scrollHeight = list.scrollHeight;
+    const scrollTop = list.scrollTop;
+    const clientHeight = list.clientHeight;
+    
+    // User intent is the single source of truth.
+    const gap = scrollHeight - scrollTop - clientHeight;
+    const nearBottom = gap <= 150;
+    
+    isUserNearBottomRef.current = nearBottom;
+    setIsNearBottom(nearBottom);
+    
+    if (nearBottom) {
+      setUnreadCount(0);
+    }
+  };
+
   useEffect(() => {
     const currentLength = transcript ? transcript.length : 0;
+    
+    // Only attempt scroll when new segments actually arrive
     if (currentLength > prevLengthRef.current) {
-      if (bottomRef.current) {
-        bottomRef.current.scrollIntoView({ behavior: "smooth" });
+      if (listRef.current && isUserNearBottomRef.current) {
+        const list = listRef.current;
+        // Deterministic scroll: push to bottom on next frame to ensure React paint completes
+        requestAnimationFrame(() => {
+          list.scrollTop = list.scrollHeight;
+        });
+      } else {
+        setUnreadCount(prev => prev + (currentLength - prevLengthRef.current));
       }
     }
+    
     prevLengthRef.current = currentLength;
   }, [transcript]);
-
   return (
     <div 
-      className="transcript-panel-placeholder" 
+      className="transcript-panel-placeholder bg-white rounded-xl shadow-sm border border-slate-200" 
       style={{ 
-        border: "1px solid #ccc", 
         padding: "16px", 
-        height: "100%", 
-        maxHeight: "500px", 
+        flex: 1, 
+        minHeight: 0, 
         display: "flex", 
-        flexDirection: "column" 
+        flexDirection: "column",
+        position: "relative"
       }}
     >
-      <h3>Live Transcript</h3>
+      <h3 className="font-semibold text-slate-800 text-lg mb-3">Live Transcript</h3>
+      
+      <button
+        onClick={() => {
+          if (listRef.current) {
+            listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" });
+            isUserNearBottomRef.current = true;
+            setIsNearBottom(true);
+            setUnreadCount(0);
+          }
+        }}
+        aria-label="Jump to latest transcript"
+        className={`absolute bottom-6 right-6 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg rounded-full px-4 py-2 text-sm font-semibold transition-all duration-300 z-10 flex items-center gap-2 ${
+          isNearBottom ? "opacity-0 translate-y-4 pointer-events-none" : "opacity-100 translate-y-0"
+        }`}
+      >
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+        </svg>
+        Live {unreadCount > 0 ? `(${unreadCount})` : ""}
+      </button>
+
       <div 
+        ref={listRef}
+        onScroll={handleScroll}
         className="transcript-list" 
         role="log" 
         aria-live="polite" 
         aria-label="Live conversation transcript"
-        style={{ overflowY: "auto", flex: 1 }}
+        style={{ overflowY: "auto", overflowX: "hidden", flex: 1, minHeight: 0 }}
       >
         {transcript && transcript.length > 0 ? (
           <>
@@ -82,7 +135,9 @@ const TranscriptPanelComponent = ({ transcript }) => {
                     margin: "8px 0", 
                     padding: "8px", 
                     borderRadius: "4px", 
-                    background: bgColor
+                    background: bgColor,
+                    wordBreak: "break-word",
+                    overflowWrap: "break-word"
                   }}
                 >
                   <strong>{speakerLabel}:</strong> 
@@ -107,7 +162,6 @@ const TranscriptPanelComponent = ({ transcript }) => {
                 </div>
               );
             })}
-            <div ref={bottomRef} />
           </>
         ) : (
           <p>No transcription yet...</p>

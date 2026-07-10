@@ -31,6 +31,7 @@ from audio.transcriber import get_transcriber
 from audio.vad import get_vad
 from core.config import get_settings
 from services.nlp_engine import get_nlp_engine
+import time as _time
 from ws.broadcast import broadcast_all, broadcast_status, broadcast_transcript
 from ws.session_manager import SessionStatus, get_session_manager
 
@@ -86,6 +87,8 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
     async with session.lock:
         session.ws_audio = websocket
         session.status = SessionStatus.ACTIVE
+        import time
+        session.recording_started_at = time.monotonic()
 
     await broadcast_status(session.ws_status, "active")
 
@@ -106,6 +109,18 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
                     async with session.lock:
                         session.status = SessionStatus.COMPLETED
                     break
+                elif text_lower == "pause":
+                    logger.info(f"Session {session_id[:8]}…: client sent 'pause'")
+                    import time
+                    async with session.lock:
+                        if session.recording_started_at is not None:
+                            session._accumulated_recording_duration += time.monotonic() - session.recording_started_at
+                            session.recording_started_at = None
+                elif text_lower == "resume":
+                    logger.info(f"Session {session_id[:8]}…: client sent 'resume'")
+                    import time
+                    async with session.lock:
+                        session.recording_started_at = time.monotonic()
                 elif text_lower == "ping":
                     await websocket.send_text("pong")
                 elif text_lower.startswith("inject:"):
@@ -163,17 +178,55 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
 
         register_profiler(session_id)
 
+        # ── [DEBUG-LIFECYCLE] ── Entering finally block ──────────────────────
+        _t0 = _time.monotonic()
+        logger.warning(
+            "[DEBUG-LIFECYCLE] t=%.4f ENTERING finally | session=%s | "
+            "ws_status=%r | ws_status_id=%s | ws_status_state=%s",
+            _t0, session_id[:8],
+            session.ws_status,
+            id(session.ws_status) if session.ws_status is not None else "None",
+            getattr(getattr(session.ws_status, "client_state", None), "name", "N/A")
+            if session.ws_status is not None else "N/A",
+        )
+
         # Flush any remaining buffered audio
+        logger.warning(
+            "[DEBUG-LIFECYCLE] t=%.4f BEFORE _flush_final | session=%s",
+            _time.monotonic() - _t0, session_id[:8],
+        )
         await _flush_final(session_id, transcriber, diarizer, manager)
-        # Pass the current session status to preserve interrupted/failed states in DB
-        await manager.end(session_id, session.status)
+        logger.warning(
+            "[DEBUG-LIFECYCLE] t=%.4f AFTER _flush_final | session=%s | "
+            "ws_status=%r | ws_status_id=%s | ws_status_state=%s",
+            _time.monotonic() - _t0, session_id[:8],
+            session.ws_status,
+            id(session.ws_status) if session.ws_status is not None else "None",
+            getattr(getattr(session.ws_status, "client_state", None), "name", None)
+            if session.ws_status is not None else "N/A",
+        )
+
         # Broadcast the actual terminal status (completed/interrupted/failed)
         terminal_status = (
             session.status.value
             if hasattr(session.status, "value")
             else str(session.status)
         )
-        await broadcast_status(session.ws_status, terminal_status)
+        
+        try:
+            # 1. Guarantee delivery BEFORE cleanup removes the socket
+            await broadcast_status(session.ws_status, terminal_status)
+        except Exception as exc:
+            logger.warning(
+                "Session %s…: failed to broadcast terminal status — %s",
+                session_id[:8],
+                exc,
+            )
+        finally:
+            # 2. Guarantee session destruction and socket cleanup even if broadcast fails
+            # Pass the current session status to preserve interrupted/failed states in DB
+            await manager.end(session_id, session.status)
+
         logger.info(
             f"Session {session_id[:8]}…: audio handler closed (status={terminal_status})"
         )
@@ -181,6 +234,8 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
 
+
+import string
 
 def _merge_overlapping_text(text1: str, text2: str) -> str:
     """Merge two text segments by finding word-level overlaps to avoid duplication."""
@@ -191,10 +246,14 @@ def _merge_overlapping_text(text1: str, text2: str) -> str:
 
     words1 = text1.strip().split()
     words2 = text2.strip().split()
-    max_overlap = min(len(words1), len(words2))
+    
+    norm1 = [w.lower().strip(string.punctuation) for w in words1]
+    norm2 = [w.lower().strip(string.punctuation) for w in words2]
+    
+    max_overlap = min(len(norm1), len(norm2))
 
     for i in range(max_overlap, 0, -1):
-        if words1[-i:] == words2[:i]:
+        if norm1[-i:] == norm2[:i]:
             return " ".join(words1 + words2[i:])
 
     return text1 + " " + text2

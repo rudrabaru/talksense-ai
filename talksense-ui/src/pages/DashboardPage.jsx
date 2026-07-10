@@ -180,6 +180,15 @@ export default function DashboardPage() {
     initializeSession();
   }, [sessionId]);
 
+  // --- Watch session status to reset isEnding ---------------------------------
+  useEffect(() => {
+    console.warn(`[DEBUG-LIFECYCLE] DashboardPage: sessionStatus changed to "${sessionStatus}" at t=${performance.now().toFixed(1)}ms | isEnding=` + isEnding);
+    if (["completed", "failed", "interrupted", "expired"].includes(sessionStatus)) {
+      console.warn(`[DEBUG-LIFECYCLE] DashboardPage: TERMINAL status → setIsEnding(false) at t=${performance.now().toFixed(1)}ms`);
+      setIsEnding(false);
+    }
+  }, [sessionStatus]);
+
   // --- Cleanup audio capture on unmount --------------------------------------
   useEffect(() => {
     return () => {
@@ -225,6 +234,11 @@ export default function DashboardPage() {
         "[DashboardPage] Audio WebSocket already open. Resuming capture.",
       );
       setAudioStatus("streaming");
+      try {
+        audioWsRef.current.send("resume");
+      } catch (err) {
+        console.warn("[DashboardPage] Failed to send 'resume' control message:", err);
+      }
       try {
         startCapture({
           onAudioChunk: (buffer) => {
@@ -309,7 +323,16 @@ export default function DashboardPage() {
     // 1. Stop PCM capture to pause audio ingestion.
     stopCapture();
 
-    // Do NOT send "end" or close the WebSocket here so we can restart.
+    // 2. Explicitly notify the backend of the pause to halt active duration timer
+    if (audioWsRef.current && audioWsRef.current.readyState === WebSocket.OPEN) {
+      try {
+        audioWsRef.current.send("pause");
+      } catch (err) {
+        console.warn("[DashboardPage] Failed to send 'pause' control message:", err);
+      }
+    }
+
+    // Do NOT close the WebSocket here so we can restart.
     setAudioStatus("idle");
   }, [stopCapture]);
 
@@ -320,6 +343,7 @@ export default function DashboardPage() {
   const endSession = useCallback(() => {
     if (hasExplicitlyEnded.current) return;
     hasExplicitlyEnded.current = true;
+    console.warn(`[DEBUG-LIFECYCLE] DashboardPage: endSession() → setIsEnding(true) at t=${performance.now().toFixed(1)}ms | sessionStatus="${sessionStatus}"`);
     setIsEnding(true);
 
     stopCapture();
@@ -327,12 +351,13 @@ export default function DashboardPage() {
 
     if (audioWsRef.current && audioWsRef.current.readyState === WebSocket.OPEN) {
       try {
+        console.warn(`[DEBUG-LIFECYCLE] DashboardPage: sending 'end' to audio WS at t=${performance.now().toFixed(1)}ms`);
         audioWsRef.current.send("end");
       } catch (err) {
         console.error("[DashboardPage] Failed to send 'end' explicitly:", err);
       }
     }
-  }, [stopCapture]);
+  }, [stopCapture, sessionStatus]);
 
   // --- Reconnect handler -----------------------------------------------------
   const handleReconnect = () => {
@@ -715,51 +740,178 @@ export default function DashboardPage() {
   // --- Render: Main dashboard ------------------------------------------------
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Navbar */}
-      <nav className="border-b border-gray-200 bg-white sticky top-0 z-50 shadow-sm">
-        <div className="mx-auto px-6 lg:px-12 xl:px-16 h-16 flex items-center justify-between">
-          <button
-            onClick={() => navigate("/")}
-            className="flex items-center gap-3 hover:opacity-85 transition-all"
-          >
-            <div className="relative w-9 h-9">
-              <img
-                src={logoImage}
-                alt="TalkSense AI Logo"
-                className="w-full h-full object-contain"
-              />
-            </div>
-            <span className="font-bold text-xl tracking-tight">
-              <span style={{ color: "#4F46E5" }}>TalkSense</span>
-              <span style={{ color: "#14B8A6" }}> AI</span>
-            </span>
-          </button>
-          <div className="flex gap-6 items-center text-sm font-medium">
-            <button
-              onClick={() => navigate("/")}
-              className="text-gray-500 hover:text-indigo-600 transition-colors"
-            >
-              Home
-            </button>
-            <button
-              onClick={() => navigate("/upload")}
-              className="text-gray-500 hover:text-indigo-600 transition-colors"
-            >
-              Analyze
-            </button>
-            <button
-              onClick={() => navigate("/sessions")}
-              className="text-gray-500 hover:text-indigo-600 transition-colors"
-            >
-              History
-            </button>
+      {/* Unified Global Header */}
+      <header className="sticky top-0 z-50 flex items-center px-6 bg-white border-b border-gray-200 h-16 shadow-sm">
+        {/* Branding */}
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-3 hover:opacity-85 transition-all mr-6 shrink-0"
+        >
+          <div className="relative w-8 h-8">
+            <img
+              src={logoImage}
+              alt="TalkSense AI Logo"
+              className="w-full h-full object-contain"
+            />
           </div>
+          <span className="font-bold text-lg tracking-tight whitespace-nowrap hidden sm:inline-block">
+            <span style={{ color: "#4F46E5" }}>TalkSense</span>
+            <span style={{ color: "#14B8A6" }}> AI</span>
+          </span>
+        </button>
+
+        {/* Navigation */}
+        <div className="flex gap-5 items-center text-sm font-medium mr-8 shrink-0">
+          <button onClick={() => navigate("/")} className="text-gray-500 hover:text-indigo-600 transition-colors">Home</button>
+          <button onClick={() => navigate("/upload")} className="text-gray-500 hover:text-indigo-600 transition-colors">Analyze</button>
+          <button onClick={() => navigate("/sessions")} className="text-gray-500 hover:text-indigo-600 transition-colors">History</button>
         </div>
-      </nav>
+
+        {/* SessionStatusBar (Left aligned next to nav) */}
+        <div className="shrink-0">
+          <SessionStatusBar
+            sessionStatus={sessionStatus || "unknown"}
+            connectionState={connectionState || "disconnected"}
+            lastSyncAt={lastSyncAt}
+            mode={activeSessionMode}
+          />
+        </div>
+
+        {/* Right Side: Timer, Recording, Controls */}
+        <div className="ml-auto flex items-center gap-4 shrink-0 pl-4">
+          {/* Timer */}
+          {metrics?.active_duration_seconds != null && (
+            <div className="text-sm font-medium text-slate-700 whitespace-nowrap font-mono bg-slate-100 px-2 py-1 rounded">
+              {new Date(metrics.active_duration_seconds * 1000).toISOString().substr(14, 5)}
+            </div>
+          )}
+
+          {/* Recording Indicator */}
+          {isCapturing && (
+            <div className="flex items-center gap-2 text-red-500 text-xs font-bold animate-pulse whitespace-nowrap uppercase tracking-widest bg-red-50 px-2 py-1 rounded">
+              <div className="w-2 h-2 bg-red-500 rounded-full" />
+              REC
+            </div>
+          )}
+
+          {/* Mic Controls */}
+          {!isCapturing && sessionStatus !== "completed" && !isEnding && (
+            <button
+              id="start-mic-btn"
+              onClick={startMicrophone}
+              disabled={audioStatus === "connecting" || !validatedSessionId}
+              style={{
+                padding: "8px 16px",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                color: "#fff",
+                background: audioStatus === "connecting" ? "#94a3b8" : "linear-gradient(135deg, #7c3aed, #4f46e5)",
+                border: "none",
+                borderRadius: "8px",
+                cursor: audioStatus === "connecting" ? "not-allowed" : "pointer",
+                letterSpacing: "0.03em",
+                whiteSpace: "nowrap"
+              }}
+              aria-label={`Start ${selectedSourceType.replace('_', ' ')} capture`}
+            >
+              {audioStatus === "connecting"
+                ? "⏳ Connecting…"
+                : selectedSourceType === "system_audio"
+                  ? "🖥️ Start System Audio"
+                  : selectedSourceType === "mixed"
+                    ? "🎙+🖥️ Start Mixed Audio"
+                    : "🎙 Start Microphone"}
+            </button>
+          )}
+          
+          {isCapturing && sessionStatus !== "completed" && !isEnding && (
+            <button
+              id="stop-mic-btn"
+              onClick={stopMicrophone}
+              style={{
+                padding: "8px 16px",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                color: "#fff",
+                background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                border: "none",
+                borderRadius: "8px",
+                cursor: "pointer",
+                letterSpacing: "0.03em",
+                whiteSpace: "nowrap"
+              }}
+              aria-label={`Stop ${selectedSourceType.replace('_', ' ')} capture`}
+            >
+              {selectedSourceType === "system_audio"
+                ? "⏸ Pause System Audio"
+                : selectedSourceType === "mixed"
+                  ? "⏸ Pause Mixed Audio"
+                  : "⏸ Pause Microphone"}
+            </button>
+          )}
+
+          {/* End Session Button */}
+          {(isEnding || sessionStatus !== "completed") && (
+            <button
+              id="end-session-btn"
+              onClick={endSession}
+              disabled={isEnding || sessionStatus === "completed"}
+              style={{
+                padding: "8px 16px",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                color: "#fff",
+                background: (isEnding || sessionStatus === "completed") ? "#64748b" : "linear-gradient(135deg, #dc2626, #b91c1c)",
+                border: "none",
+                borderRadius: "8px",
+                cursor: (isEnding || sessionStatus === "completed") ? "not-allowed" : "pointer",
+                letterSpacing: "0.03em",
+                whiteSpace: "nowrap",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px"
+              }}
+              aria-label="End Session"
+            >
+              {isEnding ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Ending...
+                </>
+              ) : (
+                "⏹ End Session"
+              )}
+            </button>
+          )}
+          
+          {sessionStatus === "completed" && !isEnding && (
+            <button
+              disabled
+              style={{
+                padding: "8px 16px",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                color: "#fff",
+                background: "#94a3b8",
+                border: "none",
+                borderRadius: "8px",
+                cursor: "not-allowed",
+                letterSpacing: "0.03em",
+                whiteSpace: "nowrap"
+              }}
+            >
+              Session Completed
+            </button>
+          )}
+        </div>
+      </header>
 
       <main
-        style={{ padding: "24px 16px", flex: 1 }}
-        className="max-w-7xl mx-auto w-full"
+        style={{ padding: "16px", height: "calc(100vh - 64px)", display: "flex", flexDirection: "column" }}
+        className="max-w-[1400px] mx-auto w-full overflow-x-auto"
       >
         {/* --- Connection banners --- */}
         {connectionState === "reconnecting" && (
@@ -834,115 +986,11 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* --- Status bar --- */}
-        <SessionStatusBar
-          sessionStatus={sessionStatus || "unknown"}
-          connectionState={connectionState || "disconnected"}
-          lastSyncAt={lastSyncAt}
-          mode={activeSessionMode}
-        />
-
-        {/* --- Microphone controls --- */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            gap: "12px",
-            margin: "16px 0",
-          }}
-        >
-          {!isCapturing ? (
-            <button
-              id="start-mic-btn"
-              onClick={startMicrophone}
-              disabled={audioStatus === "connecting" || !validatedSessionId || isEnding || sessionStatus === "completed"}
-              style={{
-                padding: "12px 28px",
-                fontSize: "0.95rem",
-                fontWeight: 600,
-                color: "#fff",
-                background:
-                  audioStatus === "connecting" || isEnding || sessionStatus === "completed"
-                    ? "#94a3b8"
-                    : "linear-gradient(135deg, #7c3aed, #4f46e5)",
-                border: "none",
-                borderRadius: "12px",
-                cursor: (audioStatus === "connecting" || isEnding || sessionStatus === "completed") ? "not-allowed" : "pointer",
-                letterSpacing: "0.03em",
-              }}
-              aria-label={`Start ${selectedSourceType.replace('_', ' ')} capture`}
-            >
-              {isEnding ? "Session Ended"
-                : audioStatus === "connecting"
-                ? "⏳ Connecting…"
-                : selectedSourceType === "system_audio"
-                  ? "🖥️ Start System Audio"
-                  : selectedSourceType === "mixed"
-                    ? "🎙+🖥️ Start Mixed Audio"
-                    : "🎙 Start Microphone"}
-            </button>
-          ) : (
-            <button
-              id="stop-mic-btn"
-              onClick={stopMicrophone}
-              disabled={isEnding}
-              style={{
-                padding: "12px 28px",
-                fontSize: "0.95rem",
-                fontWeight: 600,
-                color: "#fff",
-                background: "linear-gradient(135deg, #f59e0b, #d97706)", // Orange/Yellow to indicate pause
-                border: "none",
-                borderRadius: "12px",
-                cursor: isEnding ? "not-allowed" : "pointer",
-                letterSpacing: "0.03em",
-              }}
-              aria-label={`Stop ${selectedSourceType.replace('_', ' ')} capture`}
-            >
-              {selectedSourceType === "system_audio"
-                ? "⏸ Pause System Audio"
-                : selectedSourceType === "mixed"
-                  ? "⏸ Pause Mixed Audio"
-                  : "⏸ Pause Microphone"}
-            </button>
-          )}
-
-          {/* Explicit End Session Button */}
-          <button
-            id="end-session-btn"
-            onClick={endSession}
-            disabled={isEnding || sessionStatus === "completed"}
-            style={{
-              padding: "12px 28px",
-              fontSize: "0.95rem",
-              fontWeight: 600,
-              color: "#fff",
-              background: (isEnding || sessionStatus === "completed") 
-                ? "#94a3b8" 
-                : "linear-gradient(135deg, #dc2626, #b91c1c)",
-              border: "none",
-              borderRadius: "12px",
-              cursor: (isEnding || sessionStatus === "completed") ? "not-allowed" : "pointer",
-              letterSpacing: "0.03em",
-            }}
-            aria-label="End Session"
-          >
-            {isEnding ? "Ending..." : sessionStatus === "completed" ? "Completed" : "⏹ End Session"}
-          </button>
-        </div>
-
         {/* --- Dashboard panels --- */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "2fr 1fr",
-            gap: "16px",
-            marginTop: "16px",
-          }}
-        >
-          <div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4 flex-1 min-h-0">
+          <div className="lg:col-span-2 min-w-0 flex flex-col min-h-0 h-full">
             {sessionStatus === "completed" && (
-              <div className="mb-6 bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+              <div className="mb-4 bg-white border border-gray-200 rounded-xl p-6 shadow-sm shrink-0">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                   <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M18.364 5.636a9 9 0 010 12.728M11 12v5a2 2 0 11-4 0v-5a2 2 0 114 0z" />
@@ -958,17 +1006,21 @@ export default function DashboardPage() {
             )}
             <TranscriptPanel transcript={transcript || []} />
           </div>
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "16px" }}
-          >
-            <MetricsPanel
-              metrics={metrics || null}
-              sessionStatus={sessionStatus}
-              lastSyncAt={lastSyncAt}
-              mode={activeSessionMode}
-            />
-            <CoachingPanel tips={metrics?.coachingTips || []} />
-            <AlertsPanel alerts={alerts || []} />
+          <div className="flex flex-col gap-4 min-w-0 min-h-0 h-full">
+            <div className="flex flex-col shrink-0">
+              <CoachingPanel tips={metrics?.coachingTips || []} />
+            </div>
+            <div className="flex flex-col shrink min-h-0">
+              <AlertsPanel alerts={alerts || []} />
+            </div>
+            <div style={{ flex: 1, minHeight: 0 }} className="flex flex-col min-h-0">
+              <MetricsPanel
+                metrics={metrics || null}
+                sessionStatus={sessionStatus}
+                lastSyncAt={lastSyncAt}
+                mode={activeSessionMode}
+              />
+            </div>
           </div>
         </div>
       </main>
