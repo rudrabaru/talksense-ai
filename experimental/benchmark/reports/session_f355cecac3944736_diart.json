@@ -1,0 +1,51 @@
+{
+  "pipeline": "diart_experimental",
+  "sample_id": "session_f355cecac3944736.wav",
+  "speakers": [
+    "SPEAKER_00",
+    "SPEAKER_01"
+  ],
+  "segments": [
+    {
+      "start": 0.009,
+      "end": 2.549,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 6.508,
+      "end": 7.508,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 7.792,
+      "end": 8.009,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 11.092,
+      "end": 14.008,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 14.008,
+      "end": 16.508,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 21.075,
+      "end": 21.508,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 23.008,
+      "end": 23.441,
+      "speaker": "SPEAKER_00"
+    }
+  ],
+  "runtime": {
+    "latency_seconds": 2.057
+  },
+  "metadata": {
+    "docker_overhead_seconds": 29.57807390022278
+  }
+}

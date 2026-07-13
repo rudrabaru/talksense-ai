@@ -1,0 +1,134 @@
+{
+  "pipeline": "production_variant_c",
+  "sample_id": "SalesMeeting.wav",
+  "speakers": [
+    "Speaker 1",
+    "Speaker 2",
+    "Speaker 3",
+    "Speaker 4"
+  ],
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 3.4,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 3.98,
+      "end": 9.6,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 9.7,
+      "end": 9.84,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 9.84,
+      "end": 12.08,
+      "speaker": "Speaker 2"
+    },
+    {
+      "start": 12.18,
+      "end": 12.42,
+      "speaker": "Speaker 2"
+    },
+    {
+      "start": 12.42,
+      "end": 16.26,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 16.48,
+      "end": 16.5,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 16.5,
+      "end": 19.28,
+      "speaker": "Speaker 3"
+    },
+    {
+      "start": 19.54,
+      "end": 21.46,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 22.04,
+      "end": 24.06,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 24.22,
+      "end": 24.3,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 24.3,
+      "end": 28.24,
+      "speaker": "Speaker 3"
+    },
+    {
+      "start": 28.24,
+      "end": 32.62,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 32.7,
+      "end": 33.36,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 33.36,
+      "end": 35.42,
+      "speaker": "Speaker 4"
+    },
+    {
+      "start": 35.58,
+      "end": 39.74,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 39.92,
+      "end": 42.12,
+      "speaker": "Speaker 3"
+    },
+    {
+      "start": 42.3,
+      "end": 42.5,
+      "speaker": "Speaker 3"
+    },
+    {
+      "start": 42.5,
+      "end": 44.28,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 44.74,
+      "end": 44.8,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 44.8,
+      "end": 47.18,
+      "speaker": "Speaker 2"
+    },
+    {
+      "start": 47.46,
+      "end": 52.14,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 52.46,
+      "end": 53.54,
+      "speaker": "Speaker 1"
+    }
+  ],
+  "runtime": {
+    "latency_seconds": 14.352,
+    "load_seconds": 7.892,
+    "inference_seconds": 6.46,
+    "peak_ram_mb": 1159.58
+  },
+  "metadata": {}
+}

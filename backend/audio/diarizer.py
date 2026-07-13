@@ -117,22 +117,17 @@ class SpeakerDiarizer:
         fallback_speaker: str = "Speaker 1",
         speaker_profile: SpeakerProfile | None = None,
     ) -> list[DiarizedSegment]:
-        """
-        Assign speaker labels to transcript segments using Embeddings.
-
-        Args:
-            segments:          Output of WhisperTranscriber.transcribe().
-            pcm_bytes:         The raw PCM chunk (15s rolling window or flushed).
-            chunk_time_offset: Absolute time of the chunk start (seconds).
-            fallback_speaker:  Speaker to assign if chunk is too short.
-            speaker_profile:   Persistent session speaker profile.
-
-        Returns:
-            List of DiarizedSegment with speaker labels.
-        """
+        import os
+        engine = os.environ.get("DIARIZATION_ENGINE", "variant_c")
+        
         if not segments:
             return []
 
+        if engine == "diart":
+            return self._diarize_with_diart_docker(
+                segments, pcm_bytes, chunk_time_offset, fallback_speaker, speaker_profile
+            )
+            
         if self._loaded and self._model is not None and speaker_profile is not None:
             return self._diarize_with_embeddings(
                 segments,
@@ -152,16 +147,19 @@ class SpeakerDiarizer:
         fallback_speaker: str = "Speaker 1",
         speaker_profile: SpeakerProfile | None = None,
     ) -> list[DiarizedSegment]:
-        """
-        Async version of assign_speakers that separates CPU prep/post from
-        serialized GPU inference via the global semaphore.
-        """
         import asyncio
+        import os
+        engine = os.environ.get("DIARIZATION_ENGINE", "variant_c")
 
         loop = asyncio.get_running_loop()
 
         if not segments:
             return []
+            
+        if engine == "diart":
+            return await loop.run_in_executor(
+                None, self._diarize_with_diart_docker, segments, pcm_bytes, chunk_time_offset, fallback_speaker, speaker_profile
+            )
 
         if self._loaded and self._model is not None and speaker_profile is not None:
             return await self._diarize_with_embeddings_async(
@@ -175,6 +173,156 @@ class SpeakerDiarizer:
             return await loop.run_in_executor(
                 None, self._diarize_heuristic, segments, fallback_speaker
             )
+
+    def _diarize_with_diart_docker(
+        self,
+        segments: list[TranscriptSegment],
+        pcm_bytes: bytes,
+        chunk_time_offset: float,
+        fallback_speaker: str,
+        speaker_profile: SpeakerProfile,
+    ) -> list[DiarizedSegment]:
+        import json
+        import subprocess
+        import tempfile
+        import os
+        import wave
+        from audio.transcriber import TranscriptWord
+        from services.word_speaker_aligner import align_words_to_speakers
+
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tf:
+                wav_path = tf.name
+                
+            with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as out_tf:
+                out_path = out_tf.name
+
+            # Write PCM to wav
+            with wave.open(wav_path, 'wb') as wf:
+                wf.setnchannels(1)
+                wf.setsampwidth(2) # 16-bit
+                wf.setframerate(SAMPLE_RATE)
+                wf.writeframes(pcm_bytes)
+                
+            # Docker Desktop on Windows requires forward-slash paths for volume mounts.
+            # os.path returns backslash paths on Windows, so we must convert them.
+            wav_dir = os.path.dirname(wav_path).replace("\\", "/")
+            out_dir = os.path.dirname(out_path).replace("\\", "/")
+            
+            cmd = [
+                "docker", "run", "--rm",
+                "-v", f"{wav_dir}:/data_in",
+                "-v", f"{out_dir}:/data_out",
+                "talksense-diart-cpu",
+                f"/data_in/{os.path.basename(wav_path)}",
+                f"/data_out/{os.path.basename(out_path)}"
+            ]
+            
+            # Execute diart docker — capture stderr for diagnostics on failure
+            result = subprocess.run(cmd, check=True, capture_output=True)
+            logger.debug(f"Diarizer: Diart Docker stdout: {result.stdout.decode('utf-8', errors='replace')[:500]}")
+            
+            # Read output
+            with open(out_path, 'r', encoding='utf-8') as f:
+                diart_out = json.load(f)
+                
+            speaker_segments = []
+            if "diarization" in diart_out:
+                for turn in diart_out["diarization"]:
+                    start = chunk_time_offset + turn["start"]
+                    end = chunk_time_offset + turn["end"]
+                    speaker_segments.append((start, end, turn["speaker"]))
+            
+            # Cleanup temp files
+            os.remove(wav_path)
+            os.remove(out_path)
+
+            diarized = []
+            for seg in segments:
+                words_dicts = []
+                if seg.words:
+                    for w in seg.words:
+                        words_dicts.append({
+                            "word": w.word,
+                            "start": w.start,
+                            "end": w.end,
+                            "probability": w.probability,
+                        })
+                else:
+                    words_dicts.append({
+                        "word": seg.text,
+                        "start": seg.start,
+                        "end": seg.end,
+                        "probability": seg.avg_logprob,
+                    })
+
+                aligned = align_words_to_speakers(
+                    words_dicts, speaker_segments, fallback_speaker
+                )
+
+                if not aligned:
+                    continue
+
+                current_seg_speaker = aligned[0]["speaker"]
+                current_seg_words = []
+
+                for w in aligned:
+                    if w["speaker"] != current_seg_speaker:
+                        if current_seg_words:
+                            text = "".join(x["word"] for x in current_seg_words).strip()
+                            t_words = [
+                                TranscriptWord(
+                                    word=x["word"],
+                                    start=x["start"],
+                                    end=x["end"],
+                                    probability=x["confidence"],
+                                )
+                                for x in current_seg_words
+                            ]
+                            diarized.append(
+                                DiarizedSegment(
+                                    start=current_seg_words[0]["start"],
+                                    end=current_seg_words[-1]["end"],
+                                    text=text,
+                                    speaker=current_seg_speaker,
+                                    language=seg.language,
+                                    avg_logprob=seg.avg_logprob,
+                                    words=t_words,
+                                )
+                            )
+                        current_seg_speaker = w["speaker"]
+                        current_seg_words = [w]
+                    else:
+                        current_seg_words.append(w)
+
+                if current_seg_words:
+                    text = "".join(x["word"] for x in current_seg_words).strip()
+                    t_words = [
+                        TranscriptWord(
+                            word=x["word"],
+                            start=x["start"],
+                            end=x["end"],
+                            probability=x["confidence"],
+                        )
+                        for x in current_seg_words
+                    ]
+                    diarized.append(
+                        DiarizedSegment(
+                            start=current_seg_words[0]["start"],
+                            end=current_seg_words[-1]["end"],
+                            text=text,
+                            speaker=current_seg_speaker,
+                            language=seg.language,
+                            avg_logprob=seg.avg_logprob,
+                            words=t_words,
+                        )
+                    )
+
+            return diarized
+
+        except Exception as exc:
+            logger.error(f"Diarizer: Diart Docker error — {exc}. Falling back.", exc_info=True)
+            return self._diarize_heuristic(segments, fallback_speaker)
 
     # ── Pyannote diarization ──────────────────────────────────────────────────
 
@@ -206,38 +354,47 @@ class SpeakerDiarizer:
             stride_samples = int(0.5 * SAMPLE_RATE)
             total_samples = len(audio_float32)
 
+            def _overlaps(w_s, w_e):
+                for seg in segments:
+                    if not seg.words:
+                        if seg.start < w_e and seg.end > w_s:
+                            return True
+                    else:
+                        for w in seg.words:
+                            if w.start < w_e and w.end > w_s:
+                                return True
+                return False
+
             # Sliding window to get Pyannote speaker segments
             if total_samples < window_samples and total_samples >= SAMPLE_RATE * 0.5:
-                tensor = (
-                    torch.from_numpy(audio_float32).unsqueeze(0).unsqueeze(0).to(device)
-                )
-                with torch.inference_mode():
-                    emb = self._model(tensor).cpu().numpy()[0]
-                speaker = speaker_profile.match_or_create(emb)
-                speaker_segments.append(
-                    (
-                        chunk_time_offset,
-                        chunk_time_offset + (total_samples / SAMPLE_RATE),
-                        speaker,
+                w_start = chunk_time_offset
+                w_end = chunk_time_offset + (total_samples / SAMPLE_RATE)
+                if _overlaps(w_start, w_end):
+                    tensor = (
+                        torch.from_numpy(audio_float32).unsqueeze(0).unsqueeze(0).to(device)
                     )
-                )
+                    with torch.inference_mode():
+                        emb = self._model(tensor).cpu().numpy()[0]
+                    speaker = speaker_profile.match_or_create(emb)
+                    speaker_segments.append((w_start, w_end, speaker))
             elif total_samples >= window_samples:
                 for start_sample in range(0, total_samples, stride_samples):
                     end_sample = min(total_samples, start_sample + window_samples)
                     seg_audio = audio_float32[start_sample:end_sample]
                     if len(seg_audio) >= SAMPLE_RATE * 0.5:
-                        tensor = (
-                            torch.from_numpy(seg_audio)
-                            .unsqueeze(0)
-                            .unsqueeze(0)
-                            .to(device)
-                        )
-                        with torch.inference_mode():
-                            emb = self._model(tensor).cpu().numpy()[0]
-                        speaker = speaker_profile.match_or_create(emb)
                         w_start = chunk_time_offset + (start_sample / SAMPLE_RATE)
                         w_end = chunk_time_offset + (end_sample / SAMPLE_RATE)
-                        speaker_segments.append((w_start, w_end, speaker))
+                        if _overlaps(w_start, w_end):
+                            tensor = (
+                                torch.from_numpy(seg_audio)
+                                .unsqueeze(0)
+                                .unsqueeze(0)
+                                .to(device)
+                            )
+                            with torch.inference_mode():
+                                emb = self._model(tensor).cpu().numpy()[0]
+                            speaker = speaker_profile.match_or_create(emb)
+                            speaker_segments.append((w_start, w_end, speaker))
 
             diarized: list[DiarizedSegment] = []
 
@@ -362,29 +519,50 @@ class SpeakerDiarizer:
             audio_float32 = audio_int16.astype(np.float32) / 32768.0
 
             tensors = []
+            valid_windows = []
+            
+            def _overlaps(w_s, w_e):
+                for seg in segments:
+                    if not seg.words:
+                        if seg.start < w_e and seg.end > w_s:
+                            return True
+                    else:
+                        for w in seg.words:
+                            if w.start < w_e and w.end > w_s:
+                                return True
+                return False
+
             window_samples = int(1.0 * SAMPLE_RATE)
             stride_samples = int(0.5 * SAMPLE_RATE)
             total_samples = len(audio_float32)
 
             if total_samples < window_samples and total_samples >= SAMPLE_RATE * 0.5:
-                tensors.append(
-                    torch.from_numpy(audio_float32).unsqueeze(0).unsqueeze(0).to(device)
-                )
+                w_start = chunk_time_offset
+                w_end = chunk_time_offset + (total_samples / SAMPLE_RATE)
+                if _overlaps(w_start, w_end):
+                    tensors.append(
+                        torch.from_numpy(audio_float32).unsqueeze(0).unsqueeze(0).to(device)
+                    )
+                    valid_windows.append((w_start, w_end))
             elif total_samples >= window_samples:
                 for start_sample in range(0, total_samples, stride_samples):
                     end_sample = min(total_samples, start_sample + window_samples)
                     seg_audio = audio_float32[start_sample:end_sample]
                     if len(seg_audio) >= SAMPLE_RATE * 0.5:
-                        tensors.append(
-                            torch.from_numpy(seg_audio)
-                            .unsqueeze(0)
-                            .unsqueeze(0)
-                            .to(device)
-                        )
-            return tensors
+                        w_start = chunk_time_offset + (start_sample / SAMPLE_RATE)
+                        w_end = chunk_time_offset + (end_sample / SAMPLE_RATE)
+                        if _overlaps(w_start, w_end):
+                            tensors.append(
+                                torch.from_numpy(seg_audio)
+                                .unsqueeze(0)
+                                .unsqueeze(0)
+                                .to(device)
+                            )
+                            valid_windows.append((w_start, w_end))
+            return tensors, valid_windows
 
         try:
-            tensors = await loop.run_in_executor(None, _prep)
+            tensors, valid_windows = await loop.run_in_executor(None, _prep)
 
             # 2. GPU Inference
             embs = []
@@ -403,37 +581,10 @@ class SpeakerDiarizer:
             # 3. CPU Post
             def _post():
                 speaker_segments = []
-                window_samples = int(1.0 * SAMPLE_RATE)
-                stride_samples = int(0.5 * SAMPLE_RATE)
-                total_samples = len(np.frombuffer(pcm_bytes, dtype=np.int16))
-
                 if embs:
-                    emb_idx = 0
-                    if (
-                        total_samples < window_samples
-                        and total_samples >= SAMPLE_RATE * 0.5
-                    ):
-                        speaker = speaker_profile.match_or_create(embs[emb_idx])
-                        speaker_segments.append(
-                            (
-                                chunk_time_offset,
-                                chunk_time_offset + (total_samples / SAMPLE_RATE),
-                                speaker,
-                            )
-                        )
-                    elif total_samples >= window_samples:
-                        for start_sample in range(0, total_samples, stride_samples):
-                            end_sample = min(
-                                total_samples, start_sample + window_samples
-                            )
-                            if end_sample - start_sample >= SAMPLE_RATE * 0.5:
-                                speaker = speaker_profile.match_or_create(embs[emb_idx])
-                                w_start = chunk_time_offset + (
-                                    start_sample / SAMPLE_RATE
-                                )
-                                w_end = chunk_time_offset + (end_sample / SAMPLE_RATE)
-                                speaker_segments.append((w_start, w_end, speaker))
-                                emb_idx += 1
+                    for i, (w_s, w_e) in enumerate(valid_windows):
+                        speaker = speaker_profile.match_or_create(embs[i])
+                        speaker_segments.append((w_s, w_e, speaker))
 
                 diarized = []
                 for seg in segments:

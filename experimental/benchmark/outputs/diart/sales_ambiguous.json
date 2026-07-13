@@ -1,0 +1,109 @@
+{
+  "pipeline": "diart_experimental",
+  "sample_id": "sales_ambiguous.wav",
+  "speakers": [
+    "SPEAKER_00",
+    "SPEAKER_01"
+  ],
+  "segments": [
+    {
+      "start": 0.009,
+      "end": 8.008,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 8.508,
+      "end": 13.508,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 13.508,
+      "end": 14.191,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 14.425,
+      "end": 16.025,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 14.475,
+      "end": 14.508,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 17.058,
+      "end": 23.041,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 23.025,
+      "end": 24.158,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 24.508,
+      "end": 27.008,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 27.008,
+      "end": 31.008,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 31.008,
+      "end": 33.008,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 33.008,
+      "end": 35.641,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 35.592,
+      "end": 36.308,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 36.658,
+      "end": 39.025,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 39.758,
+      "end": 40.508,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 40.508,
+      "end": 44.791,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 44.792,
+      "end": 46.908,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 47.775,
+      "end": 52.008,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 52.008,
+      "end": 53.067,
+      "speaker": "SPEAKER_01"
+    }
+  ],
+  "runtime": {
+    "latency_seconds": 4.296,
+    "load_seconds": 0.0,
+    "inference_seconds": 0.0,
+    "peak_ram_mb": 0.0
+  },
+  "metadata": {
+    "docker_overhead_seconds": 17.535235885620118
+  }
+}

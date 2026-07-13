@@ -1,0 +1,122 @@
+{
+  "pipeline": "production_variant_c",
+  "sample_id": "sales_good.wav",
+  "speakers": [
+    "Speaker 1",
+    "Speaker 2"
+  ],
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 3.48,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 4.14,
+      "end": 10.5,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 10.7,
+      "end": 11.92,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 12.44,
+      "end": 18.3,
+      "speaker": "Speaker 2"
+    },
+    {
+      "start": 18.44,
+      "end": 19.26,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 20.4,
+      "end": 25.66,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 25.66,
+      "end": 30.8,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 31.1,
+      "end": 34.64,
+      "speaker": "Speaker 2"
+    },
+    {
+      "start": 35.18,
+      "end": 35.18,
+      "speaker": "Speaker 2"
+    },
+    {
+      "start": 35.18,
+      "end": 39.82,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 40.88,
+      "end": 42.94,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 43.18,
+      "end": 46.06,
+      "speaker": "Speaker 2"
+    },
+    {
+      "start": 46.38,
+      "end": 50.0,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 50.0,
+      "end": 56.3,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 56.5,
+      "end": 61.0,
+      "speaker": "Speaker 2"
+    },
+    {
+      "start": 61.26,
+      "end": 61.72,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 62.36,
+      "end": 67.14,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 67.68,
+      "end": 70.8,
+      "speaker": "Speaker 1"
+    },
+    {
+      "start": 70.96,
+      "end": 73.34,
+      "speaker": "Speaker 2"
+    },
+    {
+      "start": 73.52,
+      "end": 73.98,
+      "speaker": "Speaker 2"
+    },
+    {
+      "start": 75.08,
+      "end": 77.58,
+      "speaker": "Speaker 1"
+    }
+  ],
+  "runtime": {
+    "latency_seconds": 16.455,
+    "load_seconds": 7.898,
+    "inference_seconds": 8.556,
+    "peak_ram_mb": 1167.77
+  },
+  "metadata": {}
+}

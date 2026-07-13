@@ -238,6 +238,7 @@ async def _process_chunk(
         time_offset=time_offset,
         transcriber=transcriber,
         diarizer=diarizer,
+        is_partial=is_partial,
     )
 
 
@@ -248,6 +249,7 @@ async def _transcribe_and_enrich(
     time_offset: float,
     transcriber,
     diarizer,
+    is_partial: bool = False,
 ) -> None:
     """Transcribe audio bytes, perform speaker diarization, enrichment, and broadcast updates."""  # noqa: E501
     # 4. Transcribe (GPU, async via thread pool)
@@ -265,6 +267,7 @@ async def _transcribe_and_enrich(
         time_offset=max(0.0, time_offset),
         language=_language,
         initial_prompt=prev_text[-200:] if prev_text else None,
+        is_partial=is_partial,
     )
 
     logger.info(
@@ -420,6 +423,7 @@ async def _flush_final(session_id: str, transcriber, diarizer, manager) -> None:
             time_offset=time_offset,
             transcriber=transcriber,
             diarizer=diarizer,
+            is_partial=is_partial,
         )
 
 

@@ -14,6 +14,7 @@ Config (from .env):
 """
 
 import logging
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -100,6 +101,7 @@ class WhisperTranscriber:
         time_offset: float = 0.0,
         language: str | None = None,
         initial_prompt: str | None = None,
+        is_partial: bool = False,
     ) -> list[TranscriptSegment]:
         """
         Transcribe a PCM chunk synchronously.
@@ -145,28 +147,51 @@ class WhisperTranscriber:
                 word_timestamps=True,
             )
 
+            from audio.buffer import OVERLAP_MS
+            chunk_duration_sec = len(pcm_bytes) / (SAMPLE_RATE * 2)
+            tail_start = time_offset + chunk_duration_sec - (OVERLAP_MS / 1000.0)
+
             segments: list[TranscriptSegment] = []
             for seg in raw_segments:
                 text = seg.text.strip()
                 if not text:
                     continue
+                
+                # Reject punctuation-only segments (must have at least one alphanumeric char)
+                if not re.search(r'[a-zA-Z0-9]', text):
+                    continue
 
                 segment_words = []
                 if seg.words:
                     for w in seg.words:
+                        w_start_abs = round(w.start + time_offset, 3)
+                        w_end_abs = round(w.end + time_offset, 3)
+                        
+                        if is_partial and w_end_abs > tail_start:
+                            continue  # Drop word in the overlapping tail
+                            
                         segment_words.append(
                             TranscriptWord(
                                 word=w.word,
-                                start=round(w.start + time_offset, 3),
-                                end=round(w.end + time_offset, 3),
+                                start=w_start_abs,
+                                end=w_end_abs,
                                 probability=round(w.probability, 3),
                             )
                         )
+                    
+                    if not segment_words:
+                        continue  # Entire segment was dropped
+                    
+                    # Reconstruct text from remaining words if any were dropped
+                    if len(segment_words) != len(seg.words):
+                        text = "".join(w.word for w in segment_words).strip()
+                        if not text or not re.search(r'[a-zA-Z0-9]', text):
+                            continue
 
                 segments.append(
                     TranscriptSegment(
-                        start=round(seg.start + time_offset, 2),
-                        end=round(seg.end + time_offset, 2),
+                        start=round(segment_words[0].start, 2) if segment_words else round(seg.start + time_offset, 2),
+                        end=round(segment_words[-1].end, 2) if segment_words else round(seg.end + time_offset, 2),
                         text=text,
                         language=info.language,
                         avg_logprob=round(seg.avg_logprob, 3),
@@ -191,6 +216,7 @@ class WhisperTranscriber:
         time_offset: float = 0.0,
         language: str | None = None,
         initial_prompt: str | None = None,
+        is_partial: bool = False,
     ) -> list[TranscriptSegment]:
         """
         Async wrapper — runs transcription in the thread pool, separated into
@@ -244,34 +270,57 @@ class WhisperTranscriber:
 
         # 3. CPU Postprocessing (concurrent)
         def _post():
+            from audio.buffer import OVERLAP_MS
+            chunk_duration_sec = len(pcm_bytes) / (SAMPLE_RATE * 2)
+            tail_start = time_offset + chunk_duration_sec - (OVERLAP_MS / 1000.0)
+
             segments = []
             for seg in raw_segments:
                 text = seg.text.strip()
                 if not text:
                     continue
+                
+                # Reject punctuation-only segments
+                if not re.search(r'[a-zA-Z0-9]', text):
+                    continue
 
                 segment_words = []
                 if seg.words:
                     for w in seg.words:
+                        w_start_abs = round(w.start + time_offset, 3)
+                        w_end_abs = round(w.end + time_offset, 3)
+                        
+                        if is_partial and w_end_abs > tail_start:
+                            continue
+                            
                         segment_words.append(
                             TranscriptWord(
                                 word=w.word,
-                                start=round(w.start + time_offset, 3),
-                                end=round(w.end + time_offset, 3),
+                                start=w_start_abs,
+                                end=w_end_abs,
                                 probability=round(w.probability, 3),
                             )
                         )
+                    
+                    if not segment_words:
+                        continue
+                    
+                    if len(segment_words) != len(seg.words):
+                        text = "".join(w.word for w in segment_words).strip()
+                        if not text or not re.search(r'[a-zA-Z0-9]', text):
+                            continue
 
                 segments.append(
                     TranscriptSegment(
-                        start=round(seg.start + time_offset, 2),
-                        end=round(seg.end + time_offset, 2),
+                        start=round(segment_words[0].start, 2) if segment_words else round(seg.start + time_offset, 2),
+                        end=round(segment_words[-1].end, 2) if segment_words else round(seg.end + time_offset, 2),
                         text=text,
                         language=info.language,
                         avg_logprob=round(seg.avg_logprob, 3),
                         words=segment_words,
                     )
                 )
+
             return segments, inference_time, info.language
 
         segments, inference_time, lang = await loop.run_in_executor(

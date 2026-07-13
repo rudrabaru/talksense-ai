@@ -1,0 +1,150 @@
+{
+  "pipeline": "diart_experimental",
+  "sample_id": "BuisinessMeeting.wav",
+  "speakers": [
+    "SPEAKER_00",
+    "SPEAKER_01",
+    "SPEAKER_02"
+  ],
+  "segments": [
+    {
+      "start": 0.009,
+      "end": 2.77,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 3.508,
+      "end": 9.075,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 9.075,
+      "end": 9.442,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 9.508,
+      "end": 10.908,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 11.225,
+      "end": 11.508,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 11.508,
+      "end": 12.008,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 12.008,
+      "end": 14.208,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 14.208,
+      "end": 21.508,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 21.508,
+      "end": 22.008,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 21.992,
+      "end": 33.725,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 34.008,
+      "end": 37.558,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 37.825,
+      "end": 38.008,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 38.008,
+      "end": 39.508,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 39.508,
+      "end": 42.008,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 42.008,
+      "end": 46.291,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 47.225,
+      "end": 50.641,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 51.508,
+      "end": 51.892,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 51.658,
+      "end": 51.841,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 51.892,
+      "end": 57.508,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 57.508,
+      "end": 58.175,
+      "speaker": "SPEAKER_02"
+    },
+    {
+      "start": 58.258,
+      "end": 58.691,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 59.008,
+      "end": 62.175,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 62.358,
+      "end": 62.375,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 62.508,
+      "end": 68.191,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 68.508,
+      "end": 69.191,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 69.508,
+      "end": 70.247,
+      "speaker": "SPEAKER_01"
+    }
+  ],
+  "runtime": {
+    "latency_seconds": 5.683,
+    "load_seconds": 0.0,
+    "inference_seconds": 0.0,
+    "peak_ram_mb": 0.0
+  },
+  "metadata": {
+    "docker_overhead_seconds": 20.129973260879517
+  }
+}

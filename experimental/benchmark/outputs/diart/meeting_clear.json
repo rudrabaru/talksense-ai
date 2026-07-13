@@ -1,0 +1,129 @@
+{
+  "pipeline": "diart_experimental",
+  "sample_id": "meeting_clear.wav",
+  "speakers": [
+    "SPEAKER_00",
+    "SPEAKER_01"
+  ],
+  "segments": [
+    {
+      "start": 0.009,
+      "end": 5.791,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 6.008,
+      "end": 6.508,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 6.508,
+      "end": 11.508,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 11.508,
+      "end": 18.008,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 17.008,
+      "end": 17.375,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 18.008,
+      "end": 20.241,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 20.508,
+      "end": 20.525,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 20.658,
+      "end": 27.008,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 27.008,
+      "end": 31.508,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 31.242,
+      "end": 31.691,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 31.658,
+      "end": 31.858,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 32.008,
+      "end": 32.508,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 32.508,
+      "end": 33.558,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 33.658,
+      "end": 37.291,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 36.758,
+      "end": 37.408,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 37.408,
+      "end": 37.508,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 37.508,
+      "end": 39.008,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 39.008,
+      "end": 42.008,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 42.008,
+      "end": 43.008,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 43.008,
+      "end": 43.508,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 43.508,
+      "end": 45.008,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 45.008,
+      "end": 47.886,
+      "speaker": "SPEAKER_00"
+    }
+  ],
+  "runtime": {
+    "latency_seconds": 3.944,
+    "load_seconds": 0.0,
+    "inference_seconds": 0.0,
+    "peak_ram_mb": 0.0
+  },
+  "metadata": {
+    "docker_overhead_seconds": 18.619236713409425
+  }
+}

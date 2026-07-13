@@ -1,0 +1,74 @@
+{
+  "pipeline": "diart_experimental",
+  "sample_id": "meeting_messy.wav",
+  "speakers": [
+    "SPEAKER_00",
+    "SPEAKER_01"
+  ],
+  "segments": [
+    {
+      "start": 0.009,
+      "end": 5.608,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 6.508,
+      "end": 7.825,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 8.008,
+      "end": 14.008,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 14.008,
+      "end": 15.008,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 15.175,
+      "end": 25.508,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 25.508,
+      "end": 28.508,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 28.508,
+      "end": 30.508,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 30.758,
+      "end": 31.008,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 31.008,
+      "end": 34.508,
+      "speaker": "SPEAKER_01"
+    },
+    {
+      "start": 34.508,
+      "end": 36.558,
+      "speaker": "SPEAKER_00"
+    },
+    {
+      "start": 37.008,
+      "end": 39.291,
+      "speaker": "SPEAKER_01"
+    }
+  ],
+  "runtime": {
+    "latency_seconds": 2.941,
+    "load_seconds": 0.0,
+    "inference_seconds": 0.0,
+    "peak_ram_mb": 0.0
+  },
+  "metadata": {
+    "docker_overhead_seconds": 18.040420278549195
+  }
+}
