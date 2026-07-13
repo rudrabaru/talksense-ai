@@ -51,9 +51,14 @@ async def _safe_send(
         True if sent successfully, False otherwise.
     """
     if ws is None:
+        logger.warning("[DEBUG-LIFECYCLE] _safe_send: ws is None — message DROPPED. channel=%s", data.get('type'))
         return False
 
     if ws.client_state != WebSocketState.CONNECTED:
+        logger.warning(
+            "[DEBUG-LIFECYCLE] _safe_send: ws NOT CONNECTED (state=%s) — message DROPPED. channel=%s ws_id=%s",
+            ws.client_state, data.get('type'), id(ws),
+        )
         return False
 
     try:
@@ -62,12 +67,17 @@ async def _safe_send(
             await asyncio.wait_for(ws.send_json(data), timeout=SEND_TIMEOUT)
         else:
             await ws.send_json(data)
+        logger.warning(
+            "[DEBUG-LIFECYCLE] _safe_send: SENT OK. channel=%s ws_id=%s",
+            data.get('type'), id(ws),
+        )
         return True
 
     except asyncio.TimeoutError:
         logger.debug("Broadcaster: client lagging — metric update dropped")
         return False
     except WebSocketDisconnect:
+        logger.warning("[DEBUG-LIFECYCLE] _safe_send: WebSocketDisconnect during send. channel=%s", data.get('type'))
         return False
     except Exception as exc:
         logger.warning(f"Broadcaster: send error — {exc}")
@@ -108,6 +118,18 @@ async def broadcast_metrics(ws: WebSocket | None, metrics: dict) -> None:
     )
 
 
+async def broadcast_timer(ws: WebSocket | None, active_duration_seconds: float) -> None:
+    """
+    Send a lightweight timer heartbeat to keep the UI timer ticking during silence.
+    """
+    await _safe_send(
+        ws,
+        _envelope("metrics", {"active_duration_seconds": active_duration_seconds}),
+        drop_on_lag=True,
+    )
+
+
+
 async def broadcast_alert(ws: WebSocket | None, alert: dict) -> None:
     """
     Send a new real-time alert.
@@ -126,7 +148,7 @@ async def broadcast_alert(ws: WebSocket | None, alert: dict) -> None:
 
 async def broadcast_status(
     ws: WebSocket | None, status: str, extra: dict | None = None
-) -> None:
+) -> bool:
     """
     Send a session status change.
 
@@ -136,7 +158,7 @@ async def broadcast_status(
     payload: dict[str, Any] = {"status": status}
     if extra:
         payload.update(extra)
-    await _safe_send(ws, _envelope("status", payload), drop_on_lag=False)
+    return await _safe_send(ws, _envelope("status", payload), drop_on_lag=False)
 
 
 async def broadcast_all(

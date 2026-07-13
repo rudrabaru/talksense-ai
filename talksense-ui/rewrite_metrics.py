@@ -1,185 +1,20 @@
-import React, { memo } from "react";
+import re
+import sys
 
-// ── SpeakerAttributionCard ────────────────────────────────────────────────────
-// Renders speaker attribution status + post-session quality diagnostics.
-//
-// Props:
-//   attribution      {status, speakers_detected, coverage, segments_updated,
-//                    total_segments, speaker_turns} | null
-//   attributionStatus string | null  — flat lifecycle status string
-//   sessionStatus    string | null   — parent session status
-//   secondsAgo       number | null   — seconds since last REST sync
+with open('talksense-ui/src/components/dashboard/MetricsPanel.jsx', 'r', encoding='utf-8') as f:
+    content = f.read()
 
-const _STATUS_LABELS = {
-  pending:    "Queued",
-  processing: "Processing speakers...",
-  completed:  "Completed ✓",
-  failed:     "Failed",
-};
+start_marker = '  const renderSpeakingRatio = () => {'
+end_marker = '  );\n});\n\nMetricsPanel.displayName ='
 
-const _STATUS_COLORS = {
-  pending:    "#f59e0b",
-  processing: "#3b82f6",
-  completed:  "#10b981",
-  failed:     "#ef4444",
-};
+start_idx = content.find(start_marker)
+end_idx = content.find(end_marker)
 
-const SpeakerAttributionCard = ({ attribution, attributionStatus, sessionStatus, secondsAgo }) => {
-  const status      = attribution?.status ?? attributionStatus ?? null;
-  const statusLabel = _STATUS_LABELS[status] ?? (sessionStatus === "completed" ? "Waiting for processing" : "Not Started");
-  const statusColor = _STATUS_COLORS[status] ?? "#94a3b8";
+if start_idx == -1 or end_idx == -1:
+    print('Failed to find markers')
+    sys.exit(1)
 
-  const speakersDetected = attribution?.speakers_detected ?? null;
-  const coverage         = attribution?.coverage ?? null;
-  const segmentsUpdated  = attribution?.segments_updated ?? null;
-  const totalSegments    = attribution?.total_segments ?? null;
-  const speakerTurns     = attribution?.speaker_turns ?? null;
-
-  const showDiagnostics = status === "completed" && coverage != null;
-  const showPollingHint = (status === "pending" || status === "processing") && secondsAgo != null;
-
-  const coverageColor = coverage >= 80 ? "#10b981" : coverage >= 50 ? "#f59e0b" : "#ef4444";
-
-  return (
-    <div>
-      {/* Status header row */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-        <strong>Speaker Attribution:</strong>
-        <span style={{ color: statusColor, fontWeight: 600, fontSize: "0.92em" }}>
-          {statusLabel}
-        </span>
-        {showPollingHint && (
-          <span style={{ fontSize: "0.8em", color: "#94a3b8" }}>
-            (updated {secondsAgo}s ago)
-          </span>
-        )}
-      </div>
-
-      {/* Quality diagnostics — only after completed */}
-      {showDiagnostics && (
-        <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "6px" }}>
-
-          {/* Coverage progress bar */}
-          <div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.82em", color: "#475569", marginBottom: "3px" }}>
-              <span>Coverage</span>
-              <span style={{ fontWeight: 600, color: coverageColor }}>{coverage}%</span>
-            </div>
-            <div style={{ height: "6px", borderRadius: "3px", background: "#e2e8f0", overflow: "hidden" }}>
-              <div style={{
-                height: "100%",
-                width: `${Math.min(coverage, 100)}%`,
-                borderRadius: "3px",
-                background: coverageColor,
-                transition: "width 0.6s ease",
-              }} />
-            </div>
-          </div>
-
-          {/* Stat pills */}
-          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "4px" }}>
-            {speakersDetected != null && (
-              <span style={{ fontSize: "0.82em", color: "#475569" }}>
-                🗣 <strong style={{ color: "#1e293b" }}>{speakersDetected}</strong> speakers
-              </span>
-            )}
-            {segmentsUpdated != null && totalSegments != null && (
-              <span style={{ fontSize: "0.82em", color: "#475569" }}>
-                📝 <strong style={{ color: "#1e293b" }}>{segmentsUpdated}</strong>/{totalSegments} segments
-              </span>
-            )}
-            {speakerTurns != null && (
-              <span style={{ fontSize: "0.82em", color: "#475569" }}>
-                🔄 <strong style={{ color: "#1e293b" }}>{speakerTurns}</strong> turns
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Failed state hint */}
-      {status === "failed" && (
-        <p style={{ margin: "6px 0 0 0", fontSize: "0.82em", color: "#ef4444", fontStyle: "italic" }}>
-          Diagnostics unavailable
-        </p>
-      )}
-    </div>
-  );
-};
-
-// ── MetricsPanel ──────────────────────────────────────────────────────────────
-
-const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt, mode }) => {
-  const [secondsAgo, setSecondsAgo] = React.useState(null);
-
-  React.useEffect(() => {
-    if (!lastSyncAt) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSecondsAgo(null);
-      return;
-    }
-    const update = () => {
-      const diff = Math.round((Date.now() - new Date(lastSyncAt).getTime()) / 1000);
-      setSecondsAgo(diff >= 0 ? diff : 0);
-    };
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, [lastSyncAt]);
-
-  const hasValidMetrics = !!(
-    metrics &&
-    (
-      metrics.speakerAttributionStatus !== undefined ||
-      (metrics.health_score != null && !isNaN(Number(metrics.health_score))) ||
-      (metrics.duration_seconds != null && !isNaN(Number(metrics.duration_seconds))) ||
-      (metrics.participation != null &&
-        typeof metrics.participation === "object" &&
-        Object.keys(metrics.participation).length > 0)
-    )
-  );
-
-  if (!hasValidMetrics) {
-    return (
-      <div
-        className="metrics-panel-placeholder bg-white rounded-xl shadow-sm border border-slate-200"
-        role="region"
-        aria-label="Conversation intelligence metrics"
-        style={{ padding: "16px", height: "100%", overflowY: "auto", overflowX: "hidden", wordBreak: "break-word" }}
-      >
-        <h3 className="font-semibold text-slate-800 text-lg mb-2">Conversation Intelligence</h3>
-        <p>No metrics available.</p>
-      </div>
-    );
-  }
-
-
-
-  const {
-    health_score,
-    speaking_ratio,
-    filler_count,
-    duration_seconds,
-    interruptions,
-    speaker_switches,
-    action_items,
-    decisions,
-    objection_timeline,
-    buying_signal_timeline,
-    filler_penalty,
-    pause_penalty,
-    sentiment,
-    talkRatioSummary,
-    talkTimeline,
-    analyticsHealth,
-  } = metrics;
-
-
-
-  const parsedDuration = duration_seconds != null ? Number(duration_seconds) : NaN;
-  const durationText = !isNaN(parsedDuration) ? `${parsedDuration.toFixed(1)}s` : "N/A";
-
-  const renderSpeakingRatio = () => {
+new_content = """  const renderSpeakingRatio = () => {
     if (!speaking_ratio || typeof speaking_ratio !== "object") return <div style={{ color: "#64748b", fontSize: "0.85em", fontStyle: "italic" }}>N/A</div>;
     const speakerColors = ["#3b82f6", "#10b981", "#8b5cf6", "#f59e0b"];
     return (
@@ -524,8 +359,8 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt, mode }) => {
       </div>
     </div>
   );
-});
+"""
 
-MetricsPanel.displayName = "MetricsPanel";
-
-export default MetricsPanel;
+final_content = content[:start_idx] + new_content + content[end_idx:]
+with open('talksense-ui/src/components/dashboard/MetricsPanel.jsx', 'w', encoding='utf-8') as f:
+    f.write(final_content)

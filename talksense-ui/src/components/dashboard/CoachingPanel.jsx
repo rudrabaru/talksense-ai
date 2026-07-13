@@ -68,25 +68,25 @@ export default function CoachingPanel({ tips = [] }) {
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2 px-1">
+    <div className="flex flex-col gap-3 bg-white rounded-xl shadow-sm border border-slate-200" style={{ padding: "16px", maxHeight: "100%", overflowY: "auto" }}>
+      <div className="flex items-center gap-2">
         <LightbulbIcon className="w-5 h-5 text-indigo-500" />
-        <h3 className="font-semibold text-slate-800">Live Coaching</h3>
+        <h3 className="font-semibold text-slate-800 text-lg">Live Coaching</h3>
       </div>
       <div className="flex flex-col gap-2">
         {tips.map((tip) => (
           <div
             key={tip.id}
-            className={`flex items-start gap-3 p-3 rounded-lg border ${getSeverityStyle(
+            className={`flex items-start gap-3 py-2 px-3 rounded-lg border ${getSeverityStyle(
               tip.severity
             )} shadow-sm transition-all`}
           >
             <InfoIcon className={`w-5 h-5 mt-0.5 shrink-0 ${getIconStyle(tip.severity)}`} />
-            <div className="flex flex-col">
-              <span className="font-semibold text-sm">{tip.title}</span>
-              <span className="text-sm mt-0.5">{tip.recommendation}</span>
+            <div className="flex flex-col gap-0.5">
+              <span className="font-semibold text-sm leading-tight">{tip.title}</span>
+              <span className="text-sm leading-tight">{tip.recommendation}</span>
               {tip.reason && (
-                <span className="text-xs opacity-80 mt-1 italic">
+                <span className="text-xs opacity-80 italic leading-tight">
                   {tip.reason}
                 </span>
               )}

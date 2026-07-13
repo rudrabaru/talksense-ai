@@ -211,6 +211,11 @@ class SessionState:
     ws_status: "WebSocket | None" = None
     speaker_profile: SpeakerProfile = field(default_factory=SpeakerProfile)
     started_at: float = field(default_factory=time.monotonic)
+    
+    # Explicit recording state tracking
+    recording_started_at: float | None = None
+    _accumulated_recording_duration: float = 0.0
+    
     last_persist_at: float = field(default_factory=time.monotonic)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
@@ -288,6 +293,14 @@ class SessionState:
     @property
     def elapsed_seconds(self) -> float:
         return time.monotonic() - self.started_at
+
+    @property
+    def active_recording_duration(self) -> float:
+        """Returns the accumulated recording time excluding pauses."""
+        duration = self._accumulated_recording_duration
+        if self.recording_started_at is not None:
+            duration += time.monotonic() - self.recording_started_at
+        return duration
 
 
 class SessionManager:
@@ -391,6 +404,9 @@ class SessionManager:
 
         # ── Step 2: transition to terminal status ─────────────────────────────
         async with session.lock:
+            if session.recording_started_at is not None:
+                session._accumulated_recording_duration += time.monotonic() - session.recording_started_at
+                session.recording_started_at = None
             session.status = status
         logger.info("Session %s…: ended [%s]", session_id[:8], status)
 
@@ -879,8 +895,17 @@ async def _flush_loop() -> None:
 
             manager = get_session_manager()
             active_sessions = manager.list_active()
+            
+            from ws.broadcast import broadcast_timer
 
             for session in active_sessions:
+                # ── Heartbeat broadcast ──
+                # Keep frontend timer ticking during silence
+                if session.ws_metrics is not None and session.status.value == "active":
+                    asyncio.create_task(
+                        broadcast_timer(session.ws_metrics, session.active_recording_duration)
+                    )
+
                 # Skip sessions already mid-flush
                 if session.is_flushing:
                     logger.debug(

@@ -555,6 +555,7 @@ async def get_dashboard_snapshot(
             "speaker_roles": conv.roles,
             "objection_handling": [],
             "elapsed_seconds": round(session.elapsed_seconds, 1),
+            "active_duration_seconds": round(session.active_recording_duration, 1),
             "health_score": conv.health_score,
             "sentiment": conv.sentiment,
             "sentiment_score": conv.sentiment_score,
@@ -747,6 +748,7 @@ async def get_dashboard_snapshot(
             "speaker_attribution": speaker_attribution_payload,
             "speaker_roles": metrics["speaker_roles"],
             "elapsed_seconds": elapsed,
+            "active_duration_seconds": elapsed,  # Fallback to elapsed since DB doesn't store active duration separately yet
             "health_score": metrics["health_score"],
             "sentiment": metrics["sentiment"],
             "sentiment_score": metrics["sentiment_score"],

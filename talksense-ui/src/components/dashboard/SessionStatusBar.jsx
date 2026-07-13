@@ -64,22 +64,19 @@ const SessionStatusBar = memo(
         aria-live="polite"
         style={{
           display: "flex",
-          justifyContent: "space-between",
           alignItems: "center",
-          border: "1px solid #ccc",
-          padding: "12px",
-          background: "#fafafa",
+          gap: "12px",
+          fontSize: "0.85rem",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <strong>Mode:</strong>
-          <span style={{ textTransform: "capitalize" }}>
-            {mode || "Unknown"}
-          </span>
+        {/* Mode Badge */}
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#f1f5f9", padding: "4px 10px", borderRadius: "16px", color: "#475569", fontWeight: 600 }}>
+          <span style={{ fontSize: "1rem" }}>{mode === "sales" ? "📊" : "🎙"}</span>
+          <span style={{ textTransform: "capitalize" }}>{mode || "Unknown"}</span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <strong>Session Status:</strong>
+        {/* Status Badge */}
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#f8fafc", padding: "4px 10px", borderRadius: "16px", color: "#334155", fontWeight: 600, border: "1px solid #e2e8f0" }}>
           <span
             style={{
               display: "inline-block",
@@ -95,8 +92,8 @@ const SessionStatusBar = memo(
           </span>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <strong>Connection:</strong>
+        {/* Connection Badge */}
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", background: "#f8fafc", padding: "4px 10px", borderRadius: "16px", color: "#334155", fontWeight: 600, border: "1px solid #e2e8f0" }}>
           <span
             style={{
               display: "inline-block",
@@ -108,12 +105,13 @@ const SessionStatusBar = memo(
             aria-hidden="true"
           />
           <span style={{ textTransform: "capitalize" }}>
-            {connectionState || "Unknown"}
+            {connectionState === "connected" ? "Connected" : connectionState || "Unknown"}
           </span>
         </div>
 
-        <div>
-          <strong>Last Synced:</strong> <span>{formattedTime}</span>
+        {/* Last Sync */}
+        <div style={{ display: "flex", alignItems: "center", color: "#94a3b8", fontSize: "0.8rem", marginLeft: "4px" }} title={`Last Sync: ${formattedTime}`}>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
         </div>
       </div>
     );
