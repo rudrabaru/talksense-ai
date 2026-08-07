@@ -136,7 +136,8 @@ export function useSessionWebSocket(sessionId) {
    * Constructs the full WebSocket URL for a given channel and session ID.
    */
   const _buildWsUrl = useCallback((channel, sid) => {
-    return `${WS_BASE_URL}/ws/${channel}/${sid}`;
+    const wsToken = localStorage.getItem(`ws_token_${sid}`);
+    return `${WS_BASE_URL}/ws/${channel}/${sid}?token=${wsToken || ''}`;
   }, []);
 
   /**
@@ -285,6 +286,12 @@ export function useSessionWebSocket(sessionId) {
 
         // Merge transcripts
         safeSetState(setTranscript, (prev) => {
+          // If session is completed, we want a full replace to ensure offline diarization 
+          // (Phase 67) segments overwrite the live segments entirely.
+          if (data.status === "completed") {
+            return (data.transcript_segments || []).sort((a, b) => a.start - b.start);
+          }
+
           const incomingMap = new Map();
           (data.transcript_segments || []).forEach((seg) => {
             incomingMap.set(seg.start, seg);
@@ -330,6 +337,7 @@ export function useSessionWebSocket(sessionId) {
             talkTimeline: data.talk_timeline ?? null,
             analyticsHealth: data.analytics_health ?? null,
             coachingTips: data.coaching_tips || [],
+            postSessionAi: data.post_session_ai ?? null,
             last_updated: data.last_updated ?? 0,
           };
           safeSetState(setMetrics, (prev) => {
@@ -347,6 +355,7 @@ export function useSessionWebSocket(sessionId) {
                 talkRatioSummary: prev?.talkRatioSummary ?? restMetrics.talkRatioSummary,
                 talkTimeline: prev?.talkTimeline ?? restMetrics.talkTimeline,
                 analyticsHealth: prev?.analyticsHealth ?? restMetrics.analyticsHealth,
+                postSessionAi: prev?.postSessionAi ?? restMetrics.postSessionAi,
               };
             }
             console.log("[useSessionWebSocket] Fresh REST payload received. Performing full replace.");
@@ -700,6 +709,11 @@ export function useSessionWebSocket(sessionId) {
                 incoming.coaching_tips ??
                 prev?.coachingTips ??
                 [];
+              const postSessionAi =
+                incoming.postSessionAi ??
+                incoming.post_session_ai ??
+                prev?.postSessionAi ??
+                null;
               return {
                 ...incoming,
                 speakerAttributionStatus,
@@ -709,6 +723,7 @@ export function useSessionWebSocket(sessionId) {
                 talkTimeline,
                 analyticsHealth,
                 coachingTips,
+                postSessionAi,
                 last_updated: incomingTimestamp,
               };
             });
@@ -907,19 +922,20 @@ export function useSessionWebSocket(sessionId) {
     }
   }, [sessionStatus, _isTerminalStatus, disconnect]);
 
-  // --- Auto-Refresh Polling for Speaker Attribution ----------------------------
+  // --- Auto-Refresh Polling for Post-Session Analysis -------------------------
   useEffect(() => {
     const shouldPoll =
       sessionStatus === "completed" &&
       (
         metrics?.speakerAttributionStatus == null ||
         metrics?.speakerAttributionStatus === "pending" ||
-        metrics?.speakerAttributionStatus === "processing"
+        metrics?.speakerAttributionStatus === "processing" ||
+        !metrics?.postSessionAi
       );
 
     if (!shouldPoll) return;
 
-    console.log(`[useSessionWebSocket] Speaker attribution in progress or pending. Starting auto-refresh polling.`);
+    console.log(`[useSessionWebSocket] Post-session analysis pending. Starting auto-refresh polling.`);
 
     const intervalId = setInterval(() => {
       const sid = sessionIdRef.current;
@@ -931,7 +947,7 @@ export function useSessionWebSocket(sessionId) {
       console.log("[useSessionWebSocket] Stopping auto-refresh polling.");
       clearInterval(intervalId);
     };
-  }, [sessionStatus, metrics?.speakerAttributionStatus, reconcileState]);
+  }, [sessionStatus, metrics?.speakerAttributionStatus, metrics?.postSessionAi, reconcileState]);
 
   // --- Exposed API ------------------------------------------------------------
   return {
