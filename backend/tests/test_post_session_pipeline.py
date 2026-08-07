@@ -80,6 +80,7 @@ async def test_successful_execution(
     monkeypatch.setattr("services.post_session_pipeline.LLMEngine", mock_engine_cls)
 
     import uuid
+
     valid_uuid = str(uuid.uuid4())
     await run_post_session_pipeline(valid_uuid)
 
@@ -126,6 +127,7 @@ async def test_timeout_recovery_retry(
     monkeypatch.setattr(asyncio, "sleep", AsyncMock())
 
     import uuid
+
     valid_uuid = str(uuid.uuid4())
     await run_post_session_pipeline(valid_uuid)
 
@@ -159,6 +161,7 @@ async def test_authentication_failure_no_retry(
     monkeypatch.setattr("services.post_session_pipeline.LLMEngine", mock_engine_cls)
 
     import uuid
+
     valid_uuid = str(uuid.uuid4())
     await run_post_session_pipeline(valid_uuid)
 
@@ -183,6 +186,7 @@ async def test_db_rollback_on_fatal_error(
     mock_crud_get_transcript.side_effect = Exception("DB disconnected")
 
     import uuid
+
     valid_uuid = str(uuid.uuid4())
     await run_post_session_pipeline(valid_uuid)
 
@@ -214,6 +218,7 @@ async def test_semaphore_limit(
 
     assert _LLM_SEMAPHORE._value == 20
     import uuid
+
     valid_uuid = str(uuid.uuid4())
     await run_post_session_pipeline(valid_uuid)
     # Should be released
