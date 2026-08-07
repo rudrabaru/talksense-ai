@@ -48,21 +48,6 @@ async def test_websocket_integration():
         logging.info("✓ Backend is healthy")
 
         ###############################################################
-        # Diarizer Check
-        ###############################################################
-
-        logging.info("Checking model initialization...")
-
-        diarizer = requests.get(
-            f"{BASE_URL}/check_diarizer",
-            timeout=HTTP_TIMEOUT,
-        )
-
-        assert_status(diarizer, endpoint="/check_diarizer")
-
-        logging.info("✓ AI models initialized")
-
-        ###############################################################
         # Create Session
         ###############################################################
 

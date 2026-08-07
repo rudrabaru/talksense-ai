@@ -95,9 +95,7 @@ async def lifespan(app: FastAPI):
     try:
         # 0. PostgreSQL — create tables if they do not exist
         logger.info("DB — connecting to PostgreSQL and running create_all() …")
-        from db.database import AsyncSessionLocal, create_all
-
-        await create_all()
+        from db.database import AsyncSessionLocal
 
         # 0b. Startup recovery: bulk-transition orphaned sessions
         logger.info("DB — running startup recovery for stale sessions …")
@@ -118,6 +116,7 @@ async def lifespan(app: FastAPI):
                 f"Loading Whisper ({settings.whisper_model}, "
                 f"{settings.whisper_compute_type}, {settings.whisper_device}) …"
             )
+            logger.info(f"GPU inference concurrency: {settings.gpu_concurrency}")
             from audio.transcriber import get_transcriber
 
             transcriber = get_transcriber()
@@ -126,22 +125,6 @@ async def lifespan(app: FastAPI):
                 compute_type=settings.whisper_compute_type,
                 device=settings.whisper_device,
             )
-
-            # 3. Pyannote (GPU, optional)
-            if settings.pyannote_enabled and settings.hf_token:
-                logger.info("Loading Pyannote speaker diarization …")
-                from audio.diarizer import get_diarizer
-
-                diarizer = get_diarizer()
-                diarizer.load(
-                    hf_token=settings.hf_token,
-                    device=settings.pyannote_device,
-                )
-            else:
-                logger.info(
-                    "Pyannote: disabled or no HF_TOKEN — "
-                    "using heuristic speaker assignment"
-                )
 
             # 4. Sentiment model (CPU/GPU — Transformers)
             logger.info("Loading sentiment model …")
@@ -228,18 +211,6 @@ def health_check():
     }
 
 
-@app.get("/check_diarizer", tags=["System"])
-def check_diarizer():
-    from audio.diarizer import get_diarizer
-
-    diarizer = get_diarizer()
-    return {
-        "loaded": diarizer._loaded,
-        "has_pipeline": diarizer._model is not None,
-        "hf_token_len": len(settings.hf_token) if settings.hf_token else 0,
-        "pyannote_enabled": settings.pyannote_enabled,
-    }
-
 
 # ── Session REST endpoints ────────────────────────────────────────────────────
 
@@ -263,6 +234,7 @@ async def create_session(
     """
     from db import crud
     from ws.session_manager import get_session_manager
+    from core.security import create_ws_token
 
     # Determine mode and client_id, prioritizing request body
     req_mode = "meeting"
@@ -296,10 +268,14 @@ async def create_session(
     await db.commit()
     await db.refresh(db_session)
 
+    # Generate WebSocket authentication token
+    ws_token = create_ws_token(session.session_id)
+
     return {
         "session_id": session.session_id,
         "mode": session.mode,
         "status": session.status,
+        "ws_token": ws_token,
         "ws": {
             "audio": f"/ws/audio/{session.session_id}",
             "transcript": f"/ws/transcript/{session.session_id}",

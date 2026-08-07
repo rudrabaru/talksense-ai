@@ -26,7 +26,6 @@ import uuid
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from audio.diarizer import get_diarizer
 from audio.transcriber import get_transcriber
 from audio.vad import get_vad
 from core.config import get_settings
@@ -56,7 +55,7 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
     manager = get_session_manager()
     vad = get_vad()
     transcriber = get_transcriber()
-    diarizer = get_diarizer()
+    diarizer = None
 
     # ── Validate session ──────────────────────────────────────────────────────
     session = manager.get(session_id)
@@ -138,6 +137,7 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
             pcm_bytes = message.get("bytes")
             if not pcm_bytes:
                 continue
+
 
             # Guard: reject oversized chunks
             if len(pcm_bytes) > MAX_CHUNK_BYTES:
@@ -237,8 +237,13 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
 
 import string
 
+import difflib
+
 def _merge_overlapping_text(text1: str, text2: str) -> str:
-    """Merge two text segments by finding word-level overlaps to avoid duplication."""
+    """
+    Merge two text segments by finding a sliding overlap.
+    Robust against Whisper transcription jitter (dropped words, punctuation).
+    """
     if not text1:
         return text2
     if not text2:
@@ -247,15 +252,85 @@ def _merge_overlapping_text(text1: str, text2: str) -> str:
     words1 = text1.strip().split()
     words2 = text2.strip().split()
     
+    # Normalize for comparison
     norm1 = [w.lower().strip(string.punctuation) for w in words1]
     norm2 = [w.lower().strip(string.punctuation) for w in words2]
     
-    max_overlap = min(len(norm1), len(norm2))
+    # We only care about the overlap between the END of text1 and START of text2.
+    # Limit search window to improve performance (O(n) near the boundaries).
+    SEARCH_WINDOW = 20
+    search1 = norm1[-SEARCH_WINDOW:] if len(norm1) > SEARCH_WINDOW else norm1
+    search2 = norm2[:SEARCH_WINDOW]
+    
+    matcher = difflib.SequenceMatcher(None, search1, search2)
+    blocks = matcher.get_matching_blocks()
+    
+    best_overlap = None
+    best_ratio = 0.0
+    
+    for start_idx in range(len(blocks) - 1):
+        if blocks[start_idx].size == 0:
+            continue
+            
+        for end_idx in range(start_idx, len(blocks) - 1):
+            if blocks[end_idx].size == 0:
+                continue
+                
+            first_block = blocks[start_idx]
+            last_block = blocks[end_idx]
+            
+            region1_start = first_block.a
+            region1_end = last_block.a + last_block.size
+            region2_start = first_block.b
+            region2_end = last_block.b + last_block.size
+            
+            # Constraint 1: Overlap must reach near the end of text1
+            # Allow up to 3 dropped words at the very end
+            if len(search1) - region1_end > 3:
+                continue
+                
+            # Constraint 2: Overlap must start near the beginning of text2
+            # Allow up to 3 dropped words at the very beginning
+            if region2_start > 3:
+                continue
+                
+            matching_words = sum(b.size for b in blocks[start_idx:end_idx+1])
+            region1_len = region1_end - region1_start
+            region2_len = region2_end - region2_start
+            
+            if region1_len == 0 and region2_len == 0:
+                continue
+                
+            ratio = (2.0 * matching_words) / (region1_len + region2_len)
+            
+            # Find the strongest overlapping bounding box
+            if matching_words >= 2 and ratio >= 0.65:
+                # Better ratio, or same ratio but longer overlap
+                if ratio > best_ratio or (ratio == best_ratio and matching_words > (best_overlap['matching_words'] if best_overlap else 0)):
+                    best_ratio = ratio
+                    best_overlap = {
+                        'orig2_end': region2_end,
+                        'matching_words': matching_words
+                    }
+                    
+            # Fallback for very short segments (e.g., 1 word overlap like "Hello" / "Hello.")
+            elif matching_words == 1 and len(search1) <= 2 and len(search2) <= 2 and ratio >= 0.65:
+                if ratio > best_ratio:
+                    best_ratio = ratio
+                    best_overlap = {
+                        'orig2_end': region2_end,
+                        'matching_words': matching_words
+                    }
 
-    for i in range(max_overlap, 0, -1):
-        if norm1[-i:] == norm2[:i]:
-            return " ".join(words1 + words2[i:])
+    if best_overlap:
+        # Strategy: keep text1 entirely (preserves confirmed words), append non-overlapping part of text2
+        append_words = words2[best_overlap['orig2_end']:]
+        if append_words:
+            return " ".join(words1 + append_words)
+        else:
+            return " ".join(words1)
 
+    # Safe concatenation fallback
     return text1 + " " + text2
 
 
@@ -344,13 +419,19 @@ async def _transcribe_and_enrich(
                 "speaker", "Speaker 1"
             )
 
-    diarized = await diarizer.assign_speakers_async(
-        raw_segments,
-        flushed,
-        max(0.0, time_offset),
-        prev_speaker,
-        session.speaker_profile,
-    )
+    if diarizer is None:
+        diarized = raw_segments
+        # Default all segments to "Speaker 1"
+        for seg in diarized:
+            seg.speaker = "Speaker 1"
+    else:
+        diarized = await diarizer.assign_speakers_async(
+            raw_segments,
+            flushed,
+            max(0.0, time_offset),
+            prev_speaker,
+            session.speaker_profile,
+        )
 
     # 6. NLP enrichment (sentiment per segment)
     nlp = get_nlp_engine()  # returns the module-level singleton; no model reload
@@ -417,12 +498,10 @@ async def _transcribe_and_enrich(
                 session.conversation.transcript_segments.append(seg.__dict__)
 
         updated_metrics, new_alerts = engine.process_segments(
-            diarized,
             session.conversation,
             session.mode,
             session_id,
             session.host_embedding,
-            session.speaker_profile.centroids,
         )
         session.conversation = updated_metrics
 
@@ -521,12 +600,10 @@ async def _inject_phrase(session_id: str, speaker: str, phrase: str, manager) ->
     async with session.lock:
         session.conversation.transcript_segments.append(seg_dict)
         updated_metrics, new_alerts = engine.process_segments(
-            [seg_dict],
             session.conversation,
             session.mode,
             session_id,
             session.host_embedding,
-            session.speaker_profile.centroids,
         )
         session.conversation = updated_metrics
 
