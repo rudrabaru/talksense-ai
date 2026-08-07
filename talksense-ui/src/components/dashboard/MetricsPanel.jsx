@@ -173,7 +173,6 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt, mode }) => {
     filler_penalty,
     pause_penalty,
     sentiment,
-    talkRatioSummary,
     talkTimeline,
     analyticsHealth,
     postSessionAi,

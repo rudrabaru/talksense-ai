@@ -129,9 +129,6 @@ export default function TranscriptLive() {
           setAcks((prev) => prev + 1);
         }
         // Day 1 greeting messages also arrive here
-        if (data.text) {
-
-        }
       };
 
       ws.onclose = () => {

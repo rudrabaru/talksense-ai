@@ -177,12 +177,6 @@ export default function DashboardPage() {
     initializeSession();
   }, [sessionId]);
 
-  // --- Watch session status to reset isEnding ---------------------------------
-  useEffect(() => {
-    if (["completed", "failed", "interrupted", "expired"].includes(sessionStatus)) {
-      setIsEnding(false);
-    }
-  }, [sessionStatus]);
 
   // --- Cleanup audio capture on unmount --------------------------------------
   useEffect(() => {
@@ -304,7 +298,7 @@ export default function DashboardPage() {
       console.error("[DashboardPage] Audio WebSocket error:", event);
       setAudioStatus("error");
     };
-  }, [validatedSessionId, startCapture, stopCapture, navigate]);
+  }, [validatedSessionId, startCapture, stopCapture]);
 
   /**
    * Stops microphone capture but keeps the audio WebSocket open.
@@ -347,7 +341,7 @@ export default function DashboardPage() {
         console.error("[DashboardPage] Failed to send 'end' explicitly:", err);
       }
     }
-  }, [stopCapture, sessionStatus]);
+  }, [stopCapture]);
 
   // --- Reconnect handler -----------------------------------------------------
   const handleReconnect = () => {
