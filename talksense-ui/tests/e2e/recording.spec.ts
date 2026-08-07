@@ -1,9 +1,25 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Recording Lifecycle', () => {
-  test.beforeEach(({ page }) => {
+  test.beforeEach(async ({ page }) => {
     page.on('pageerror', (err) => {
       throw new Error(`Uncaught exception: ${err.message}`);
+    });
+    await page.route(/.*localhost:8000\/sessions.*/, async route => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({ json: { session_id: 'mock_session_123', ws_token: 'fake_token' }, headers: { 'Access-Control-Allow-Origin': '*' } });
+      } else {
+        await route.fulfill({ json: { id: 'mock_session_123', mode: 'meeting', status: 'active' }, headers: { 'Access-Control-Allow-Origin': '*' } });
+      }
+    });
+    await page.route(/.*localhost:8000\/dashboard\/.*/, async route => {
+      await route.fulfill({ json: { status: 'active', transcript_segments: [] }, headers: { 'Access-Control-Allow-Origin': '*' } });
+    });
+    await page.route(/.*localhost:8000\/clients.*/, async route => {
+      await route.fulfill({ json: [], headers: { 'Access-Control-Allow-Origin': '*' } });
+    });
+    await page.routeWebSocket(/.*localhost:8000\/ws\/.*/, ws => {
+      ws.onMessage(() => {});
     });
   });
 
@@ -29,7 +45,7 @@ test.describe('Recording Lifecycle', () => {
     // Start microphone
     await startMicBtn.click();
     
-    const stopMicBtn = page.locator('button', { hasText: /Stop Microphone/i }).first();
+    const stopMicBtn = page.locator('button', { hasText: /Pause Microphone/i }).first();
     await expect(stopMicBtn).toBeVisible({ timeout: 10000 });
     
     // Stop microphone

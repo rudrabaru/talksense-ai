@@ -1,9 +1,25 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Error Handling', () => {
-  test.beforeEach(({ page }) => {
+  test.beforeEach(async ({ page }) => {
     // We expect some network errors here, so we won't throw on pageerror automatically,
     // but we will verify the root element stays mounted.
+    await page.route(/.*localhost:8000\/sessions.*/, async route => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({ json: { session_id: 'mock_session_123', ws_token: 'fake_token' }, headers: { 'Access-Control-Allow-Origin': '*' } });
+      } else {
+        await route.fulfill({ json: { id: 'mock_session_123', mode: 'meeting', status: 'active' }, headers: { 'Access-Control-Allow-Origin': '*' } });
+      }
+    });
+    await page.route(/.*localhost:8000\/dashboard\/.*/, async route => {
+      await route.fulfill({ json: { status: 'active', transcript_segments: [] }, headers: { 'Access-Control-Allow-Origin': '*' } });
+    });
+    await page.route(/.*localhost:8000\/clients.*/, async route => {
+      await route.fulfill({ json: [], headers: { 'Access-Control-Allow-Origin': '*' } });
+    });
+    await page.routeWebSocket(/.*localhost:8000\/ws\/.*/, ws => {
+      ws.onMessage(() => {});
+    });
   });
 
   test('Graceful handling of backend unavailable', async ({ page }) => {
