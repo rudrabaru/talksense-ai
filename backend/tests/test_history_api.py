@@ -10,11 +10,11 @@ from httpx import ASGITransport, AsyncClient
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from main import app
 from db.database import AsyncSessionLocal
 from db.models import Client as DBClient
 from db.models import Session as DBSession
 from db.models import SessionMetric as DBSessionMetric
+from main import app
 
 
 async def test_all():
@@ -109,7 +109,7 @@ async def test_all():
     client = AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
     try:
         # Test 1: List all sessions
-        res = await client.get(f"/sessions")
+        res = await client.get("/sessions")
         assert res.status_code == 200, f"Expected 200, got {res.status_code}"
         data = res.json()
         assert data["total"] >= 5, f"Expected total >= 5, got {data['total']}"
@@ -125,28 +125,28 @@ async def test_all():
         print("[OK] Baseline list & DTO verified")
 
         # Test 2: Filter by status
-        res = await client.get(f"/sessions?status=active")
+        res = await client.get("/sessions?status=active")
         assert res.status_code == 200
         for item in res.json()["items"]:
             assert item["status"] == "active"
         print("[OK] Status filtering verified")
 
         # Test 3: Filter by mode
-        res = await client.get(f"/sessions?mode=interview")
+        res = await client.get("/sessions?mode=interview")
         assert res.status_code == 200
         for item in res.json()["items"]:
             assert item["mode"] == "interview"
         print("[OK] Mode filtering verified")
 
         # Test 4: Search
-        res = await client.get(f"/sessions?search=Alignment")
+        res = await client.get("/sessions?search=Alignment")
         assert res.status_code == 200
         titles = [i["title"] for i in res.json()["items"]]
         assert any("Alignment" in t for t in titles)
         print("[OK] Title search verified")
 
         # Test 5: Search by client name
-        res = await client.get(f"/sessions?search=Beta")
+        res = await client.get("/sessions?search=Beta")
         assert res.status_code == 200
         for item in res.json()["items"]:
             assert "Beta" in (item["title"] or "") or "Beta" in (
@@ -155,7 +155,7 @@ async def test_all():
         print("[OK] Client name search verified")
 
         # Test 6: Sort by duration
-        res = await client.get(f"/sessions?sort_by=duration&sort_order=desc")
+        res = await client.get("/sessions?sort_by=duration&sort_order=desc")
         assert res.status_code == 200
         durations = [
             i["duration"] for i in res.json()["items"] if i["duration"] is not None
@@ -164,7 +164,7 @@ async def test_all():
         print("[OK] Sorting verified")
 
         # Test 7: Pagination
-        res = await client.get(f"/sessions?limit=2&page=1")
+        res = await client.get("/sessions?limit=2&page=1")
         assert res.status_code == 200
         d = res.json()
         assert len(d["items"]) <= 2
