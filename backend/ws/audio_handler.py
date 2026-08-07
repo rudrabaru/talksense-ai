@@ -293,11 +293,11 @@ def _merge_overlapping_text(text1: str, text2: str) -> str:
                         "matching_words": matching_words,
                     }
 
-            # Fallback for very short segments (e.g., 1 word overlap like "Hello" / "Hello.")
+            # Fallback for very short matches (1 word) but only if they are exactly at the boundaries
             elif (
                 matching_words == 1
-                and len(search1) <= 2
-                and len(search2) <= 2
+                and (len(search1) - region1_end) <= 1
+                and region2_start <= 1
                 and ratio >= 0.65
             ):
                 if ratio > best_ratio:

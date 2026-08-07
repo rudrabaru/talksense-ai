@@ -2,11 +2,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from google.api_core.exceptions import (
-    PermissionDenied,
-    ResourceExhausted,
-    ServiceUnavailable,
-)
+from google.genai import errors
 
 from core.config import get_settings
 from services.llm_engine import (
@@ -31,73 +27,68 @@ def mock_settings():
 
 @pytest.mark.asyncio
 async def test_gemini_success(mock_settings, monkeypatch):
-    provider = GeminiProvider()
-
     class MockResponse:
         text = '{"success": true}'
 
-    mock_model = MagicMock()
-    mock_model.generate_content_async = AsyncMock(return_value=MockResponse())
+    mock_client = MagicMock()
+    mock_client.aio.models.generate_content = AsyncMock(return_value=MockResponse())
 
-    with patch("google.generativeai.GenerativeModel", return_value=mock_model):
+    with patch("services.llm_engine.genai.Client", return_value=mock_client):
+        provider = GeminiProvider()
         result = await provider.generate_json("sys", "user", {"schema": "test"})
         assert result == '{"success": true}'
 
 
 @pytest.mark.asyncio
 async def test_gemini_timeout(mock_settings):
-    provider = GeminiProvider()
-
     async def slow_generation(*args, **kwargs):
         await asyncio.sleep(2)
         return "too late"
 
-    mock_model = MagicMock()
-    mock_model.generate_content_async = slow_generation
+    mock_client = MagicMock()
+    mock_client.aio.models.generate_content = slow_generation
 
-    with patch("google.generativeai.GenerativeModel", return_value=mock_model):
+    with patch("services.llm_engine.genai.Client", return_value=mock_client):
+        provider = GeminiProvider()
         with pytest.raises(ProviderTimeoutError, match="Provider did not respond"):
             await provider.generate_json("sys", "user", {})
 
 
 @pytest.mark.asyncio
 async def test_gemini_authentication_error(mock_settings):
-    provider = GeminiProvider()
-
-    mock_model = MagicMock()
-    mock_model.generate_content_async = AsyncMock(
-        side_effect=PermissionDenied("Bad key")
+    mock_client = MagicMock()
+    mock_client.aio.models.generate_content = AsyncMock(
+        side_effect=errors.APIError(403, {"message": "403 Forbidden"}, None)
     )
 
-    with patch("google.generativeai.GenerativeModel", return_value=mock_model):
+    with patch("services.llm_engine.genai.Client", return_value=mock_client):
+        provider = GeminiProvider()
         with pytest.raises(AuthenticationError, match="Invalid API key"):
             await provider.generate_json("sys", "user", {})
 
 
 @pytest.mark.asyncio
 async def test_gemini_rate_limit(mock_settings):
-    provider = GeminiProvider()
-
-    mock_model = MagicMock()
-    mock_model.generate_content_async = AsyncMock(
-        side_effect=ResourceExhausted("Quota exceeded")
+    mock_client = MagicMock()
+    mock_client.aio.models.generate_content = AsyncMock(
+        side_effect=errors.APIError(429, {"message": "429 Too Many Requests"}, None)
     )
 
-    with patch("google.generativeai.GenerativeModel", return_value=mock_model):
+    with patch("services.llm_engine.genai.Client", return_value=mock_client):
+        provider = GeminiProvider()
         with pytest.raises(RateLimitError, match="Rate limit exceeded"):
             await provider.generate_json("sys", "user", {})
 
 
 @pytest.mark.asyncio
 async def test_gemini_service_unavailable(mock_settings):
-    provider = GeminiProvider()
-
-    mock_model = MagicMock()
-    mock_model.generate_content_async = AsyncMock(
-        side_effect=ServiceUnavailable("503 Backend Error")
+    mock_client = MagicMock()
+    mock_client.aio.models.generate_content = AsyncMock(
+        side_effect=errors.APIError(503, {"message": "503 Backend Error"}, None)
     )
 
-    with patch("google.generativeai.GenerativeModel", return_value=mock_model):
+    with patch("services.llm_engine.genai.Client", return_value=mock_client):
+        provider = GeminiProvider()
         with pytest.raises(ProviderUnavailableError, match="Provider unavailable"):
             await provider.generate_json("sys", "user", {})
 

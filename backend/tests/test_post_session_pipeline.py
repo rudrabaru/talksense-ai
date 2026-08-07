@@ -32,7 +32,9 @@ def mock_crud_get_transcript(monkeypatch):
     class MockSegment:
         def __init__(self):
             self.start_time = 0.0
+            self.end_time = 1.0
             self.text = "Hello"
+            self.speaker_id = "Speaker 1"
 
     mock = AsyncMock(return_value=[MockSegment()])
     monkeypatch.setattr("db.crud.get_transcript_segments", mock)
@@ -77,7 +79,9 @@ async def test_successful_execution(
     mock_engine_cls.return_value = mock_engine_inst
     monkeypatch.setattr("services.post_session_pipeline.LLMEngine", mock_engine_cls)
 
-    await run_post_session_pipeline("test-session")
+    import uuid
+    valid_uuid = str(uuid.uuid4())
+    await run_post_session_pipeline(valid_uuid)
 
     # Assert DB flow
     mock_crud_get_transcript.assert_called_once()
@@ -121,7 +125,9 @@ async def test_timeout_recovery_retry(
     monkeypatch.setattr("tenacity.nap.time.sleep", MagicMock())
     monkeypatch.setattr(asyncio, "sleep", AsyncMock())
 
-    await run_post_session_pipeline("test-session")
+    import uuid
+    valid_uuid = str(uuid.uuid4())
+    await run_post_session_pipeline(valid_uuid)
 
     assert mock_engine_inst.generate_json.call_count == 2
     args, kwargs = mock_crud_save_analysis.call_args
@@ -152,7 +158,9 @@ async def test_authentication_failure_no_retry(
     mock_engine_cls.return_value = mock_engine_inst
     monkeypatch.setattr("services.post_session_pipeline.LLMEngine", mock_engine_cls)
 
-    await run_post_session_pipeline("test-session")
+    import uuid
+    valid_uuid = str(uuid.uuid4())
+    await run_post_session_pipeline(valid_uuid)
 
     # Called exactly once, no retries
     assert mock_engine_inst.generate_json.call_count == 1
@@ -174,7 +182,9 @@ async def test_db_rollback_on_fatal_error(
     # Force the transcript fetch to throw an unexpected error
     mock_crud_get_transcript.side_effect = Exception("DB disconnected")
 
-    await run_post_session_pipeline("test-session")
+    import uuid
+    valid_uuid = str(uuid.uuid4())
+    await run_post_session_pipeline(valid_uuid)
 
     # Rollback must be called
     mock_db.rollback.assert_called_once()
@@ -203,6 +213,8 @@ async def test_semaphore_limit(
     monkeypatch.setattr("services.post_session_pipeline.LLMEngine", mock_engine_cls)
 
     assert _LLM_SEMAPHORE._value == 20
-    await run_post_session_pipeline("test")
+    import uuid
+    valid_uuid = str(uuid.uuid4())
+    await run_post_session_pipeline(valid_uuid)
     # Should be released
     assert _LLM_SEMAPHORE._value == 20
