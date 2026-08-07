@@ -101,21 +101,43 @@ class ConversationEngine:
         # 1. Boundary check: did the last-processed segment grow via merge?
         if new_start > 0 and new_start <= len(all_segments):
             boundary_seg = all_segments[new_start - 1]
-            boundary_text = boundary_seg.get("text", "") if isinstance(boundary_seg, dict) else getattr(boundary_seg, "text", "")
+            boundary_text = (
+                boundary_seg.get("text", "")
+                if isinstance(boundary_seg, dict)
+                else getattr(boundary_seg, "text", "")
+            )
             boundary_words = boundary_text.split()
             prev_word_count = state._boundary_word_count
 
             if len(boundary_words) > prev_word_count:
                 # The overlap merge extended this segment — extract only new words
                 delta_words = boundary_words[prev_word_count:]
-                speaker = boundary_seg.get("speaker", "Speaker 1") if isinstance(boundary_seg, dict) else getattr(boundary_seg, "speaker", "Speaker 1")
-                segments_to_process.append({
-                    "text": " ".join(delta_words),
-                    "speaker": speaker,
-                    "start": boundary_seg.get("start", 0.0) if isinstance(boundary_seg, dict) else getattr(boundary_seg, "start", 0.0),
-                    "end": boundary_seg.get("end", 0.0) if isinstance(boundary_seg, dict) else getattr(boundary_seg, "end", 0.0),
-                    "sentiment": boundary_seg.get("sentiment", 0.0) if isinstance(boundary_seg, dict) else getattr(boundary_seg, "sentiment", 0.0),
-                })
+                speaker = (
+                    boundary_seg.get("speaker", "Speaker 1")
+                    if isinstance(boundary_seg, dict)
+                    else getattr(boundary_seg, "speaker", "Speaker 1")
+                )
+                segments_to_process.append(
+                    {
+                        "text": " ".join(delta_words),
+                        "speaker": speaker,
+                        "start": (
+                            boundary_seg.get("start", 0.0)
+                            if isinstance(boundary_seg, dict)
+                            else getattr(boundary_seg, "start", 0.0)
+                        ),
+                        "end": (
+                            boundary_seg.get("end", 0.0)
+                            if isinstance(boundary_seg, dict)
+                            else getattr(boundary_seg, "end", 0.0)
+                        ),
+                        "sentiment": (
+                            boundary_seg.get("sentiment", 0.0)
+                            if isinstance(boundary_seg, dict)
+                            else getattr(boundary_seg, "sentiment", 0.0)
+                        ),
+                    }
+                )
 
         # 2. Add genuinely new segments (everything after the watermark)
         for seg in all_segments[new_start:]:
@@ -125,7 +147,11 @@ class ConversationEngine:
         state._engine_processed_index = len(all_segments)
         if all_segments:
             last_seg = all_segments[-1]
-            last_text = last_seg.get("text", "") if isinstance(last_seg, dict) else getattr(last_seg, "text", "")
+            last_text = (
+                last_seg.get("text", "")
+                if isinstance(last_seg, dict)
+                else getattr(last_seg, "text", "")
+            )
             state._boundary_word_count = len(last_text.split())
         else:
             state._boundary_word_count = 0

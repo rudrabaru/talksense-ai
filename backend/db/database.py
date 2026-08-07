@@ -69,8 +69,6 @@ AsyncSessionLocal: async_sessionmaker[AsyncSession] = async_sessionmaker(
 # ── Table initialisation ──────────────────────────────────────────────────────
 
 
-
-
 # ── FastAPI dependency ────────────────────────────────────────────────────────
 
 

@@ -3,6 +3,7 @@ import os
 import json
 from services.prompt_loader import load_prompt_bundle
 
+
 def test_valid_prompt_version():
     bundle = load_prompt_bundle("v1")
     assert "system_prompt" in bundle
@@ -10,9 +11,11 @@ def test_valid_prompt_version():
     assert "schema" in bundle
     assert isinstance(bundle["schema"], dict)
 
+
 def test_missing_prompt_directory():
     with pytest.raises(FileNotFoundError, match="Prompt version directory not found"):
         load_prompt_bundle("v999_nonexistent")
+
 
 def test_missing_files(tmp_path, monkeypatch):
     # Mock the directory resolution in prompt_loader
@@ -20,7 +23,7 @@ def test_missing_files(tmp_path, monkeypatch):
     current_dir = os.path.dirname(os.path.abspath(__file__))
     backend_dir = os.path.dirname(current_dir)
     prompt_dir = os.path.join(backend_dir, "prompts", "post_session", "v_test_missing")
-    
+
     os.makedirs(prompt_dir, exist_ok=True)
     try:
         with pytest.raises(FileNotFoundError, match="Missing required prompt file"):
@@ -28,11 +31,12 @@ def test_missing_files(tmp_path, monkeypatch):
     finally:
         os.rmdir(prompt_dir)
 
+
 def test_invalid_schema():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     backend_dir = os.path.dirname(current_dir)
     prompt_dir = os.path.join(backend_dir, "prompts", "post_session", "v_test_invalid")
-    
+
     os.makedirs(prompt_dir, exist_ok=True)
     try:
         with open(os.path.join(prompt_dir, "system.txt"), "w") as f:
@@ -41,7 +45,7 @@ def test_invalid_schema():
             f.write("usr")
         with open(os.path.join(prompt_dir, "schema.json"), "w") as f:
             f.write("invalid { json")
-            
+
         with pytest.raises(ValueError, match="Invalid JSON schema"):
             load_prompt_bundle("v_test_invalid")
     finally:

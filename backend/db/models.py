@@ -265,10 +265,7 @@ class TranscriptSegment(Base):
         nullable=False,
     )
     segment_id: Mapped[str | None] = mapped_column(
-        String(36),
-        nullable=True,
-        unique=True,
-        index=True
+        String(36), nullable=True, unique=True, index=True
     )
     speaker_id: Mapped[str | None] = mapped_column(
         String(100),

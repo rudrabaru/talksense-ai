@@ -148,6 +148,7 @@ class WhisperTranscriber:
             )
 
             from audio.buffer import OVERLAP_MS
+
             chunk_duration_sec = len(pcm_bytes) / (SAMPLE_RATE * 2)
             tail_start = time_offset + chunk_duration_sec - (OVERLAP_MS / 1000.0)
 
@@ -156,9 +157,9 @@ class WhisperTranscriber:
                 text = seg.text.strip()
                 if not text:
                     continue
-                
+
                 # Reject punctuation-only segments (must have at least one alphanumeric char)
-                if not re.search(r'[a-zA-Z0-9]', text):
+                if not re.search(r"[a-zA-Z0-9]", text):
                     continue
 
                 segment_words = []
@@ -166,10 +167,10 @@ class WhisperTranscriber:
                     for w in seg.words:
                         w_start_abs = round(w.start + time_offset, 3)
                         w_end_abs = round(w.end + time_offset, 3)
-                        
+
                         if is_partial and w_end_abs > tail_start:
                             continue  # Drop word in the overlapping tail
-                            
+
                         segment_words.append(
                             TranscriptWord(
                                 word=w.word,
@@ -178,20 +179,28 @@ class WhisperTranscriber:
                                 probability=round(w.probability, 3),
                             )
                         )
-                    
+
                     if not segment_words:
                         continue  # Entire segment was dropped
-                    
+
                     # Reconstruct text from remaining words if any were dropped
                     if len(segment_words) != len(seg.words):
                         text = "".join(w.word for w in segment_words).strip()
-                        if not text or not re.search(r'[a-zA-Z0-9]', text):
+                        if not text or not re.search(r"[a-zA-Z0-9]", text):
                             continue
 
                 segments.append(
                     TranscriptSegment(
-                        start=round(segment_words[0].start, 2) if segment_words else round(seg.start + time_offset, 2),
-                        end=round(segment_words[-1].end, 2) if segment_words else round(seg.end + time_offset, 2),
+                        start=(
+                            round(segment_words[0].start, 2)
+                            if segment_words
+                            else round(seg.start + time_offset, 2)
+                        ),
+                        end=(
+                            round(segment_words[-1].end, 2)
+                            if segment_words
+                            else round(seg.end + time_offset, 2)
+                        ),
                         text=text,
                         language=info.language,
                         avg_logprob=round(seg.avg_logprob, 3),
@@ -271,6 +280,7 @@ class WhisperTranscriber:
         # 3. CPU Postprocessing (concurrent)
         def _post():
             from audio.buffer import OVERLAP_MS
+
             chunk_duration_sec = len(pcm_bytes) / (SAMPLE_RATE * 2)
             tail_start = time_offset + chunk_duration_sec - (OVERLAP_MS / 1000.0)
 
@@ -279,9 +289,9 @@ class WhisperTranscriber:
                 text = seg.text.strip()
                 if not text:
                     continue
-                
+
                 # Reject punctuation-only segments
-                if not re.search(r'[a-zA-Z0-9]', text):
+                if not re.search(r"[a-zA-Z0-9]", text):
                     continue
 
                 segment_words = []
@@ -289,10 +299,10 @@ class WhisperTranscriber:
                     for w in seg.words:
                         w_start_abs = round(w.start + time_offset, 3)
                         w_end_abs = round(w.end + time_offset, 3)
-                        
+
                         if is_partial and w_end_abs > tail_start:
                             continue
-                            
+
                         segment_words.append(
                             TranscriptWord(
                                 word=w.word,
@@ -301,19 +311,27 @@ class WhisperTranscriber:
                                 probability=round(w.probability, 3),
                             )
                         )
-                    
+
                     if not segment_words:
                         continue
-                    
+
                     if len(segment_words) != len(seg.words):
                         text = "".join(w.word for w in segment_words).strip()
-                        if not text or not re.search(r'[a-zA-Z0-9]', text):
+                        if not text or not re.search(r"[a-zA-Z0-9]", text):
                             continue
 
                 segments.append(
                     TranscriptSegment(
-                        start=round(segment_words[0].start, 2) if segment_words else round(seg.start + time_offset, 2),
-                        end=round(segment_words[-1].end, 2) if segment_words else round(seg.end + time_offset, 2),
+                        start=(
+                            round(segment_words[0].start, 2)
+                            if segment_words
+                            else round(seg.start + time_offset, 2)
+                        ),
+                        end=(
+                            round(segment_words[-1].end, 2)
+                            if segment_words
+                            else round(seg.end + time_offset, 2)
+                        ),
                         text=text,
                         language=info.language,
                         avg_logprob=round(seg.avg_logprob, 3),

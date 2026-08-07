@@ -19,9 +19,9 @@ from core.config import get_settings
 from db.models import Base
 
 settings = get_settings()
-escaped_url = settings.database_url.replace('%', '%%')
+escaped_url = settings.database_url.replace("%", "%%")
 if os.environ.get("ALEMBIC_GENERATE_BASELINE", "").strip() == "1":
-    escaped_url = escaped_url.replace('/talksense', '/talksense_empty')
+    escaped_url = escaped_url.replace("/talksense", "/talksense_empty")
 
 config = context.config
 config.set_main_option("sqlalchemy.url", escaped_url)
@@ -31,14 +31,16 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
+
 def include_object(object, name, type_, reflected, compare_to):
     # During initial baseline generation, we pretend the DB is empty
-    # by ignoring all reflected (existing) objects, forcing Alembic 
+    # by ignoring all reflected (existing) objects, forcing Alembic
     # to generate CREATE TABLE statements for everything.
     if os.environ.get("ALEMBIC_GENERATE_BASELINE") == "1":
         if reflected:
             return False
     return True
+
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -73,7 +75,7 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection: Connection) -> None:
     context.configure(
-        connection=connection, 
+        connection=connection,
         target_metadata=target_metadata,
         include_object=include_object,
     )

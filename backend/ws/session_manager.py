@@ -106,7 +106,6 @@ from fastapi import WebSocket
 
 from audio.buffer import AudioBuffer
 
-
 if TYPE_CHECKING:
     pass
 
@@ -228,11 +227,11 @@ class SessionState:
     ws_status: "WebSocket | None" = None
 
     started_at: float = field(default_factory=time.monotonic)
-    
+
     # Explicit recording state tracking
     recording_started_at: float | None = None
     _accumulated_recording_duration: float = 0.0
-    
+
     last_persist_at: float = field(default_factory=time.monotonic)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
@@ -427,12 +426,17 @@ class SessionManager:
         async with session.lock:
             # RC-8 Deduplication Guard: Guarantee we only execute end() once
             if session._is_ending:
-                logger.debug("Session %s…: manager.end() already in progress, skipping.", session_id[:8])
+                logger.debug(
+                    "Session %s…: manager.end() already in progress, skipping.",
+                    session_id[:8],
+                )
                 return
             session._is_ending = True
 
             if session.recording_started_at is not None:
-                session._accumulated_recording_duration += time.monotonic() - session.recording_started_at
+                session._accumulated_recording_duration += (
+                    time.monotonic() - session.recording_started_at
+                )
                 session.recording_started_at = None
             session.status = status
         logger.info("Session %s…: ended [%s]", session_id[:8], status)
@@ -508,6 +512,7 @@ class SessionManager:
             )
 
         from core.config import get_settings
+
         settings = get_settings()
 
         if status == SessionStatus.COMPLETED and settings.enable_post_session_ai:
@@ -517,17 +522,20 @@ class SessionManager:
                     extra={
                         "session_id": session_id,
                         "provider": settings.post_session_provider,
-                        "enabled": True
-                    }
+                        "enabled": True,
+                    },
                 )
                 from services.post_session_pipeline import run_post_session_pipeline
+
                 pipeline_task = asyncio.create_task(
                     run_post_session_pipeline(session_id),
                     name=f"post-pipeline-{session_id[:8]}",
                 )
                 _register_flush_worker(pipeline_task)
             except Exception as e:
-                logger.error(f"Failed to schedule Post-Session AI for {session_id[:8]}: {e}")
+                logger.error(
+                    f"Failed to schedule Post-Session AI for {session_id[:8]}: {e}"
+                )
 
         if status == SessionStatus.COMPLETED:
             # Legacy diarization has been replaced by the generative post-session AI.
@@ -712,7 +720,6 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
                 {"metric_name": "coaching_tips", "metric_value": conv.coaching_tips},
                 {"metric_name": "action_items", "metric_value": conv.action_items},
                 {"metric_name": "decisions", "metric_value": conv.decisions},
-
                 {
                     "metric_name": "objection_timeline",
                     "metric_value": conv.objection_timeline,
@@ -859,9 +866,6 @@ def _register_flush_worker(task: asyncio.Task) -> None:
     task.add_done_callback(_flush_workers.discard)
 
 
-
-
-
 async def _flush_loop() -> None:
     """
     Global scheduler loop — runs for the lifetime of the FastAPI process.
@@ -886,7 +890,7 @@ async def _flush_loop() -> None:
 
             manager = get_session_manager()
             active_sessions = manager.list_active()
-            
+
             from ws.broadcast import broadcast_timer
 
             for session in active_sessions:
@@ -894,7 +898,9 @@ async def _flush_loop() -> None:
                 # Keep frontend timer ticking during silence
                 if session.ws_metrics is not None and session.status.value == "active":
                     asyncio.create_task(
-                        broadcast_timer(session.ws_metrics, session.active_recording_duration)
+                        broadcast_timer(
+                            session.ws_metrics, session.active_recording_duration
+                        )
                     )
 
                 # Skip sessions already mid-flush

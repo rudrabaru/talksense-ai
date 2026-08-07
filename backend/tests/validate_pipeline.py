@@ -750,6 +750,7 @@ async def test_database():
 
         from db import crud
         from db.database import AsyncSessionLocal
+
         record(area, "database connection successful", True)
 
         async with AsyncSessionLocal() as db:

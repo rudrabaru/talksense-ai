@@ -123,7 +123,6 @@ async def broadcast_timer(ws: WebSocket | None, active_duration_seconds: float) 
     )
 
 
-
 async def broadcast_alert(ws: WebSocket | None, alert: dict) -> None:
     """
     Send a new real-time alert.

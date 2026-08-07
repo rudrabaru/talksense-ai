@@ -2,7 +2,8 @@ import numpy as np
 import pytest
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from ws.audio_handler import _merge_overlapping_text
 
@@ -35,8 +36,6 @@ def test_transcript_merge():
     assert _merge_overlapping_text(t1, t2) == "I am speaking. And then I continued."
 
 
-
 if __name__ == "__main__":
     test_transcript_merge()
     print("Transcript merge tests passed!")
-

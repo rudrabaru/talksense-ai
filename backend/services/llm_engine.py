@@ -12,28 +12,39 @@ logger = logging.getLogger(__name__)
 
 # ── Exception Hierarchy ───────────────────────────────────────────────────────
 
+
 class LLMProviderError(Exception):
     """Base class for all LLM provider errors."""
+
     pass
+
 
 class AuthenticationError(LLMProviderError):
     """Raised when the API key is invalid or missing."""
+
     pass
+
 
 class ProviderTimeoutError(LLMProviderError):
     """Raised when the provider does not respond within the configured timeout."""
+
     pass
+
 
 class RateLimitError(LLMProviderError):
     """Raised when the provider's rate limits are exceeded (HTTP 429)."""
+
     pass
+
 
 class ProviderUnavailableError(LLMProviderError):
     """Raised when the provider is down or returns a 5xx error."""
+
     pass
 
 
 # ── Provider Abstraction ──────────────────────────────────────────────────────
+
 
 class BaseLLMProvider(ABC):
     @abstractmethod
@@ -48,16 +59,17 @@ class BaseLLMProvider(ABC):
 
 # ── Gemini Provider ───────────────────────────────────────────────────────────
 
+
 class GeminiProvider(BaseLLMProvider):
     def __init__(self):
         settings = get_settings()
         self.api_key = settings.gemini_api_key
         self.model_name = settings.post_session_model
         self.timeout = settings.post_session_timeout
-        
+
         if not self.api_key:
             raise AuthenticationError("GEMINI_API_KEY is not configured.")
-            
+
         self.client = genai.Client(api_key=self.api_key)
 
     async def generate_json(
@@ -66,35 +78,32 @@ class GeminiProvider(BaseLLMProvider):
         user_prompt: str,
         schema: dict,
     ) -> str:
-        
+
         config = GenerateContentConfig(
             response_mime_type="application/json",
             response_schema=schema,
             system_instruction=system_prompt,
         )
-        
+
         logger.info(
             f"Invoking Gemini Provider (Model: {self.model_name})",
             extra={
                 "event": "llm_invoke",
                 "provider": "gemini",
                 "model": self.model_name,
-            }
+            },
         )
-        
+
         try:
 
             # google.genai async client
             response = await asyncio.wait_for(
                 self.client.aio.models.generate_content(
-                    model=self.model_name,
-                    contents=user_prompt,
-                    config=config
+                    model=self.model_name, contents=user_prompt, config=config
                 ),
-                timeout=self.timeout
+                timeout=self.timeout,
             )
 
-            
             # Simple logging of success
             logger.info(
                 "Gemini invocation successful",
@@ -102,14 +111,16 @@ class GeminiProvider(BaseLLMProvider):
                     "event": "llm_success",
                     "provider": "gemini",
                     "model": self.model_name,
-                }
+                },
             )
-            
+
             return response.text
-            
+
         except asyncio.TimeoutError as e:
             logger.error("Gemini Provider timed out")
-            raise ProviderTimeoutError(f"Provider did not respond within {self.timeout} seconds") from e
+            raise ProviderTimeoutError(
+                f"Provider did not respond within {self.timeout} seconds"
+            ) from e
         except errors.APIError as e:
             # Handle rate limits, auth errors, and general API errors
             logger.error(f"Gemini API Error: {str(e)}")
@@ -126,15 +137,17 @@ class GeminiProvider(BaseLLMProvider):
 
 # ── LLM Engine Facade ─────────────────────────────────────────────────────────
 
+
 class LLMEngine:
     """
-    Facade for interacting with LLM providers. 
+    Facade for interacting with LLM providers.
     Selects the correct provider based on configuration.
     """
+
     def __init__(self):
         settings = get_settings()
         self.provider_name = settings.post_session_provider.lower()
-        
+
         if self.provider_name == "gemini":
             self.provider: BaseLLMProvider = GeminiProvider()
         else:

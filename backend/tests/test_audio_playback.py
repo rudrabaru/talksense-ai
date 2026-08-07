@@ -9,11 +9,11 @@ from db.models import Base
 from main import app
 
 
-
-
 @pytest.mark.asyncio
 async def test_audio_playback_valid_session():
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         # Create a session
         res = await ac.post("/sessions", json={"mode": "meeting"})
         assert res.status_code == 200
@@ -60,7 +60,9 @@ async def test_audio_playback_valid_session():
 @pytest.mark.asyncio
 async def test_audio_playback_unknown_session():
     # 2. unknown session
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         res = await ac.get("/sessions/00000000-0000-0000-0000-000000000000/audio")
         assert res.status_code == 404
 
@@ -68,7 +70,9 @@ async def test_audio_playback_unknown_session():
 @pytest.mark.asyncio
 async def test_audio_playback_no_audio():
     # 3. session without audio
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         res = await ac.post("/sessions", json={"mode": "meeting"})
         session_id = res.json()["session_id"]
 
@@ -80,7 +84,9 @@ async def test_audio_playback_no_audio():
 @pytest.mark.asyncio
 async def test_audio_playback_missing_file():
     # 4. missing physical file
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         res = await ac.post("/sessions", json={"mode": "meeting"})
         session_id = res.json()["session_id"]
 
@@ -100,7 +106,9 @@ async def test_audio_playback_missing_file():
 @pytest.mark.asyncio
 async def test_audio_playback_path_safety():
     # 6. path safety
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as ac:
         res = await ac.post("/sessions", json={"mode": "meeting"})
         session_id = res.json()["session_id"]
 

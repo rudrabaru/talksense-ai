@@ -66,6 +66,7 @@ async def transcript_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
 
     token = websocket.query_params.get("token")
     from core.security import verify_ws_token
+
     if not verify_ws_token(token, session_id):
         logger.warning(f"Unauthorized WS connection attempt for session {session_id}")
         await websocket.close(code=1008, reason="Unauthorized")
@@ -117,6 +118,7 @@ async def metrics_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
 
     token = websocket.query_params.get("token")
     from core.security import verify_ws_token
+
     if not verify_ws_token(token, session_id):
         logger.warning(f"Unauthorized WS connection attempt for session {session_id}")
         await websocket.close(code=1008, reason="Unauthorized")
@@ -167,6 +169,7 @@ async def alerts_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
 
     token = websocket.query_params.get("token")
     from core.security import verify_ws_token
+
     if not verify_ws_token(token, session_id):
         logger.warning(f"Unauthorized WS connection attempt for session {session_id}")
         await websocket.close(code=1008, reason="Unauthorized")
@@ -217,6 +220,7 @@ async def status_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
 
     token = websocket.query_params.get("token")
     from core.security import verify_ws_token
+
     if not verify_ws_token(token, session_id):
         logger.warning(f"Unauthorized WS connection attempt for session {session_id}")
         await websocket.close(code=1008, reason="Unauthorized")

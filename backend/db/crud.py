@@ -379,53 +379,68 @@ async def save_transcript_segments(
     sid = uuid.UUID(session_id)
     values_list = []
     for seg in segments:
-        values_list.append({
-            "session_id": sid,
-            "segment_id": getattr(seg, "segment_id", None) or (seg.get("segment_id") if isinstance(seg, dict) else None),
-            "speaker_id": (
-                getattr(seg, "speaker", None)
-                if getattr(seg, "speaker", None) is not None
-                else (seg.get("speaker", seg.get("speaker_id")) if isinstance(seg, dict) else None)
-            ),
-            "start_time": (
-                getattr(seg, "start", None)
-                if getattr(seg, "start", None) is not None
-                else (seg.get("start", seg.get("start_time", 0.0)) if isinstance(seg, dict) else 0.0)
-            ),
-            "end_time": (
-                getattr(seg, "end", None)
-                if getattr(seg, "end", None) is not None
-                else (seg.get("end", seg.get("end_time", 0.0)) if isinstance(seg, dict) else 0.0)
-            ),
-            "text": (
-                getattr(seg, "text", None)
-                if getattr(seg, "text", None) is not None
-                else (seg.get("text", "") if isinstance(seg, dict) else "")
-            ),
-            "sentiment": (
-                getattr(seg, "sentiment", None)
-                if getattr(seg, "sentiment", None) is not None
-                else (seg.get("sentiment") if isinstance(seg, dict) else None)
-            ),
-            "sentiment_label": (
-                getattr(seg, "sentiment_label", None)
-                if getattr(seg, "sentiment_label", None) is not None
-                else (seg.get("sentiment_label") if isinstance(seg, dict) else None)
-            ),
-            "words": (
-                [
-                    {
-                        "word": getattr(w, "word", ""),
-                        "start": getattr(w, "start", 0.0),
-                        "end": getattr(w, "end", 0.0),
-                        "probability": getattr(w, "probability", 0.0),
-                    }
-                    for w in getattr(seg, "words", [])
-                ]
-                if getattr(seg, "words", None)
-                else (seg.get("words") if isinstance(seg, dict) else None)
-            )
-        })
+        values_list.append(
+            {
+                "session_id": sid,
+                "segment_id": getattr(seg, "segment_id", None)
+                or (seg.get("segment_id") if isinstance(seg, dict) else None),
+                "speaker_id": (
+                    getattr(seg, "speaker", None)
+                    if getattr(seg, "speaker", None) is not None
+                    else (
+                        seg.get("speaker", seg.get("speaker_id"))
+                        if isinstance(seg, dict)
+                        else None
+                    )
+                ),
+                "start_time": (
+                    getattr(seg, "start", None)
+                    if getattr(seg, "start", None) is not None
+                    else (
+                        seg.get("start", seg.get("start_time", 0.0))
+                        if isinstance(seg, dict)
+                        else 0.0
+                    )
+                ),
+                "end_time": (
+                    getattr(seg, "end", None)
+                    if getattr(seg, "end", None) is not None
+                    else (
+                        seg.get("end", seg.get("end_time", 0.0))
+                        if isinstance(seg, dict)
+                        else 0.0
+                    )
+                ),
+                "text": (
+                    getattr(seg, "text", None)
+                    if getattr(seg, "text", None) is not None
+                    else (seg.get("text", "") if isinstance(seg, dict) else "")
+                ),
+                "sentiment": (
+                    getattr(seg, "sentiment", None)
+                    if getattr(seg, "sentiment", None) is not None
+                    else (seg.get("sentiment") if isinstance(seg, dict) else None)
+                ),
+                "sentiment_label": (
+                    getattr(seg, "sentiment_label", None)
+                    if getattr(seg, "sentiment_label", None) is not None
+                    else (seg.get("sentiment_label") if isinstance(seg, dict) else None)
+                ),
+                "words": (
+                    [
+                        {
+                            "word": getattr(w, "word", ""),
+                            "start": getattr(w, "start", 0.0),
+                            "end": getattr(w, "end", 0.0),
+                            "probability": getattr(w, "probability", 0.0),
+                        }
+                        for w in getattr(seg, "words", [])
+                    ]
+                    if getattr(seg, "words", None)
+                    else (seg.get("words") if isinstance(seg, dict) else None)
+                ),
+            }
+        )
 
     stmt = pg_insert(DBTranscriptSegment).values(values_list)
     stmt = stmt.on_conflict_do_update(
@@ -439,9 +454,9 @@ async def save_transcript_segments(
             "sentiment_label": stmt.excluded.sentiment_label,
             "words": stmt.excluded.words,
         },
-        where=(DBTranscriptSegment.segment_id.is_not(None))
+        where=(DBTranscriptSegment.segment_id.is_not(None)),
     )
-    
+
     await db.execute(stmt)
     logger.debug(
         "DB — %d transcript segment(s) upserted for session %s",
@@ -646,7 +661,9 @@ async def save_analysis_result(
     )
 
 
-async def get_latest_analysis_result(db: AsyncSession, session_id: str) -> DBAnalysisResult | None:
+async def get_latest_analysis_result(
+    db: AsyncSession, session_id: str
+) -> DBAnalysisResult | None:
     """
     Retrieve the latest analysis result object for a session.
     """
@@ -654,7 +671,6 @@ async def get_latest_analysis_result(db: AsyncSession, session_id: str) -> DBAna
     stmt = select(DBAnalysisResult).where(DBAnalysisResult.session_id == sid)
     result = await db.execute(stmt)
     return result.scalars().first()
-
 
 
 async def update_client_snapshot(

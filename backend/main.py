@@ -211,7 +211,6 @@ def health_check():
     }
 
 
-
 # ── Session REST endpoints ────────────────────────────────────────────────────
 
 

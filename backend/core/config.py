@@ -12,7 +12,6 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 # Anchor all paths to this file's location, never os.getcwd().
 # config.py lives at backend/core/config.py, so:
 #   _BACKEND_DIR = backend/
@@ -55,7 +54,9 @@ class Settings(BaseSettings):
     whisper_compute_type: str = "int8"
     whisper_device: str = "cuda"
     whisper_language: str = ""  # e.g. "en"; empty = auto-detect (multilingual)
-    gpu_concurrency: int = Field(default=3, description="Concurrent GPU inference requests")
+    gpu_concurrency: int = Field(
+        default=3, description="Concurrent GPU inference requests"
+    )
 
     # ── Gemini (LLM Role Classification) ──────────────────
     gemini_api_key: str = ""

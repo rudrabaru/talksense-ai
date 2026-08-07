@@ -134,8 +134,6 @@ class AlertEngine:
             ]
         return []
 
-
-
     @staticmethod
     def _check_repeated_objections(state) -> list[Alert]:
         if len(state.objections) >= 3:
