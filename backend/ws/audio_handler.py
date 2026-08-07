@@ -178,33 +178,10 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
 
         register_profiler(session_id)
 
-        # ── [DEBUG-LIFECYCLE] ── Entering finally block ──────────────────────
-        _t0 = _time.monotonic()
-        logger.warning(
-            "[DEBUG-LIFECYCLE] t=%.4f ENTERING finally | session=%s | "
-            "ws_status=%r | ws_status_id=%s | ws_status_state=%s",
-            _t0, session_id[:8],
-            session.ws_status,
-            id(session.ws_status) if session.ws_status is not None else "None",
-            getattr(getattr(session.ws_status, "client_state", None), "name", "N/A")
-            if session.ws_status is not None else "N/A",
-        )
+
 
         # Flush any remaining buffered audio
-        logger.warning(
-            "[DEBUG-LIFECYCLE] t=%.4f BEFORE _flush_final | session=%s",
-            _time.monotonic() - _t0, session_id[:8],
-        )
         await _flush_final(session_id, transcriber, diarizer, manager)
-        logger.warning(
-            "[DEBUG-LIFECYCLE] t=%.4f AFTER _flush_final | session=%s | "
-            "ws_status=%r | ws_status_id=%s | ws_status_state=%s",
-            _time.monotonic() - _t0, session_id[:8],
-            session.ws_status,
-            id(session.ws_status) if session.ws_status is not None else "None",
-            getattr(getattr(session.ws_status, "client_state", None), "name", None)
-            if session.ws_status is not None else "N/A",
-        )
 
         # Broadcast the actual terminal status (completed/interrupted/failed)
         terminal_status = (

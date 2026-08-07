@@ -51,14 +51,11 @@ async def _safe_send(
         True if sent successfully, False otherwise.
     """
     if ws is None:
-        logger.warning("[DEBUG-LIFECYCLE] _safe_send: ws is None — message DROPPED. channel=%s", data.get('type'))
+        # ws is None — message dropped
         return False
 
     if ws.client_state != WebSocketState.CONNECTED:
-        logger.warning(
-            "[DEBUG-LIFECYCLE] _safe_send: ws NOT CONNECTED (state=%s) — message DROPPED. channel=%s ws_id=%s",
-            ws.client_state, data.get('type'), id(ws),
-        )
+        # ws NOT CONNECTED — message dropped
         return False
 
     try:
@@ -67,17 +64,14 @@ async def _safe_send(
             await asyncio.wait_for(ws.send_json(data), timeout=SEND_TIMEOUT)
         else:
             await ws.send_json(data)
-        logger.warning(
-            "[DEBUG-LIFECYCLE] _safe_send: SENT OK. channel=%s ws_id=%s",
-            data.get('type'), id(ws),
-        )
+
         return True
 
     except asyncio.TimeoutError:
         logger.debug("Broadcaster: client lagging — metric update dropped")
         return False
     except WebSocketDisconnect:
-        logger.warning("[DEBUG-LIFECYCLE] _safe_send: WebSocketDisconnect during send. channel=%s", data.get('type'))
+
         return False
     except Exception as exc:
         logger.warning(f"Broadcaster: send error — {exc}")

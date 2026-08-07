@@ -83,7 +83,7 @@ class GeminiProvider(BaseLLMProvider):
         )
         
         try:
-            print(f"TRACE: Gemini request is executed. Provider=gemini, Model={self.model_name}")
+
             # google.genai async client
             response = await asyncio.wait_for(
                 self.client.aio.models.generate_content(
@@ -93,7 +93,7 @@ class GeminiProvider(BaseLLMProvider):
                 ),
                 timeout=self.timeout
             )
-            print(f"TRACE: Gemini response received. Raw length={len(response.text)}")
+
             
             # Simple logging of success
             logger.info(

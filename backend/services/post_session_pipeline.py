@@ -69,7 +69,7 @@ async def run_post_session_pipeline(session_id: str) -> None:
     """
     Coordinates the entire Post-Session AI workflow.
     """
-    print("TRACE: run_post_session_pipeline() starts")
+
     settings = get_settings()
     if not settings.enable_post_session_ai:
         logger.info(f"Post-Session AI is disabled via config. Skipping pipeline for {session_id[:8]}")
@@ -84,11 +84,11 @@ async def run_post_session_pipeline(session_id: str) -> None:
         "success": True
     })
     
-    print("TRACE: AsyncSessionLocal created")
+
     # 1. Database scope
     async with AsyncSessionLocal() as db:
         try:
-            print("TRACE: transcript fetch started")
+
             # 2. Fetch transcript segments
             # limit=100000 ensures we get the entire meeting
             db_segments = await crud.get_transcript_segments(db, session_id, limit=100000)
@@ -137,7 +137,7 @@ async def run_post_session_pipeline(session_id: str) -> None:
             })
             
             # 3. Build transcript string from processed segments
-            print("TRACE: building transcript string")
+
             transcript_string = ""
             for seg in processed_segments:
                 transcript_string += f"{seg['speaker']} ({seg['start']:.1f}-{seg['end']:.1f}): {seg['text']}\n"
@@ -147,7 +147,7 @@ async def run_post_session_pipeline(session_id: str) -> None:
                 return
 
             # 4. Load prompts
-            print("TRACE: load_prompt_bundle() called")
+
             bundle = load_prompt_bundle(settings.post_session_prompt_version)
             system_prompt = bundle["system_prompt"]
             user_prompt_template = bundle["user_prompt"]
@@ -168,7 +168,7 @@ async def run_post_session_pipeline(session_id: str) -> None:
             gemini_start_time = time.monotonic()
             
             try:
-                print("TRACE: LLMEngine.generate_json() calling logic started")
+
                 parsed_json = await asyncio.wait_for(
                     _generate_and_validate_with_retries(
                         engine,
@@ -178,7 +178,7 @@ async def run_post_session_pipeline(session_id: str) -> None:
                     ),
                     timeout=30.0
                 )
-                print("TRACE: validate_and_parse() succeeds")
+
                 validation_success = True
                 fallback_used = False
                 
@@ -219,7 +219,7 @@ async def run_post_session_pipeline(session_id: str) -> None:
             parsed_json["speaking_ratio"] = speaking_ratio
 
             # 9. Persist JSON and Processed Transcript
-            print("TRACE: crud.save_analysis_result() called")
+
             await crud.save_analysis_result(
                 db, 
                 session_id, 
@@ -237,10 +237,10 @@ async def run_post_session_pipeline(session_id: str) -> None:
                 db_session.speaker_attribution_status = "completed"
 
             # Explicit commit for the pipeline
-            print("TRACE: db.commit() called")
+
             await db.commit()
 
-            print("TRACE: pipeline completed")
+
             # 9. Structured Telemetry
             logger.info(
                 "Post-Session Pipeline Completed",

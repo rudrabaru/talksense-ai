@@ -43,7 +43,6 @@ jobs:
       JWT_SECRET_KEY: qa_test_secret
       JWT_ALGORITHM: HS256
       WHISPER_DEVICE: cpu
-      PYANNOTE_DEVICE: cpu
       HF_TOKEN: ""
       GEMINI_API_KEY: ""
 

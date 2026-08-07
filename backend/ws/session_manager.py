@@ -512,7 +512,6 @@ class SessionManager:
 
         if status == SessionStatus.COMPLETED and settings.enable_post_session_ai:
             try:
-                print("TRACE: SessionManager.end() AI hook reached")
                 logger.info(
                     "Post-session AI task scheduled",
                     extra={
@@ -522,12 +521,10 @@ class SessionManager:
                     }
                 )
                 from services.post_session_pipeline import run_post_session_pipeline
-                print("TRACE: dynamic import succeeds")
                 pipeline_task = asyncio.create_task(
                     run_post_session_pipeline(session_id),
                     name=f"post-pipeline-{session_id[:8]}",
                 )
-                print("TRACE: asyncio.create_task() succeeds")
                 _register_flush_worker(pipeline_task)
             except Exception as e:
                 logger.error(f"Failed to schedule Post-Session AI for {session_id[:8]}: {e}")
@@ -889,19 +886,6 @@ async def _flush_loop() -> None:
 
             manager = get_session_manager()
             active_sessions = manager.list_active()
-            
-            import psutil
-            try:
-                proc = psutil.Process()
-                num_handles = proc.num_handles() if hasattr(proc, "num_handles") else -1
-                num_fds = proc.num_fds() if hasattr(proc, "num_fds") else -1
-                num_conns = len(proc.connections())
-                tasks = asyncio.all_tasks()
-                diart_closes = sum(1 for t in tasks if t.get_name().startswith("diart-close-"))
-                diart_listeners = sum(1 for t in tasks if t.get_name().startswith("diart-listener-"))
-                logger.warning(f"[FORENSIC] resource_dump ts={time.time():.3f} handles={num_handles} fds={num_fds} conns={num_conns} total_tasks={len(tasks)} diart_closes={diart_closes} diart_listeners={diart_listeners} active_sessions={len(active_sessions)}")
-            except Exception as e:
-                logger.error(f"[FORENSIC] error dumping resources: {e}")
             
             from ws.broadcast import broadcast_timer
 

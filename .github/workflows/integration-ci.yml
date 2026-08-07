@@ -44,7 +44,6 @@ jobs:
       JWT_ALGORITHM: HS256
       WHISPER_DEVICE: cpu
       WHISPER_COMPUTE_TYPE: int8
-      PYANNOTE_DEVICE: cpu
       # Explicitly blank to force graceful degradation/mocks
       HF_TOKEN: ""
       GEMINI_API_KEY: ""

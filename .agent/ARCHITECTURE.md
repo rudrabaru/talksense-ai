@@ -135,7 +135,6 @@ WHISPER_MODEL=small                      # or medium (uses more VRAM)
 WHISPER_COMPUTE_TYPE=int8               # float16 if VRAM allows
 WHISPER_DEVICE=cuda                     # or cpu as fallback
 PYANNOTE_ENABLED=true                   # false = heuristic speaker labeling
-PYANNOTE_DEVICE=cuda
 JWT_SECRET_KEY=<generated_32_byte_hex>  # python -c "import secrets; print(secrets.token_hex(32))"
 JWT_ALGORITHM=HS256
 JWT_EXPIRE_MINUTES=1440

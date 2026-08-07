@@ -228,9 +228,6 @@ async def status_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
         f"Session {session_id[:8]}…: /status subscriber accepted "
         f"(ws_id={id(websocket)})"
     )
-    logger.warning(
-        "[DEBUG-LIFECYCLE] STATUS WS ASSIGNED: session=%s ws_id=%s at t=%.4f",
-        session_id[:8], id(websocket), _time.monotonic(),
     )
     try:
         while True:
@@ -241,29 +238,14 @@ async def status_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
         ):
             raise exc
     finally:
-        _t_close = _time.monotonic()
-        logger.warning(
-            "[DEBUG-LIFECYCLE] STATUS WS FINALLY entered: session=%s ws_id=%s at t=%.4f",
-            session_id[:8], id(websocket), _t_close,
-        )
         async with session.lock:
             if session.ws_status is websocket:
                 session.ws_status = None
-                logger.warning(
-                    "[DEBUG-LIFECYCLE] STATUS WS CLEARED (ws_status=None): session=%s ws_id=%s at t=%.4f",
-                    session_id[:8], id(websocket), _time.monotonic(),
-                )
                 logger.info(
                     f"Session {session_id[:8]}…: /status subscriber closed "
                     f"(ws_id={id(websocket)}) — reference cleared"
                 )
             else:
-                logger.warning(
-                    "[DEBUG-LIFECYCLE] STATUS WS stale close — active ref preserved: session=%s closing_ws_id=%s active_ws_id=%s at t=%.4f",
-                    session_id[:8], id(websocket),
-                    id(session.ws_status) if session.ws_status is not None else "None",
-                    _time.monotonic(),
-                )
                 logger.info(
                     f"Session {session_id[:8]}…: /status subscriber closed "
                     f"(ws_id={id(websocket)}) — stale close, active reference preserved "
