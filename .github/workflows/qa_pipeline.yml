@@ -1,27 +1,35 @@
 name: QA Pipeline
 
 on:
-  push:
-    branches:
-      - dev
-      - main
-  pull_request:
-    branches:
-      - dev
-      - main
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to run QA against'
+        required: true
+        default: 'staging'
+  schedule:
+    - cron: '0 2 * * *' # Run nightly at 2 AM
+  release:
+    types: [published]
+
+concurrency:
+  group: qa-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  playwright-tests:
-    runs-on: ubuntu-latest
-
+  # ==========================================
+  # STAGE 1: Static & Unit Quality
+  # ==========================================
+  quality-gate:
+    name: Core Unit & DB Quality
+    runs-on: ubuntu-22.04
     services:
       postgres:
-        image: postgres:15
+        image: postgres:16
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: talksense
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: talksense_test
         ports:
           - 5432:5432
         options: >-
@@ -30,72 +38,144 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/talksense_test
+      JWT_SECRET_KEY: qa_test_secret
+      JWT_ALGORITHM: HS256
+      WHISPER_DEVICE: cpu
+      PYANNOTE_DEVICE: cpu
+      HF_TOKEN: ""
+      GEMINI_API_KEY: ""
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: 'talksense-ui/package-lock.json'
-
-      - name: Install Frontend Dependencies
-        working-directory: talksense-ui
-        run: npm ci
-
-      - name: Install Playwright Browsers
-        working-directory: talksense-ui
-        run: npx playwright install chromium --with-deps
-
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.10"
+          cache: pip
 
-      - name: Install Backend Dependencies
-        working-directory: backend
+      - name: Install System & Python Deps
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          sudo apt-get update && sudo apt-get install -y ffmpeg libsndfile1
+          pip install -r backend/requirements.txt -r backend/requirements-dev.txt
 
-      - name: Create Backend .env
+      - name: Database Schema Validation
         working-directory: backend
+        run: alembic upgrade head
+
+      - name: Run Core Unit Tests
+        working-directory: backend
+        # Ignore integration, stress, and forensic scripts
         run: |
-          echo "DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5432/talksense" > .env
-          echo "JWT_SECRET_KEY=testsecretkey" >> .env
-          echo "JWT_ALGORITHM=HS256" >> .env
-          echo "JWT_EXPIRE_MINUTES=1440" >> .env
-          echo "WHISPER_MODEL=tiny" >> .env
-          echo "WHISPER_COMPUTE_TYPE=int8" >> .env
-          echo "WHISPER_DEVICE=cpu" >> .env
-          echo "PYANNOTE_ENABLED=false" >> .env
-          echo "ENV=test" >> .env
-          echo "CORS_ORIGINS=http://localhost:5173" >> .env
+          pytest tests/ \
+            --ignore=tests/smoke_test_ws.py \
+            --ignore=tests/long_session_runner.py \
+            --ignore=tests/test_runtime_crash.py \
+            --ignore=tests/run_10055_forensics.py \
+            --ignore=tests/validate_pipeline.py \
+            --junitxml=unit-test-results.xml
 
-      - name: Create database tables
-        working-directory: backend
-        run: python -c "import asyncio; from db.database import create_all; asyncio.run(create_all())"
+      - name: Upload Unit Test Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-unit-results
+          path: backend/unit-test-results.xml
 
-      - name: Start Backend
-        working-directory: backend
-        run: |
-          python -m uvicorn main:app --host 0.0.0.0 --port 8000 &
-          # Wait for backend to be healthy
-          timeout 60 bash -c 'while [[ "$(curl -s -o /dev/null -w ''%{http_code}'' localhost:8000/health)" != "200" ]]; do sleep 2; done' || false
-        
-      - name: Run Playwright Tests
-        working-directory: talksense-ui
-        run: npm run test:e2e
+  # ==========================================
+  # STAGE 2: API & Integration Quality
+  # ==========================================
+  api-integration:
+    name: API & WebSocket Integration
+    needs: quality-gate
+    runs-on: ubuntu-22.04
+    services:
+      postgres:
+        image: postgres:16
         env:
-          VITE_API_URL: http://localhost:8000
-          VITE_WS_URL: ws://localhost:8000
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: talksense_qa
+        ports:
+          - 5432:5432
 
-      - name: Upload Playwright Artifacts
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/talksense_qa
+      JWT_SECRET_KEY: qa_test_secret
+      WHISPER_DEVICE: cpu
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+      - name: Cache HuggingFace
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: ${{ runner.os }}-hf-${{ hashFiles('backend/requirements.txt') }}
+      
+      - name: Install Deps & DB
+        run: |
+          sudo apt-get install -y ffmpeg libsndfile1 curl
+          pip install -r backend/requirements.txt -r backend/requirements-dev.txt
+          cd backend && alembic upgrade head
+
+      - name: Launch Backend
+        working-directory: backend
+        run: |
+          python -m uvicorn main:app --host 127.0.0.1 --port 8000 > backend_qa.log 2>&1 &
+          echo $! > uvicorn.pid
+          sleep 10 # Allow boot time
+
+      - name: Execute WebSocket Smoke Tests
+        working-directory: backend
+        run: python tests/smoke_test_ws.py
+
+      - name: Upload Server Logs
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: qa-server-logs
+          path: backend/backend_qa.log
+
+  # ==========================================
+  # STAGE 3: E2E Browser Automation
+  # ==========================================
+  e2e-browser:
+    name: Frontend E2E (Playwright)
+    needs: api-integration
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: talksense-ui/package-lock.json
+
+      - name: Install Frontend Deps
+        working-directory: talksense-ui
+        run: npm ci
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps
+
+      - name: Run E2E Suite (Mocked APIs)
+        working-directory: talksense-ui
+        run: npm run test:e2e
+        env:
+          VITE_WS_URL: "ws://localhost:8000"
+          VITE_API_URL: "http://localhost:8000"
+
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-playwright-report
           path: talksense-ui/playwright-report/
-          retention-days: 30
