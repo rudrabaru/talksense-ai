@@ -1,9 +1,8 @@
 import asyncio
 
-_GPU_SEMAPHORE: asyncio.Semaphore | None = None
-
-
 from core.config import get_settings
+
+_GPU_SEMAPHORE: asyncio.Semaphore | None = None
 
 
 def get_gpu_semaphore() -> asyncio.Semaphore:

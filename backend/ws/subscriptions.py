@@ -40,7 +40,6 @@ The actual push is done by broadcast.py, triggered by audio_handler.py.
 
 import logging
 import uuid
-import time as _time
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 

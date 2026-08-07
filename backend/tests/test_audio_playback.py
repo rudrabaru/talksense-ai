@@ -1,11 +1,9 @@
 import os
 
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from db import crud
-from db.database import engine, AsyncSessionLocal
-from db.models import Base
 from main import app
 
 

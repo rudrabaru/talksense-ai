@@ -20,7 +20,9 @@ binary frames. Invalid sessions are rejected with a close code 4004.
 """
 
 import asyncio
+import difflib
 import logging
+import string
 import time
 import uuid
 
@@ -30,7 +32,6 @@ from audio.transcriber import get_transcriber
 from audio.vad import get_vad
 from core.config import get_settings
 from services.nlp_engine import get_nlp_engine
-import time as _time
 from ws.broadcast import broadcast_all, broadcast_status, broadcast_transcript
 from ws.session_manager import SessionStatus, get_session_manager
 
@@ -212,11 +213,6 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
 
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
-
-
-import string
-
-import difflib
 
 
 def _merge_overlapping_text(text1: str, text2: str) -> str:

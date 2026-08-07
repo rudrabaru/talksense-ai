@@ -231,9 +231,9 @@ async def create_session(
 
     Returns the session_id needed to connect the WebSocket channels.
     """
+    from core.security import create_ws_token
     from db import crud
     from ws.session_manager import get_session_manager
-    from core.security import create_ws_token
 
     # Determine mode and client_id, prioritizing request body
     req_mode = "meeting"

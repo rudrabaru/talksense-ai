@@ -1,21 +1,22 @@
-import pytest
 import asyncio
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from google.api_core.exceptions import (
     PermissionDenied,
     ResourceExhausted,
     ServiceUnavailable,
 )
 
-from services.llm_engine import (
-    LLMEngine,
-    GeminiProvider,
-    AuthenticationError,
-    ProviderTimeoutError,
-    RateLimitError,
-    ProviderUnavailableError,
-)
 from core.config import get_settings
+from services.llm_engine import (
+    AuthenticationError,
+    GeminiProvider,
+    LLMEngine,
+    ProviderTimeoutError,
+    ProviderUnavailableError,
+    RateLimitError,
+)
 
 
 @pytest.fixture

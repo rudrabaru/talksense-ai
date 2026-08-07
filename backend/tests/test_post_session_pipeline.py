@@ -1,11 +1,11 @@
-import pytest
 import asyncio
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
-from services.post_session_pipeline import run_post_session_pipeline, _LLM_SEMAPHORE
-from services.llm_engine import ProviderTimeoutError, AuthenticationError
-from pydantic import ValidationError
+import pytest
+
 from core.config import get_settings
+from services.llm_engine import AuthenticationError, ProviderTimeoutError
+from services.post_session_pipeline import _LLM_SEMAPHORE, run_post_session_pipeline
 
 
 @pytest.fixture
@@ -117,7 +117,6 @@ async def test_timeout_recovery_retry(
     monkeypatch.setattr("services.post_session_pipeline.LLMEngine", mock_engine_cls)
 
     # Fast forward tenacity waits for testing
-    import tenacity
 
     monkeypatch.setattr("tenacity.nap.time.sleep", MagicMock())
     monkeypatch.setattr(asyncio, "sleep", AsyncMock())

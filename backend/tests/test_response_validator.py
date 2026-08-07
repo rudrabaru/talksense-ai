@@ -1,6 +1,7 @@
 import pytest
 from pydantic import ValidationError
-from services.response_validator import validate_and_parse, _extract_json
+
+from services.response_validator import _extract_json, validate_and_parse
 
 
 def test_extract_json_raw():
@@ -79,7 +80,7 @@ def test_validate_invalid_action_item():
     raw = """{
         "executive_summary": "test",
         "action_items": [
-            {"task": "Send email"} 
+            {"task": "Send email"}
         ]
     }"""
     with pytest.raises(ValidationError, match="assignee"):

@@ -1,27 +1,26 @@
 import asyncio
 import logging
+import time
+
 from pydantic import ValidationError
 from tenacity import (
     retry,
+    retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
-    retry_if_exception_type,
 )
-from sqlalchemy.ext.asyncio import AsyncSession
-import time
 
 from core.config import get_settings
-from db.database import AsyncSessionLocal
 from db import crud
-from services.transcript_builder import build_transcript_string
-from services.prompt_loader import load_prompt_bundle
-from services.response_validator import validate_and_parse
+from db.database import AsyncSessionLocal
 from services.llm_engine import (
     LLMEngine,
     ProviderTimeoutError,
-    RateLimitError,
     ProviderUnavailableError,
+    RateLimitError,
 )
+from services.prompt_loader import load_prompt_bundle
+from services.response_validator import validate_and_parse
 
 logger = logging.getLogger(__name__)
 
@@ -107,10 +106,12 @@ async def run_post_session_pipeline(session_id: str) -> None:
                 )
                 return
 
-            from audio.offline_diarizer import run_offline_diarization
-            from services.alignment import WordAligner, SpeakerCleanup
-            from audio.buffer import _ensure_audio_dir
             import os
+
+            from audio.offline_diarizer import run_offline_diarization
+
+            from audio.buffer import _ensure_audio_dir
+            from services.alignment import SpeakerCleanup, WordAligner
 
             audio_dir = _ensure_audio_dir()
             wav_path = os.path.join(audio_dir, f"session_{session_id}.wav")
@@ -266,6 +267,7 @@ async def run_post_session_pipeline(session_id: str) -> None:
             )
 
             import uuid
+
             from db.models import Session
 
             db_session = await db.get(Session, uuid.UUID(session_id))
@@ -299,6 +301,7 @@ async def run_post_session_pipeline(session_id: str) -> None:
             )
 
             import uuid
+
             from db.models import Session
 
             try:

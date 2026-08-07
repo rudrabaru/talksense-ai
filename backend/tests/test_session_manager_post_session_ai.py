@@ -1,9 +1,10 @@
-import pytest
 import asyncio
-from unittest.mock import AsyncMock, patch, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from ws.session_manager import get_session_manager, SessionStatus
+import pytest
+
 from core.config import get_settings
+from ws.session_manager import SessionStatus, get_session_manager
 
 
 @pytest.fixture

@@ -1,5 +1,6 @@
-from collections import defaultdict
 import time
+from collections import defaultdict
+
 from fastapi import HTTPException, Request
 
 # In-memory store: IP -> list of timestamps

@@ -22,7 +22,6 @@ Post-session diarization:
 import logging
 import os
 import struct
-import time
 from collections import deque
 from dataclasses import dataclass, field
 

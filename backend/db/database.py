@@ -29,7 +29,6 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from core.config import get_settings
-from db.models import Base
 
 logger = logging.getLogger(__name__)
 
