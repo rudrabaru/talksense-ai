@@ -2,9 +2,9 @@ import asyncio
 import logging
 from abc import ABC, abstractmethod
 
-from google import genai
-from google.genai import errors
-from google.genai.types import GenerateContentConfig
+from google import genai  # type: ignore
+from google.genai import errors  # type: ignore
+from google.genai.types import GenerateContentConfig  # type: ignore
 
 from core.config import get_settings
 
@@ -114,7 +114,7 @@ class GeminiProvider(BaseLLMProvider):
                 },
             )
 
-            return response.text
+            return str(response.text or "")
 
         except asyncio.TimeoutError as e:
             logger.error("Gemini Provider timed out")

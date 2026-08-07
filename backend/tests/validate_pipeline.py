@@ -238,7 +238,7 @@ def test_conversation_engine():
             state.transcript_segments.append(seg)
 
         state_out, alerts = engine.process_segments(
-            segs, state, mode="sales", session_id="test-conv"
+            state, mode="sales", session_id="test-conv"
         )
 
         record(
@@ -339,8 +339,9 @@ def test_sentiment_direction():
         ]
         state_neg = ConversationState()
         state_neg.sentiment_score = 0.0
+        state_neg.transcript_segments.extend(negative_segs)
         state_neg, _ = engine.process_segments(
-            negative_segs, state_neg, "sales", "test-neg"
+            state_neg, "sales", "test-neg"
         )
         record(
             area,
@@ -368,8 +369,9 @@ def test_sentiment_direction():
         ]
         state_pos = ConversationState()
         state_pos.sentiment_score = 0.0
+        state_pos.transcript_segments.extend(positive_segs)
         state_pos, _ = engine.process_segments(
-            positive_segs, state_pos, "sales", "test-pos"
+            state_pos, "sales", "test-pos"
         )
         record(
             area,
@@ -383,9 +385,11 @@ def test_sentiment_direction():
         state_shift = ConversationState()
         state_shift.sentiment_score = -0.5
         state_shift.sentiment = "negative"
-        engine.process_segments(negative_segs, state_shift, "sales", "test-shift")
+        state_shift.transcript_segments.extend(negative_segs)
+        engine.process_segments(state_shift, "sales", "test-shift")
+        state_shift.transcript_segments.extend(positive_segs)
         state_shift, _ = engine.process_segments(
-            positive_segs, state_shift, "sales", "test-shift"
+            state_shift, "sales", "test-shift"
         )
         record(
             area,
@@ -1139,7 +1143,7 @@ async def test_full_pipeline():
                 state.last_silence_seconds = 20
 
             state, new_alerts = engine.process_segments(
-                batch, state, "sales", session_id
+                state, "sales", session_id
             )
             health_history.append(state.health_score)
             all_alerts.extend(new_alerts)

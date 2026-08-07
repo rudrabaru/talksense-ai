@@ -918,7 +918,7 @@ async def analyze_audio(
         }
 
         if mode == "sales":
-            insights = await run_in_threadpool(analyze_sales, enriched_segments)
+            insights = await run_in_threadpool(analyze_sales, final_transcript)
         else:
             insights = await run_in_threadpool(analyze_meeting, final_transcript)
 

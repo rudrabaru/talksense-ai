@@ -106,63 +106,13 @@ async def run_post_session_pipeline(session_id: str) -> None:
                 )
                 return
 
-            import os
-
-            from audio.offline_diarizer import run_offline_diarization
-
-            from audio.buffer import _ensure_audio_dir
-            from services.alignment import SpeakerCleanup, WordAligner
-
-            audio_dir = _ensure_audio_dir()
-            wav_path = os.path.join(audio_dir, f"session_{session_id}.wav")
-
-            diart_intervals = []
-            if os.path.exists(wav_path):
-                logger.info(
-                    {
-                        "event": "pipeline_step",
-                        "step": "offline_diarization",
-                        "session_id": session_id,
-                        "wav_path": wav_path,
-                    }
-                )
-                diart_start = time.monotonic()
-                diart_intervals = await asyncio.to_thread(
-                    run_offline_diarization, wav_path
-                )
-                logger.info(
-                    {
-                        "event": "pipeline_step_complete",
-                        "step": "offline_diarization",
-                        "session_id": session_id,
-                        "duration_ms": (time.monotonic() - diart_start) * 1000,
-                        "success": True,
-                    }
-                )
-            else:
-                logger.warning(
-                    f"Audio file {wav_path} not found. Proceeding without diarization."
-                )
-
-            logger.info("Aligning words with Pyannote intervals...")
-            align_start = time.monotonic()
-            aligned_words = WordAligner.align_words(db_segments, diart_intervals)
-            processed_segments = SpeakerCleanup.process(aligned_words)
-            logger.info(
-                {
-                    "event": "pipeline_step_complete",
-                    "step": "alignment",
-                    "session_id": session_id,
-                    "duration_ms": (time.monotonic() - align_start) * 1000,
-                    "success": True,
-                }
-            )
-
-            # 3. Build transcript string from processed segments
-
             transcript_string = ""
-            for seg in processed_segments:
-                transcript_string += f"{seg['speaker']} ({seg['start']:.1f}-{seg['end']:.1f}): {seg['text']}\n"
+            for seg in db_segments:
+                speaker = seg.speaker_id or "Speaker"
+                start = seg.start_time or 0.0
+                end = seg.end_time or 0.0
+                text = seg.text or ""
+                transcript_string += f"{speaker} ({start:.1f}-{end:.1f}): {text}\n"
 
             if not transcript_string:
                 logger.info(
@@ -236,14 +186,14 @@ async def run_post_session_pipeline(session_id: str) -> None:
                     if "speaker" in item
                 }
 
-            # 8. Calculate Speaking Ratio based on Pyannote processed segments
+            # 8. Calculate Speaking Ratio based on DB segments
             speaker_word_counts = {}
             total_words = 0
-            for seg in processed_segments:
-                words_count = len(seg.get("words", []))
+            for seg in db_segments:
+                words_count = len((seg.text or "").split())
                 if words_count == 0:
                     continue
-                speaker = seg["speaker"]
+                speaker = seg.speaker_id or "Speaker"
                 speaker_word_counts[speaker] = (
                     speaker_word_counts.get(speaker, 0) + words_count
                 )
@@ -256,6 +206,15 @@ async def run_post_session_pipeline(session_id: str) -> None:
             parsed_json["speaking_ratio"] = speaking_ratio
 
             # 9. Persist JSON and Processed Transcript
+            processed_transcript = [
+                {
+                    "speaker": s.speaker_id or "Speaker",
+                    "start": s.start_time or 0.0,
+                    "end": s.end_time or 0.0,
+                    "text": s.text or "",
+                }
+                for s in db_segments
+            ]
 
             await crud.save_analysis_result(
                 db,
@@ -263,7 +222,7 @@ async def run_post_session_pipeline(session_id: str) -> None:
                 health_score=None,
                 summary=parsed_json.get("executive_summary", ""),
                 report_json=parsed_json,
-                processed_transcript=processed_segments,
+                processed_transcript=processed_transcript,
             )
 
             import uuid

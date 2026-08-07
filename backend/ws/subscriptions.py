@@ -39,8 +39,6 @@ The actual push is done by broadcast.py, triggered by audio_handler.py.
 """
 
 import logging
-import uuid
-
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from ws.session_manager import get_session_manager
@@ -51,9 +49,8 @@ router = APIRouter()
 
 
 @router.websocket("/ws/transcript/{session_id}")
-async def transcript_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
+async def transcript_ws(websocket: WebSocket, session_id: str) -> None:
     """Subscribe to live transcript segments for a session."""
-    session_id = str(session_id)
     manager = get_session_manager()
     session = manager.get(session_id)
     if session is None:
@@ -66,7 +63,7 @@ async def transcript_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
     token = websocket.query_params.get("token")
     from core.security import verify_ws_token
 
-    if not verify_ws_token(token, session_id):
+    if not verify_ws_token(token or "", session_id):
         logger.warning(f"Unauthorized WS connection attempt for session {session_id}")
         await websocket.close(code=1008, reason="Unauthorized")
         return
@@ -103,9 +100,8 @@ async def transcript_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
 
 
 @router.websocket("/ws/metrics/{session_id}")
-async def metrics_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
+async def metrics_ws(websocket: WebSocket, session_id: str) -> None:
     """Subscribe to live conversation metrics for a session."""
-    session_id = str(session_id)
     manager = get_session_manager()
     session = manager.get(session_id)
     if session is None:
@@ -118,7 +114,7 @@ async def metrics_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
     token = websocket.query_params.get("token")
     from core.security import verify_ws_token
 
-    if not verify_ws_token(token, session_id):
+    if not verify_ws_token(token or "", session_id):
         logger.warning(f"Unauthorized WS connection attempt for session {session_id}")
         await websocket.close(code=1008, reason="Unauthorized")
         return
@@ -154,9 +150,8 @@ async def metrics_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
 
 
 @router.websocket("/ws/alerts/{session_id}")
-async def alerts_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
-    """Subscribe to real-time alerts for a session."""
-    session_id = str(session_id)
+async def alerts_ws(websocket: WebSocket, session_id: str) -> None:
+    """Subscribe to live alerts for a session."""
     manager = get_session_manager()
     session = manager.get(session_id)
     if session is None:
@@ -169,7 +164,7 @@ async def alerts_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
     token = websocket.query_params.get("token")
     from core.security import verify_ws_token
 
-    if not verify_ws_token(token, session_id):
+    if not verify_ws_token(token or "", session_id):
         logger.warning(f"Unauthorized WS connection attempt for session {session_id}")
         await websocket.close(code=1008, reason="Unauthorized")
         return
@@ -205,9 +200,8 @@ async def alerts_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
 
 
 @router.websocket("/ws/status/{session_id}")
-async def status_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
-    """Subscribe to session lifecycle status changes."""
-    session_id = str(session_id)
+async def status_ws(websocket: WebSocket, session_id: str) -> None:
+    """Subscribe to session state changes."""
     manager = get_session_manager()
     session = manager.get(session_id)
     if session is None:
@@ -220,7 +214,7 @@ async def status_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
     token = websocket.query_params.get("token")
     from core.security import verify_ws_token
 
-    if not verify_ws_token(token, session_id):
+    if not verify_ws_token(token or "", session_id):
         logger.warning(f"Unauthorized WS connection attempt for session {session_id}")
         await websocket.close(code=1008, reason="Unauthorized")
         return

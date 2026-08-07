@@ -8,7 +8,7 @@ import uuid
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from db import crud
-from db.database import AsyncSessionLocal, create_all
+from db.database import AsyncSessionLocal
 from db.models import Session as DBSession
 
 logging.basicConfig(
@@ -67,7 +67,7 @@ async def main():
     logger.info("=" * 60)
 
     # 1. Initialize DB tables
-    await create_all()
+    # await create_all()
 
     session_id = str(uuid.uuid4())
     logger.info(f"Created test session ID: {session_id}")
