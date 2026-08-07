@@ -40,7 +40,15 @@ function InfoIcon({ className }) {
 
 export default function CoachingPanel({ tips = [] }) {
   if (!tips || tips.length === 0) {
-    return null;
+    return (
+      <div className="flex flex-col gap-3 w-full">
+        <div className="flex items-center gap-2" style={{ position: "sticky", top: 0, background: "white", zIndex: 10, paddingBottom: "4px" }}>
+          <LightbulbIcon className="w-5 h-5 text-indigo-500" />
+          <h3 className="font-semibold text-slate-800 text-lg m-0">Live Coaching</h3>
+        </div>
+        <p className="text-sm text-slate-500 italic m-0 pb-2">No coaching suggestions</p>
+      </div>
+    );
   }
 
   const getSeverityStyle = (severity) => {
@@ -68,12 +76,12 @@ export default function CoachingPanel({ tips = [] }) {
   };
 
   return (
-    <div className="flex flex-col gap-3 bg-white rounded-xl shadow-sm border border-slate-200" style={{ padding: "16px", maxHeight: "100%", overflowY: "auto" }}>
-      <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-3 w-full">
+      <div className="flex items-center gap-2" style={{ position: "sticky", top: 0, background: "white", zIndex: 10, paddingBottom: "4px" }}>
         <LightbulbIcon className="w-5 h-5 text-indigo-500" />
-        <h3 className="font-semibold text-slate-800 text-lg">Live Coaching</h3>
+        <h3 className="font-semibold text-slate-800 text-lg m-0">Live Coaching</h3>
       </div>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 pb-2">
         {tips.map((tip) => (
           <div
             key={tip.id}

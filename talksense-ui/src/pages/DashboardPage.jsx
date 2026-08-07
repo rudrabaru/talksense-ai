@@ -12,9 +12,7 @@ import {
 import ClientBriefingCard from "../components/ClientBriefingCard";
 import SessionStatusBar from "../components/dashboard/SessionStatusBar";
 import TranscriptPanel from "../components/dashboard/TranscriptPanel";
-import MetricsPanel from "../components/dashboard/MetricsPanel";
-import AlertsPanel from "../components/dashboard/AlertsPanel";
-import CoachingPanel from "../components/dashboard/CoachingPanel";
+import ConversationSidebar from "../components/dashboard/ConversationSidebar";
 import logoImage from "../assets/logo/logo.png";
 
 // --- Constants ---------------------------------------------------------------
@@ -1006,21 +1004,15 @@ export default function DashboardPage() {
             )}
             <TranscriptPanel transcript={transcript || []} />
           </div>
-          <div className="flex flex-col gap-4 min-w-0 min-h-0 h-full">
-            <div className="flex flex-col shrink-0">
-              <CoachingPanel tips={metrics?.coachingTips || []} />
-            </div>
-            <div className="flex flex-col shrink min-h-0">
-              <AlertsPanel alerts={alerts || []} />
-            </div>
-            <div style={{ flex: 1, minHeight: 0 }} className="flex flex-col min-h-0">
-              <MetricsPanel
-                metrics={metrics || null}
-                sessionStatus={sessionStatus}
-                lastSyncAt={lastSyncAt}
-                mode={activeSessionMode}
-              />
-            </div>
+          <div className="flex flex-col min-w-0 min-h-0 h-full">
+            <ConversationSidebar 
+              tips={metrics?.coachingTips || []}
+              alerts={alerts || []}
+              metrics={metrics || null}
+              sessionStatus={sessionStatus}
+              lastSyncAt={lastSyncAt}
+              mode={activeSessionMode}
+            />
           </div>
         </div>
       </main>

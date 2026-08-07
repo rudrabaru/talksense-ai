@@ -70,12 +70,14 @@ const AlertsPanel = memo(({ alerts }) => {
   const isEmpty = visibleAlerts.length === 0;
 
   return (
-    <div 
-      className="alerts-panel-placeholder bg-white rounded-xl shadow-sm border border-slate-200" 
-      style={{ padding: isEmpty ? "12px 16px" : "16px", maxHeight: "40vh", overflowY: "auto" }}
-    >
-      <h3 className={`font-semibold text-slate-800 text-lg ${isEmpty ? 'mb-1' : 'mb-3'}`}>Real-Time Alerts</h3>
-      <div className="alerts-list">
+    <div className="alerts-panel-placeholder flex flex-col w-full">
+      <h3 
+        className="font-semibold text-slate-800 text-lg m-0"
+        style={{ position: "sticky", top: 0, background: "white", zIndex: 10, paddingBottom: "8px", paddingTop: "8px" }}
+      >
+        Real-Time Alerts
+      </h3>
+      <div className="alerts-list pb-2">
         {!isEmpty ? (
           visibleAlerts.map((alert) => {
             const rec = ALERT_RECOMMENDATIONS[alert.alert_type] || {};

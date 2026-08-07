@@ -142,13 +142,17 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt, mode }) => {
   if (!hasValidMetrics) {
     return (
       <div
-        className="metrics-panel-placeholder bg-white rounded-xl shadow-sm border border-slate-200"
+        className="metrics-panel-placeholder flex flex-col w-full"
         role="region"
-        aria-label="Conversation intelligence metrics"
-        style={{ padding: "16px", height: "100%", overflowY: "auto", overflowX: "hidden", wordBreak: "break-word" }}
+        aria-label="Session metrics"
       >
-        <h3 className="font-semibold text-slate-800 text-lg mb-2">Conversation Intelligence</h3>
-        <p>No metrics available.</p>
+        <h3 
+          className="font-semibold text-slate-800 text-lg m-0"
+          style={{ position: "sticky", top: 0, background: "white", zIndex: 10, paddingBottom: "8px", paddingTop: "8px" }}
+        >
+          Session Metrics
+        </h3>
+        <p className="text-sm text-slate-500 italic m-0">No metrics available.</p>
       </div>
     );
   }
@@ -207,12 +211,17 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt, mode }) => {
 
   return (
     <div
-      className="metrics-panel-placeholder bg-white rounded-xl shadow-sm border border-slate-200"
+      className="metrics-panel-placeholder flex flex-col w-full"
       role="region"
-      aria-label="Conversation intelligence metrics"
-      style={{ padding: "16px", height: "100%", overflowY: "auto", overflowX: "hidden", wordBreak: "break-word" }}
+      aria-label="Session metrics"
+      style={{ wordBreak: "break-word" }}
     >
-      <h3 className="font-semibold text-slate-800 text-lg mb-4">Conversation Intelligence</h3>
+      <h3 
+        className="font-semibold text-slate-800 text-lg m-0"
+        style={{ position: "sticky", top: 0, background: "white", zIndex: 10, paddingBottom: "12px", paddingTop: "8px" }}
+      >
+        Session Metrics
+      </h3>
       <div className="metrics-content flex flex-col gap-6">
       
         {/* ── 1. Session Health ── */}
