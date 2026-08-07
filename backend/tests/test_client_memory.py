@@ -8,19 +8,18 @@ import sys
 import uuid
 from datetime import datetime, timezone
 
-import requests
+from httpx import ASGITransport, AsyncClient
 
 # Add project root to python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from main import app
 from db.database import AsyncSessionLocal
 from db.models import Client as DBClient
 from db.models import Session as DBSession
 from db.models import SessionMetric as DBSessionMetric
 from services.client_memory import update_client_memory
-
-BASE_URL = "http://localhost:8000"
 
 
 async def test_client_memory():
@@ -38,17 +37,18 @@ async def test_client_memory():
     print(
         "Asserting GET /clients/{client_id} returns default values when no snapshot exists..."  # noqa: E501
     )
-    res = requests.get(f"{BASE_URL}/clients/{client_id}")
-    assert res.status_code == 200, f"Expected 200, got {res.status_code}"
-    data = res.json()
-    assert data["client_id"] == str(client_id)
-    assert data["name"] == "Test Memory Enterprise"
-    assert data["industry"] == "Financial Technology"
-    assert data["meetings_count"] == 0
-    assert data["sentiment_trend"] is None
-    assert data["common_objections"] == []
-    assert data["summary"] is None
-    print("[OK] Default briefing card validated")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as test_client:
+        res = await test_client.get(f"/clients/{client_id}")
+        assert res.status_code == 200, f"Expected 200, got {res.status_code}"
+        data = res.json()
+        assert data["client_id"] == str(client_id)
+        assert data["name"] == "Test Memory Enterprise"
+        assert data["industry"] == "Financial Technology"
+        assert data["meetings_count"] == 0
+        assert data["sentiment_trend"] is None
+        assert data["common_objections"] == []
+        assert data["summary"] is None
+        print("[OK] Default briefing card validated")
 
     # Add 1st completed session: sentiment=0.5, objections=["Pricing", "Pricing",
     # "Integration"]
@@ -85,18 +85,19 @@ async def test_client_memory():
         await db.commit()
 
     # Verify briefing card updates
-    res = requests.get(f"{BASE_URL}/clients/{client_id}")
-    assert res.status_code == 200
-    data = res.json()
-    assert data["meetings_count"] == 1
-    assert data["sentiment_trend"] == "stable"  # only 1 meeting
-    assert set(data["common_objections"]) == {"Pricing", "Integration"}
-    assert data["summary"] is not None
-    assert (
-        "Financial Technology" in data["summary"]
-        or "Test Memory Enterprise" in data["summary"]
-    )
-    print("[OK] First meeting snapshot and fallback briefing validated")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as test_client:
+        res = await test_client.get(f"/clients/{client_id}")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["meetings_count"] == 1
+        assert data["sentiment_trend"] == "stable"  # only 1 meeting
+        assert set(data["common_objections"]) == {"Pricing", "Integration"}
+        assert data["summary"] is not None
+        assert (
+            "Financial Technology" in data["summary"]
+            or "Test Memory Enterprise" in data["summary"]
+        )
+        print("[OK] First meeting snapshot and fallback briefing validated")
 
     # Add 2nd completed session: sentiment=0.8 (improving), objections=["Integration"]
     s2_id = uuid.uuid4()
@@ -130,19 +131,20 @@ async def test_client_memory():
         await db.commit()
 
     # Verify briefing card updates for 2nd meeting
-    res = requests.get(f"{BASE_URL}/clients/{client_id}")
-    assert res.status_code == 200
-    data = res.json()
-    assert data["meetings_count"] == 2
-    assert (
-        data["sentiment_trend"] == "improving"
-    ), f"Expected improving, got {data['sentiment_trend']}"
-    assert set(data["common_objections"]) == {"Integration", "Pricing"}
-
-    assert data["last_meeting_date"] == "2026-06-21T14:00:00+00:00"
-    print(
-        "[OK] Second meeting sentiment trend and objection frequency aggregation validated"  # noqa: E501
-    )
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as test_client:
+        res = await test_client.get(f"/clients/{client_id}")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["meetings_count"] == 2
+        assert (
+            data["sentiment_trend"] == "improving"
+        ), f"Expected improving, got {data['sentiment_trend']}"
+        assert set(data["common_objections"]) == {"Integration", "Pricing"}
+    
+        assert data["last_meeting_date"] == "2026-06-21T14:00:00+00:00"
+        print(
+            "[OK] Second meeting sentiment trend and objection frequency aggregation validated"  # noqa: E501
+        )
 
     # Add 3rd completed session: sentiment=0.5 (declining), objections=["Security",
     # "Security"]
@@ -180,16 +182,17 @@ async def test_client_memory():
         await db.commit()
 
     # Verify briefing card updates for 3rd meeting
-    res = requests.get(f"{BASE_URL}/clients/{client_id}")
-    assert res.status_code == 200
-    data = res.json()
-    assert data["meetings_count"] == 3
-    assert (
-        data["sentiment_trend"] == "declining"
-    ), f"Expected declining, got {data['sentiment_trend']}"
-    assert "Security" in data["common_objections"]
-    print("[OK] Third meeting sentiment trend change (declining) validated")
-    print("ALL TESTS PASSED SUCCESSFULLY!")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as test_client:
+        res = await test_client.get(f"/clients/{client_id}")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["meetings_count"] == 3
+        assert (
+            data["sentiment_trend"] == "declining"
+        ), f"Expected declining, got {data['sentiment_trend']}"
+        assert "Security" in data["common_objections"]
+        print("[OK] Third meeting sentiment trend change (declining) validated")
+        print("ALL TESTS PASSED SUCCESSFULLY!")
 
 
 if __name__ == "__main__":
