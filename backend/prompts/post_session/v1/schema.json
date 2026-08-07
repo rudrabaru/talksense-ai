@@ -1,0 +1,46 @@
+{
+    "type": "object",
+    "properties": {
+        "executive_summary": {"type": "string"},
+        "speaker_map": {
+            "type": "array",
+            "description": "A list mapping segment_id to the inferred speaker name.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "segment_id": {"type": "string"},
+                    "speaker": {"type": "string"}
+                },
+                "required": ["segment_id", "speaker"]
+            }
+        },
+        "roles": {
+            "type": "array",
+            "description": "A list mapping inferred speaker name to their role.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "speaker": {"type": "string"},
+                    "role": {"type": "string"}
+                },
+                "required": ["speaker", "role"]
+            }
+        },
+        "decisions": {
+            "type": "array",
+            "items": {"type": "string"}
+        },
+        "action_items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "task": {"type": "string"},
+                    "assignee": {"type": "string"}
+                },
+                "required": ["task", "assignee"]
+            }
+        }
+    },
+    "required": ["executive_summary", "speaker_map", "roles", "decisions", "action_items"]
+}

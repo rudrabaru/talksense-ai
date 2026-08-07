@@ -105,7 +105,7 @@ from typing import TYPE_CHECKING
 from fastapi import WebSocket
 
 from audio.buffer import AudioBuffer
-from audio.speaker_profile import SpeakerProfile
+
 
 if TYPE_CHECKING:
     pass
@@ -167,13 +167,7 @@ class ConversationState:
     health_score: int = 50
     sentiment: str = "neutral"
     sentiment_score: float = 0.0
-    speaking_ratio: dict = field(
-        default_factory=dict
-    )  # {"Speaker 1": 60, "Speaker 2": 40}
-    participation: dict = field(default_factory=dict)
     filler_count: int = 0
-    interruptions: int = 0
-    speaker_switches: int = 0
     action_items: list = field(default_factory=list)
     decisions: list = field(default_factory=list)
     objection_timeline: list = field(default_factory=list)
@@ -183,10 +177,33 @@ class ConversationState:
     active_alerts: list = field(default_factory=list)
     coaching_tips: list = field(default_factory=list)
     transcript_segments: list = field(default_factory=list)
+    participation: dict = field(default_factory=dict)
     duration_seconds: float = 0.0
     last_silence_seconds: float = 0.0
     roles: dict = field(default_factory=dict)
+    speaking_ratio: dict = field(default_factory=dict)
+    speaker_switches: int = 0
+    interruptions: int = 0
     host_speaker_id: str | None = None
+
+    # O(1) tracking metrics
+    sentiment_sum: float = 0.0
+    sentiment_count: int = 0
+    sentiment_processed_index: int = 0
+
+    # Incremental processing indices (watermarks for O(1) updates)
+    fillers_processed_index: int = 0
+    sales_metrics_processed_index: int = 0
+    meeting_metrics_processed_index: int = 0
+
+    # Cached meeting signals for incremental OR-merge
+    _meeting_signals_cache: dict = field(default_factory=dict)
+
+    # Engine-level processing watermark (segment index into transcript_segments)
+    _engine_processed_index: int = 0
+    # Word count of the segment at (_engine_processed_index - 1) when last processed.
+    # Used to detect text growth from overlap merges on the boundary segment.
+    _boundary_word_count: int = 0
 
 
 @dataclass
@@ -209,7 +226,7 @@ class SessionState:
     ws_metrics: "WebSocket | None" = None
     ws_alerts: "WebSocket | None" = None
     ws_status: "WebSocket | None" = None
-    speaker_profile: SpeakerProfile = field(default_factory=SpeakerProfile)
+
     started_at: float = field(default_factory=time.monotonic)
     
     # Explicit recording state tracking
@@ -265,6 +282,10 @@ class SessionState:
     # None for sessions where no speech audio was received.
     audio_file_path: str | None = None
 
+    # Flag to guarantee manager.end() executes terminal logic exactly once
+    # per session. Checked inside session.lock.
+    _is_ending: bool = False
+
     # asyncio.Event for zero-overhead flush-idle signalling.
     # Contract:
     #   SET   — no periodic flush is in progress for this session.
@@ -285,9 +306,9 @@ class SessionState:
     # because a freshly created session has no flush in progress.
     _flush_idle: asyncio.Event = field(default_factory=asyncio.Event, repr=False)
 
-    def __post_init__(self) -> None:
+    def __post_init__(self):
         self.conversation = ConversationState()
-        self.audio_buffer = AudioBuffer()
+        self.audio_buffer = AudioBuffer(_session_id=self.session_id)
         self._flush_idle.set()
 
     @property
@@ -404,6 +425,12 @@ class SessionManager:
 
         # ── Step 2: transition to terminal status ─────────────────────────────
         async with session.lock:
+            # RC-8 Deduplication Guard: Guarantee we only execute end() once
+            if session._is_ending:
+                logger.debug("Session %s…: manager.end() already in progress, skipping.", session_id[:8])
+                return
+            session._is_ending = True
+
             if session.recording_started_at is not None:
                 session._accumulated_recording_duration += time.monotonic() - session.recording_started_at
                 session.recording_started_at = None
@@ -462,7 +489,7 @@ class SessionManager:
                         db,
                         session_id,
                         status.value,
-                        duration=session.elapsed_seconds,
+                        duration=session.active_recording_duration,
                     )
                     if status == SessionStatus.COMPLETED:
                         wav_path = session.audio_buffer.get_audio_file_path()
@@ -480,26 +507,41 @@ class SessionManager:
                 session_id[:8],
             )
 
+        from core.config import get_settings
+        settings = get_settings()
+
+        if status == SessionStatus.COMPLETED and settings.enable_post_session_ai:
+            try:
+                print("TRACE: SessionManager.end() AI hook reached")
+                logger.info(
+                    "Post-session AI task scheduled",
+                    extra={
+                        "session_id": session_id,
+                        "provider": settings.post_session_provider,
+                        "enabled": True
+                    }
+                )
+                from services.post_session_pipeline import run_post_session_pipeline
+                print("TRACE: dynamic import succeeds")
+                pipeline_task = asyncio.create_task(
+                    run_post_session_pipeline(session_id),
+                    name=f"post-pipeline-{session_id[:8]}",
+                )
+                print("TRACE: asyncio.create_task() succeeds")
+                _register_flush_worker(pipeline_task)
+            except Exception as e:
+                logger.error(f"Failed to schedule Post-Session AI for {session_id[:8]}: {e}")
+
         if status == SessionStatus.COMPLETED:
-            session.speaker_attribution_status = "pending"
-            wav_path = session.audio_buffer.get_audio_file_path()
-            if wav_path:
-                # Spawn diarization as a tracked fire-and-forget task.
-                diarize_task = asyncio.create_task(
-                    _run_post_session_diarization(session_id, wav_path),
-                    name=f"post-diarize-{session_id[:8]}",
-                )
-                _register_flush_worker(diarize_task)
-                logger.info(
-                    "Session %s…: post-session diarization queued",
-                    session_id[:8],
-                )
-            else:
-                logger.info(
-                    "Session %s…: no WAV file — post-session diarization skipped.",
-                    session_id[:8],
-                )
-                self.remove(session_id)
+            # Legacy diarization has been replaced by the generative post-session AI.
+            # We simply mark attribution as skipped and remove the session from memory.
+            session.speaker_attribution_status = "skipped"
+            logger.info(
+                "Session %s…: post-session diarization skipped (legacy).",
+                session_id[:8],
+            )
+
+            self.remove(session_id)
         else:
             # For non-completed sessions (failed/interrupted), finalize WAV if exists
             try:
@@ -588,14 +630,9 @@ def _compute_metric_hash(conv: ConversationState) -> str:
         "health_score": conv.health_score,
         "sentiment_score": conv.sentiment_score,
         "filler_count": conv.filler_count,
-        "speaking_ratio": conv.speaking_ratio,
-        "participation": conv.participation,
-        "roles": conv.roles,
         "coaching_tips": conv.coaching_tips,
         "action_items": conv.action_items,
         "decisions": conv.decisions,
-        "interruptions": conv.interruptions,
-        "speaker_switches": conv.speaker_switches,
         "objection_timeline": conv.objection_timeline,
         "buying_signal_timeline": conv.buying_signal_timeline,
         "objections": conv.objections,
@@ -675,17 +712,10 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
                 },
                 {"metric_name": "sentiment", "metric_value": conv.sentiment},
                 {"metric_name": "filler_count", "metric_value": conv.filler_count},
-                {"metric_name": "speaking_ratio", "metric_value": conv.speaking_ratio},
-                {"metric_name": "participation", "metric_value": conv.participation},
-                {"metric_name": "speaker_roles", "metric_value": conv.roles},
                 {"metric_name": "coaching_tips", "metric_value": conv.coaching_tips},
                 {"metric_name": "action_items", "metric_value": conv.action_items},
                 {"metric_name": "decisions", "metric_value": conv.decisions},
-                {"metric_name": "interruptions", "metric_value": conv.interruptions},
-                {
-                    "metric_name": "speaker_switches",
-                    "metric_value": conv.speaker_switches,
-                },
+
                 {
                     "metric_name": "objection_timeline",
                     "metric_value": conv.objection_timeline,
@@ -728,16 +758,10 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
                 db_sess = await crud.get_session(db, session.session_id)
                 if db_sess is None:
                     logger.warning(
-                        "Flusher — session %s not found in DB. Re-creating session row to prevent foreign key violations.",  # noqa: E501
+                        "Flusher — session %s not found in DB. Deferring telemetry flush until route handler commits row.",
                         session.session_id[:8],
                     )
-                    await crud.create_session(
-                        db,
-                        session_id=session.session_id,
-                        mode=session.mode,
-                        client_id=session.client_id,
-                        user_id=session.user_id,
-                    )
+                    return
 
                 if seg_delta:
                     await crud.save_transcript_segments(
@@ -838,37 +862,7 @@ def _register_flush_worker(task: asyncio.Task) -> None:
     task.add_done_callback(_flush_workers.discard)
 
 
-async def _run_post_session_diarization(
-    session_id: str,
-    wav_path: str,
-) -> None:
-    """
-    Fire-and-forget wrapper for the post-session diarization pipeline.
 
-    Launched as an asyncio.Task from SessionManager.end() after the final
-    flush completes.  Registered in _flush_workers so stop_flusher() can
-    drain it before DB pool disposal.
-
-    Exceptions from the inner service are already caught and logged there;
-    this wrapper adds a second safety net to ensure no uncaught exception
-    can propagate and cancel the task unexpectedly.
-    """
-    try:
-        from services.post_session_diarizer import run_post_session_diarization
-
-        await run_post_session_diarization(session_id, wav_path)
-    except Exception:  # noqa: BLE001
-        logger.exception(
-            "Session %s…: post-session diarization wrapper caught unexpected error.",
-            session_id[:8],
-        )
-    finally:
-        manager = get_session_manager()
-        manager.remove(session_id)
-        logger.info(
-            "Session %s…: removed from memory registry after post-session diarization",
-            session_id[:8],
-        )
 
 
 async def _flush_loop() -> None:
@@ -895,6 +889,19 @@ async def _flush_loop() -> None:
 
             manager = get_session_manager()
             active_sessions = manager.list_active()
+            
+            import psutil
+            try:
+                proc = psutil.Process()
+                num_handles = proc.num_handles() if hasattr(proc, "num_handles") else -1
+                num_fds = proc.num_fds() if hasattr(proc, "num_fds") else -1
+                num_conns = len(proc.connections())
+                tasks = asyncio.all_tasks()
+                diart_closes = sum(1 for t in tasks if t.get_name().startswith("diart-close-"))
+                diart_listeners = sum(1 for t in tasks if t.get_name().startswith("diart-listener-"))
+                logger.warning(f"[FORENSIC] resource_dump ts={time.time():.3f} handles={num_handles} fds={num_fds} conns={num_conns} total_tasks={len(tasks)} diart_closes={diart_closes} diart_listeners={diart_listeners} active_sessions={len(active_sessions)}")
+            except Exception as e:
+                logger.error(f"[FORENSIC] error dumping resources: {e}")
             
             from ws.broadcast import broadcast_timer
 
@@ -962,7 +969,7 @@ def start_flusher() -> None:
     Launch the global background scheduler loop as an asyncio task.
 
     Must be called from the FastAPI lifespan startup hook AFTER the database
-    engine has been initialised (i.e., after create_all() completes).
+    engine has been initialised (i.e., after alembic upgrade head completes).
 
     Also initialises _FLUSH_SEMAPHORE here (not at import time) to avoid
     event-loop mismatch errors in tests and multi-worker deployments.
