@@ -5,7 +5,7 @@ Provides:
     engine          — AsyncEngine bound to PostgreSQL via asyncpg
     AsyncSessionLocal — session factory (async_sessionmaker)
     get_db()        — FastAPI dependency that yields an AsyncSession per request
-    create_all()    — async helper called once in main.py lifespan startup
+
 
 Design rules (from .agent/ARCHITECTURE.md + database_agent.md):
     - Driver: postgresql+asyncpg (DATABASE_URL sourced from core/config.py)
@@ -13,7 +13,7 @@ Design rules (from .agent/ARCHITECTURE.md + database_agent.md):
     - Pool is capped (pool_size=5, max_overflow=10) to avoid competing with the
       Whisper / Pyannote GPU pipeline for system resources
     - Sessions are scoped per-request via FastAPI Depends(get_db)
-    - Table creation uses conn.run_sync(Base.metadata.create_all) — the only
+    - Table creation uses Alembic (alembic upgrade head).
       correct way to call a sync DDL method inside an async context
     - Do NOT import this module at module level inside audio handlers or the
       WebSocket session manager — use asyncio.create_task for all DB writes
@@ -69,22 +69,6 @@ AsyncSessionLocal: async_sessionmaker[AsyncSession] = async_sessionmaker(
 # ── Table initialisation ──────────────────────────────────────────────────────
 
 
-async def create_all() -> None:
-    """
-    Create all tables defined in db/models.py if they do not already exist.
-
-    Called once from the FastAPI lifespan startup hook in main.py:
-
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-
-    Uses create_all (not Alembic) for Phase 3 simplicity.
-    Alembic migrations are deferred to a later deployment phase.
-    """
-    logger.info("DB — running Base.metadata.create_all() …")
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("DB — all tables verified / created.")
 
 
 # ── FastAPI dependency ────────────────────────────────────────────────────────

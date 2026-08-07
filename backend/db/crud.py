@@ -377,52 +377,42 @@ async def save_transcript_segments(
         return
 
     sid = uuid.UUID(session_id)
-    rows = [
-        DBTranscriptSegment(
-            session_id=sid,
-            speaker_id=(
+    values_list = []
+    for seg in segments:
+        values_list.append({
+            "session_id": sid,
+            "segment_id": getattr(seg, "segment_id", None) or (seg.get("segment_id") if isinstance(seg, dict) else None),
+            "speaker_id": (
                 getattr(seg, "speaker", None)
                 if getattr(seg, "speaker", None) is not None
-                else (
-                    seg.get("speaker", seg.get("speaker_id"))
-                    if isinstance(seg, dict)
-                    else None
-                )
+                else (seg.get("speaker", seg.get("speaker_id")) if isinstance(seg, dict) else None)
             ),
-            start_time=(
+            "start_time": (
                 getattr(seg, "start", None)
                 if getattr(seg, "start", None) is not None
-                else (
-                    seg.get("start", seg.get("start_time", 0.0))
-                    if isinstance(seg, dict)
-                    else 0.0
-                )
+                else (seg.get("start", seg.get("start_time", 0.0)) if isinstance(seg, dict) else 0.0)
             ),
-            end_time=(
+            "end_time": (
                 getattr(seg, "end", None)
                 if getattr(seg, "end", None) is not None
-                else (
-                    seg.get("end", seg.get("end_time", 0.0))
-                    if isinstance(seg, dict)
-                    else 0.0
-                )
+                else (seg.get("end", seg.get("end_time", 0.0)) if isinstance(seg, dict) else 0.0)
             ),
-            text=(
+            "text": (
                 getattr(seg, "text", None)
                 if getattr(seg, "text", None) is not None
                 else (seg.get("text", "") if isinstance(seg, dict) else "")
             ),
-            sentiment=(
+            "sentiment": (
                 getattr(seg, "sentiment", None)
                 if getattr(seg, "sentiment", None) is not None
                 else (seg.get("sentiment") if isinstance(seg, dict) else None)
             ),
-            sentiment_label=(
+            "sentiment_label": (
                 getattr(seg, "sentiment_label", None)
                 if getattr(seg, "sentiment_label", None) is not None
                 else (seg.get("sentiment_label") if isinstance(seg, dict) else None)
             ),
-            words=(
+            "words": (
                 [
                     {
                         "word": getattr(w, "word", ""),
@@ -434,14 +424,28 @@ async def save_transcript_segments(
                 ]
                 if getattr(seg, "words", None)
                 else (seg.get("words") if isinstance(seg, dict) else None)
-            ),
-        )
-        for seg in segments
-    ]
-    db.add_all(rows)
+            )
+        })
+
+    stmt = pg_insert(DBTranscriptSegment).values(values_list)
+    stmt = stmt.on_conflict_do_update(
+        index_elements=["segment_id"],
+        set_={
+            "speaker_id": stmt.excluded.speaker_id,
+            "start_time": stmt.excluded.start_time,
+            "end_time": stmt.excluded.end_time,
+            "text": stmt.excluded.text,
+            "sentiment": stmt.excluded.sentiment,
+            "sentiment_label": stmt.excluded.sentiment_label,
+            "words": stmt.excluded.words,
+        },
+        where=(DBTranscriptSegment.segment_id.is_not(None))
+    )
+    
+    await db.execute(stmt)
     logger.debug(
-        "DB — %d transcript segment(s) staged for session %s",
-        len(rows),
+        "DB — %d transcript segment(s) upserted for session %s",
+        len(values_list),
         session_id[:8],
     )
 
@@ -585,6 +589,7 @@ async def save_analysis_result(
     health_score: int | None = None,
     summary: str | None = None,
     report_json: dict | None = None,
+    processed_transcript: list | None = None,
 ) -> None:
     """
     Atomically upsert the one-to-one final analysis report for a session.
@@ -621,6 +626,7 @@ async def save_analysis_result(
             health_score=health_score,
             summary=summary,
             report_json=report_json,
+            processed_transcript=processed_transcript,
         )
         .on_conflict_do_update(
             index_elements=["session_id"],
@@ -628,6 +634,7 @@ async def save_analysis_result(
                 "health_score": health_score,
                 "summary": summary,
                 "report_json": report_json,
+                "processed_transcript": processed_transcript,
             },
         )
     )
@@ -637,6 +644,17 @@ async def save_analysis_result(
         session_id[:8],
         health_score,
     )
+
+
+async def get_latest_analysis_result(db: AsyncSession, session_id: str) -> DBAnalysisResult | None:
+    """
+    Retrieve the latest analysis result object for a session.
+    """
+    sid = uuid.UUID(session_id)
+    stmt = select(DBAnalysisResult).where(DBAnalysisResult.session_id == sid)
+    result = await db.execute(stmt)
+    return result.scalars().first()
+
 
 
 async def update_client_snapshot(
@@ -731,8 +749,7 @@ async def recover_stale_sessions(db: AsyncSession) -> int:
 
         # Formulate deterministic WAV file path
         session_id_str = str(session.id)
-        safe_id = session_id_str.replace("-", "")[:16]
-        wav_filename = f"session_{safe_id}.wav"
+        wav_filename = f"session_{session_id_str}.wav"
         wav_path = os.path.join("session_audio", wav_filename)
 
         # Calculate duration based on WAV file if it exists, otherwise 0.0
