@@ -228,7 +228,6 @@ async def status_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
         f"Session {session_id[:8]}…: /status subscriber accepted "
         f"(ws_id={id(websocket)})"
     )
-    )
     try:
         while True:
             await websocket.receive_text()
