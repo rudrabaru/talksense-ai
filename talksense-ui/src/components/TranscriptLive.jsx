@@ -99,7 +99,7 @@ export default function TranscriptLive() {
       streamWsRef.current = ws;
 
       ws.onopen = () => {
-        console.log("[Day3] WebSocket Connected — starting audio stream");
+
         setStreamStatus("streaming");
 
         const recorder = new MediaRecorder(stream);
@@ -108,7 +108,7 @@ export default function TranscriptLive() {
         recorder.ondataavailable = async (event) => {
           if (event.data.size > 0 && ws.readyState === WebSocket.OPEN) {
             const time = new Date().toLocaleTimeString();
-            console.log(`[Day3] Sending: ${event.data.size} bytes`);
+
 
             const buffer = await event.data.arrayBuffer();
             ws.send(buffer);
@@ -130,12 +130,12 @@ export default function TranscriptLive() {
         }
         // Day 1 greeting messages also arrive here
         if (data.text) {
-          console.log(`[Day3] Greeting: ${data.text}`);
+
         }
       };
 
       ws.onclose = () => {
-        console.log("[Day3] WebSocket Disconnected");
+
         setStreamStatus("idle");
       };
 
@@ -160,7 +160,7 @@ export default function TranscriptLive() {
   const startVAD = async () => {
     try {
       setVadStatus("loading");
-      console.log("[Day4] Initializing VAD…");
+
 
       const vad = await MicVAD.new({
         baseAssetPath: "/vad/",
@@ -174,7 +174,7 @@ export default function TranscriptLive() {
         },
 
         onSpeechStart: () => {
-          console.log("[Day4] Speech started");
+
           setIsSpeaking(true);
           setSpeechEvents((prev) => [
             ...prev.slice(-29),
@@ -188,7 +188,7 @@ export default function TranscriptLive() {
         onSpeechEnd: (audio) => {
           // audio is a Float32Array of 16kHz samples
           const durationSec = (audio.length / 16000).toFixed(2);
-          console.log(`[Day4] Speech ended — ${audio.length} samples (${durationSec}s)`);
+
           setIsSpeaking(false);
           setSpeechEvents((prev) => [
             ...prev.slice(-29),
@@ -205,7 +205,7 @@ export default function TranscriptLive() {
       vadRef.current = vad;
       await vad.start();
       setVadStatus("listening");
-      console.log("[Day4] VAD is now listening");
+
     } catch (err) {
       console.error("[Day4] VAD Error:", err);
       setVadStatus("error");
@@ -219,7 +219,7 @@ export default function TranscriptLive() {
     }
     setVadStatus("idle");
     setIsSpeaking(false);
-    console.log("[Day4] VAD stopped");
+
   };
 
   // ─── Render ────────────────────────────────────────────────────────────────

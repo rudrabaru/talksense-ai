@@ -16,7 +16,6 @@ import MetricsPanel from "../components/dashboard/MetricsPanel";
 import AlertsPanel from "../components/dashboard/AlertsPanel";
 import CoachingPanel from "../components/dashboard/CoachingPanel";
 import logoImage from "../assets/logo/logo.png";
-
 // --- Constants ---------------------------------------------------------------
 const WS_BASE_URL = import.meta.env.VITE_WS_URL || "ws://localhost:8000";
 const REST_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -182,9 +181,7 @@ export default function DashboardPage() {
 
   // --- Watch session status to reset isEnding ---------------------------------
   useEffect(() => {
-    console.warn(`[DEBUG-LIFECYCLE] DashboardPage: sessionStatus changed to "${sessionStatus}" at t=${performance.now().toFixed(1)}ms | isEnding=` + isEnding);
     if (["completed", "failed", "interrupted", "expired"].includes(sessionStatus)) {
-      console.warn(`[DEBUG-LIFECYCLE] DashboardPage: TERMINAL status → setIsEnding(false) at t=${performance.now().toFixed(1)}ms`);
       setIsEnding(false);
     }
   }, [sessionStatus]);
@@ -192,7 +189,7 @@ export default function DashboardPage() {
   // --- Cleanup audio capture on unmount --------------------------------------
   useEffect(() => {
     return () => {
-      // Send "end" and close socket on unmount to properly complete the session
+      // Send "end" and let the backend close the socket to properly complete the session
       if (
         !hasExplicitlyEnded.current &&
         audioWsRef.current &&
@@ -203,9 +200,13 @@ export default function DashboardPage() {
         } catch (e) {
           console.warn("[DashboardPage] Failed to send 'end' on unmount", e);
         }
-        audioWsRef.current.close(1000, "Component unmounted");
-      } else if (audioWsRef.current) {
-        audioWsRef.current.close(1000, "Component unmounted");
+      } 
+      
+      // We explicitly DO NOT call audioWsRef.current.close() here if it's OPEN.
+      // The backend breaks its receive loop when it reads "end" and closes the TCP connection cleanly.
+      // If the socket was CONNECTING, we must close it to abort the connection attempt.
+      if (audioWsRef.current && audioWsRef.current.readyState === WebSocket.CONNECTING) {
+         audioWsRef.current.close(1000, "Component unmounted while connecting");
       }
       cleanupCapture();
     };
@@ -266,7 +267,8 @@ export default function DashboardPage() {
     }
 
     setAudioStatus("connecting");
-    const ws = new WebSocket(`${WS_BASE_URL}/ws/audio/${validatedSessionId}`);
+    const wsToken = localStorage.getItem(`ws_token_${validatedSessionId}`);
+    const ws = new WebSocket(`${WS_BASE_URL}/ws/audio/${validatedSessionId}?token=${wsToken || ''}`);
     audioWsRef.current = ws;
 
     ws.onopen = async () => {
@@ -298,15 +300,6 @@ export default function DashboardPage() {
       audioWsRef.current = null;
       stopCapture();
       setAudioStatus("idle");
-
-      // 4009 = backend rejected because session is terminal.
-      // Navigate to /dashboard so a fresh session is auto-created.
-      if (event.code === 4009) {
-        console.warn(
-          "[DashboardPage] Session ended on backend — navigating to fresh session.",
-        );
-        navigate("/dashboard", { replace: true });
-      }
     };
 
     ws.onerror = (event) => {
@@ -337,13 +330,13 @@ export default function DashboardPage() {
   }, [stopCapture]);
 
   /**
-   * Ends the session explicitly by stopping capture and sending terminal 'end'.
-   * Leaves websocket open so backend can reply with finalization payloads.
+   * Ends the entire session.
+   * Tells the backend to finalize it, stops capture, 
+   * and relies on the backend to close the WebSocket.
    */
   const endSession = useCallback(() => {
     if (hasExplicitlyEnded.current) return;
     hasExplicitlyEnded.current = true;
-    console.warn(`[DEBUG-LIFECYCLE] DashboardPage: endSession() → setIsEnding(true) at t=${performance.now().toFixed(1)}ms | sessionStatus="${sessionStatus}"`);
     setIsEnding(true);
 
     stopCapture();
@@ -351,7 +344,6 @@ export default function DashboardPage() {
 
     if (audioWsRef.current && audioWsRef.current.readyState === WebSocket.OPEN) {
       try {
-        console.warn(`[DEBUG-LIFECYCLE] DashboardPage: sending 'end' to audio WS at t=${performance.now().toFixed(1)}ms`);
         audioWsRef.current.send("end");
       } catch (err) {
         console.error("[DashboardPage] Failed to send 'end' explicitly:", err);

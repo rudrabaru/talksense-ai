@@ -121,10 +121,6 @@ export function useSessionWebSocket(sessionId) {
   // Helper to safely perform state transitions only if the component is currently mounted.
   const safeSetState = useCallback((setter, value) => {
     if (isMountedRef.current) {
-      // [DEBUG-LIFECYCLE] log every sessionStatus state update
-      if (setter === setSessionStatus) {
-        console.warn(`[DEBUG-LIFECYCLE] safeSetState(setSessionStatus, "${value}") called at t=${performance.now().toFixed(1)}ms`, new Error().stack?.split('\n')[2]?.trim());
-      }
       setter(value);
     }
   }, []);
@@ -377,7 +373,6 @@ export function useSessionWebSocket(sessionId) {
 
         // Restore session status from REST snapshot
         if (typeof data.status === "string" && data.status.trim().length > 0) {
-          console.warn(`[DEBUG-LIFECYCLE] reconcileState: setSessionStatus("${data.status}") from REST at t=${performance.now().toFixed(1)}ms`);
           safeSetState(setSessionStatus, data.status);
           safeSetState(setAudioUrl, data.audio_url || null);
         }
@@ -395,15 +390,9 @@ export function useSessionWebSocket(sessionId) {
 
   // --- disconnect() -- INTERNAL ----------------------------------------------
   /**
-   * Deliberately closes all open WebSocket connections.
-   * Sets isClosingRef = true BEFORE closing so that onclose handlers know the
-   * closure was intentional and do NOT schedule reconnection attempts.
-   *
-   * Cancels all pending retry timers.
-   * Does NOT reset state -- call cleanup() for full state reset.
+   * Gracefully close all WebSockets.
    */
   const disconnect = useCallback(() => {
-    console.warn(`[DEBUG-LIFECYCLE] disconnect() CALLED at t=${performance.now().toFixed(1)}ms`, new Error().stack?.split('\n')[2]?.trim());
     console.log("[useSessionWebSocket] Disconnecting all channels.");
 
     // Signal intentional close to onclose handlers.
@@ -505,13 +494,6 @@ export function useSessionWebSocket(sessionId) {
         ws.onerror   = null;
         ws.onmessage = null;
 
-        // [DEBUG-LIFECYCLE] Log every onclose for every channel
-        console.warn(
-          `[DEBUG-LIFECYCLE] onclose FIRED for channel="${channel}" code=${event.code} ` +
-          `intentional=${isClosingRef.current} sessionStatusRef="${sessionStatusRef.current}" ` +
-          `t=${performance.now().toFixed(1)}ms`
-        );
-
         // If this socket is no longer the active one in the ref, it means
         // a new connection attempt has already taken over (e.g. StrictMode
         // remount). Ignore this close event to prevent rogue reconnect loops.
@@ -537,7 +519,6 @@ export function useSessionWebSocket(sessionId) {
               safeSetState(setError, `Session not found on backend (4004).`);
               safeSetState(setSessionStatus, "failed");
             } else if (event.code === 4009) {
-              console.warn(`[DEBUG-LIFECYCLE] onclose code=4009 on channel="${channel}" → setSessionStatus("completed") at t=${performance.now().toFixed(1)}ms`);
               safeSetState(setError, `Session has ended (4009).`);
               safeSetState(setSessionStatus, "completed");
             }
@@ -781,8 +762,6 @@ export function useSessionWebSocket(sessionId) {
             if (!isMountedRef.current) return;
             if (socketsRef.current[channel] !== ws) return;
 
-            console.warn(`[DEBUG-LIFECYCLE] STATUS WS onmessage FIRED at t=${performance.now().toFixed(1)}ms — raw:`, event.data);
-
             // Unwrap backend envelope { type, payload, ts } → payload.
             const payload = _unwrapEnvelope(event.data, "status");
             if (payload === null) return; // parse failure or type mismatch already logged
@@ -797,13 +776,11 @@ export function useSessionWebSocket(sessionId) {
 
             // elapsed_seconds is intentionally NOT stored in hook state.
             // It is cosmetic and better owned by a timer in the consuming component.
-            console.warn(`[DEBUG-LIFECYCLE] STATUS WS → setSessionStatus("${status}") at t=${performance.now().toFixed(1)}ms`);
             safeSetState(setSessionStatus, status);
 
             // Trigger clean teardown on terminal lifecycle transitions.
             // disconnect() sets isClosingRef = true, suppressing reconnect logic.
             if (_isTerminalStatus(status)) {
-              console.warn(`[DEBUG-LIFECYCLE] STATUS WS → terminal "${status}" → calling disconnect() at t=${performance.now().toFixed(1)}ms`);
               console.log(`[useSessionWebSocket] Terminal status received: "${status}". Disconnecting.`);
               disconnect();
             }

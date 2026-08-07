@@ -172,6 +172,7 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt, mode }) => {
     talkRatioSummary,
     talkTimeline,
     analyticsHealth,
+    postSessionAi,
   } = metrics;
 
 
@@ -471,19 +472,30 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt, mode }) => {
           {/* Post-Session Conversation Flow Analytics */}
           <div>
             <strong style={{ display: "block", marginBottom: "6px", color: "#475569", fontSize: "0.9em" }}>Post-Session Flow Analytics</strong>
-            {talkRatioSummary ? (
+            {postSessionAi ? (
               <div style={{ fontSize: "0.8em", color: "#64748b" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
-                  <div><strong>Dominance:</strong> {talkRatioSummary.summary.dominance_percent}%</div>
-                  <div><strong>Balance:</strong> <span style={{ color: talkRatioSummary.summary.conversation_balance === "POOR" ? "#ef4444" : talkRatioSummary.summary.conversation_balance === "WARNING" ? "#f59e0b" : "#10b981", fontWeight: "bold" }}>{talkRatioSummary.summary.conversation_balance}</span></div>
-                  <div><strong>Longest Mono:</strong> {talkRatioSummary.summary.longest_monologue_seconds}s ({talkRatioSummary.summary.longest_monologue_speaker || "None"})</div>
-                  <div><strong>Mono Risk:</strong> <span style={{ color: talkRatioSummary.summary.monologue_risk === "HIGH" ? "#ef4444" : talkRatioSummary.summary.monologue_risk === "MEDIUM" ? "#f59e0b" : "#10b981", fontWeight: "bold" }}>{talkRatioSummary.summary.monologue_risk}</span></div>
-                  <div><strong>Avg Turn:</strong> {talkRatioSummary.summary.average_turn_length_seconds}s</div>
-                  <div><strong>Silence:</strong> {talkRatioSummary.summary.silence_duration_seconds}s</div>
+                <div style={{ marginBottom: "8px" }}>
+                  <strong>Summary:</strong> {postSessionAi.summary || postSessionAi.executive_summary || "No summary available."}
                 </div>
+                {postSessionAi.decisions && postSessionAi.decisions.length > 0 && (
+                  <div style={{ marginBottom: "8px" }}>
+                    <strong>Decisions:</strong>
+                    <ul style={{ margin: "4px 0 0 16px", padding: 0 }}>
+                      {postSessionAi.decisions.map((d, i) => <li key={i}>{d}</li>)}
+                    </ul>
+                  </div>
+                )}
+                {postSessionAi.action_items && postSessionAi.action_items.length > 0 && (
+                  <div style={{ marginBottom: "8px" }}>
+                    <strong>Action Items:</strong>
+                    <ul style={{ margin: "4px 0 0 16px", padding: 0 }}>
+                      {postSessionAi.action_items.map((a, i) => <li key={i}>{a.description} (Assignee: {a.assignee})</li>)}
+                    </ul>
+                  </div>
+                )}
               </div>
             ) : (
-              <p style={{ margin: "2px 0 0 0", color: "#94a3b8", fontSize: "0.8em", fontStyle: "italic" }}>{sessionStatus === "completed" ? "Calculating..." : "Available post-session"}</p>
+              <p style={{ margin: "2px 0 0 0", color: "#94a3b8", fontSize: "0.8em", fontStyle: "italic" }}>{sessionStatus === "completed" ? "Generating AI summary..." : "Available post-session"}</p>
             )}
           </div>
 
