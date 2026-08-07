@@ -135,9 +135,9 @@ export class MixedAudioSource extends AudioSource {
         audio: true
       });
 
-      // Drop video track from screen share
+      // Drop video track from screen share without terminating the OS session
       const videoTracks = this.sysStream.getVideoTracks();
-      videoTracks.forEach(track => track.stop());
+      videoTracks.forEach(track => { track.enabled = false; });
 
       const audioTracks = this.sysStream.getAudioTracks();
       if (audioTracks.length === 0) {
@@ -161,6 +161,18 @@ export class MixedAudioSource extends AudioSource {
 
       // 4. Setup Graph Mixing Nodes
       this.micNode = this.audioContext.createMediaStreamSource(this.micStream);
+      
+      // Chromium bug 933677: force Web Audio API to pull from getDisplayMedia
+      this._systemAudioSink = new Audio();
+      this._systemAudioSink.srcObject = this.sysStream;
+      this._systemAudioSink.muted = true;
+      this._systemAudioSink.playsInline = true;
+      try {
+        await this._systemAudioSink.play();
+      } catch (err) {
+        console.warn("Failed to activate desktop audio stream:", err);
+      }
+      
       this.sysNode = this.audioContext.createMediaStreamSource(this.sysStream);
 
       // Dynamics Compressor to prevent clipping when both parties speak loudly
@@ -183,10 +195,20 @@ export class MixedAudioSource extends AudioSource {
           targetRate: TARGET_SAMPLE_RATE,
           chunkSamples: CHUNK_SAMPLES,
         },
-        numberOfOutputs: 0, 
+        numberOfOutputs: 1, 
       });
 
       this.compressorNode.connect(this.workletNode);
+
+      // --- MINIMAL ARCHITECTURAL FIX: Prevent branch pruning ---
+      // We must route the Worklet to the      // PHASE 16 FIX - Keep graph active but silent
+      // Use 0.0001 instead of 0 because Chrome optimizes out exact 0 gain
+      // nodes, causing the upstream AudioWorklet to receive zero-filled buffers.
+      const silenceGain = this.audioContext.createGain();
+      silenceGain.gain.value = 0.0001;
+      this.workletNode.connect(silenceGain);
+      silenceGain.connect(this.audioContext.destination);
+      // ---------------------------------------------------------
 
       // 6. Handle Chunks
       this.workletNode.port.onmessage = (event) => {
@@ -216,7 +238,9 @@ export class MixedAudioSource extends AudioSource {
 
     if (this.workletNode) {
       this.workletNode.port.onmessage = null;
+
       this.workletNode.disconnect();
+
       this.workletNode = null;
     }
     if (this.micNode) {
@@ -226,6 +250,11 @@ export class MixedAudioSource extends AudioSource {
     if (this.sysNode) {
       this.sysNode.disconnect();
       this.sysNode = null;
+    }
+    if (this._systemAudioSink) {
+      this._systemAudioSink.pause();
+      this._systemAudioSink.srcObject = null;
+      this._systemAudioSink = null;
     }
     if (this.compressorNode) {
       this.compressorNode.disconnect();
