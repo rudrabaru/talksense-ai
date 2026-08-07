@@ -102,7 +102,7 @@ class AudioBuffer:
 
     _chunks: deque = field(default_factory=deque)
     _buffered_ms: float = 0.0
-    _last_speech_time: float = field(default_factory=time.monotonic)
+    _silence_duration_ms: float = 0.0
     _speech_active: bool = False
 
     # ── WAV file accumulator (disk) ───────────────────────────────────────────
@@ -116,7 +116,7 @@ class AudioBuffer:
     _total_nonspeech_chunks: int = 0
 
     def __post_init__(self):
-        self._last_speech_time = time.monotonic()
+        pass
 
     # ── Public interface ──────────────────────────────────────────────────────
 
@@ -137,18 +137,19 @@ class AudioBuffer:
         # Always write ALL incoming audio to WAV to maintain correct timeline
         self._write_to_wav(pcm_bytes)
 
-        now = time.monotonic()
         chunk_ms = self._bytes_to_ms(pcm_bytes)
         result = None
 
         if is_speech:
             self._total_speech_chunks += 1
-            self._last_speech_time = now
+            self._silence_duration_ms = 0.0
             if not self._speech_active:
                 self._speech_active = True
                 self._chunk_start_bytes = self._total_bytes_received
         else:
             self._total_nonspeech_chunks += 1
+            if self._speech_active:
+                self._silence_duration_ms += chunk_ms
 
         if self._speech_active:
             self._chunks.append(pcm_bytes)
@@ -159,8 +160,7 @@ class AudioBuffer:
                 result = self._flush(is_partial=True)
             else:
                 # Flush condition 2: silence gap after speech burst
-                silence_gap_ms = (now - self._last_speech_time) * 1000
-                if silence_gap_ms >= SILENCE_GAP_MS:
+                if self._silence_duration_ms >= SILENCE_GAP_MS:
                     self._speech_active = False
                     if self._buffered_ms >= MIN_FLUSH_MS:
                         result = self._flush(is_partial=False)
@@ -269,12 +269,8 @@ class AudioBuffer:
         try:
             if self._wav_file is None:
                 audio_dir = _ensure_audio_dir()
-                safe_id = (
-                    self._session_id.replace("-", "")[:16]
-                    if self._session_id
-                    else "unknown"
-                )
-                filename = f"session_{safe_id}.wav"
+                session_id = self._session_id if self._session_id else "unknown"
+                filename = f"session_{session_id}.wav"
                 self._wav_path = os.path.join(audio_dir, filename)
 
                 # Open in write+binary mode; write placeholder header (0 bytes data)

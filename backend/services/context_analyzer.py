@@ -2349,11 +2349,13 @@ def generate_sales_insights(objections, signals, quality):
     return insights[:3]
 
 
-def analyze_sales(enriched_segments: list, session_id: Optional[str] = None) -> dict:
+def analyze_sales(nlp_input: dict) -> dict:
     """
     Main entry point for Sales Mode analysis.
     All 7 calibration steps integrated here.
     """
+    session_id = nlp_input.get("session_id")
+    enriched_segments = nlp_input.get("segments", [])
     if not enriched_segments:
         return {
             "mode": "sales",

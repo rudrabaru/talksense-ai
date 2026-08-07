@@ -39,6 +39,7 @@ The actual push is done by broadcast.py, triggered by audio_handler.py.
 """
 
 import logging
+import uuid
 import time as _time
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -51,8 +52,9 @@ router = APIRouter()
 
 
 @router.websocket("/ws/transcript/{session_id}")
-async def transcript_ws(websocket: WebSocket, session_id: str) -> None:
+async def transcript_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
     """Subscribe to live transcript segments for a session."""
+    session_id = str(session_id)
     manager = get_session_manager()
     session = manager.get(session_id)
     if session is None:
@@ -61,6 +63,13 @@ async def transcript_ws(websocket: WebSocket, session_id: str) -> None:
         return
 
     await websocket.accept()
+
+    token = websocket.query_params.get("token")
+    from core.security import verify_ws_token
+    if not verify_ws_token(token, session_id):
+        logger.warning(f"Unauthorized WS connection attempt for session {session_id}")
+        await websocket.close(code=1008, reason="Unauthorized")
+        return
     async with session.lock:
         session.ws_transcript = websocket
 
@@ -94,8 +103,9 @@ async def transcript_ws(websocket: WebSocket, session_id: str) -> None:
 
 
 @router.websocket("/ws/metrics/{session_id}")
-async def metrics_ws(websocket: WebSocket, session_id: str) -> None:
+async def metrics_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
     """Subscribe to live conversation metrics for a session."""
+    session_id = str(session_id)
     manager = get_session_manager()
     session = manager.get(session_id)
     if session is None:
@@ -104,6 +114,13 @@ async def metrics_ws(websocket: WebSocket, session_id: str) -> None:
         return
 
     await websocket.accept()
+
+    token = websocket.query_params.get("token")
+    from core.security import verify_ws_token
+    if not verify_ws_token(token, session_id):
+        logger.warning(f"Unauthorized WS connection attempt for session {session_id}")
+        await websocket.close(code=1008, reason="Unauthorized")
+        return
     async with session.lock:
         session.ws_metrics = websocket
 
@@ -136,8 +153,9 @@ async def metrics_ws(websocket: WebSocket, session_id: str) -> None:
 
 
 @router.websocket("/ws/alerts/{session_id}")
-async def alerts_ws(websocket: WebSocket, session_id: str) -> None:
+async def alerts_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
     """Subscribe to real-time alerts for a session."""
+    session_id = str(session_id)
     manager = get_session_manager()
     session = manager.get(session_id)
     if session is None:
@@ -146,6 +164,13 @@ async def alerts_ws(websocket: WebSocket, session_id: str) -> None:
         return
 
     await websocket.accept()
+
+    token = websocket.query_params.get("token")
+    from core.security import verify_ws_token
+    if not verify_ws_token(token, session_id):
+        logger.warning(f"Unauthorized WS connection attempt for session {session_id}")
+        await websocket.close(code=1008, reason="Unauthorized")
+        return
     async with session.lock:
         session.ws_alerts = websocket
 
@@ -178,8 +203,9 @@ async def alerts_ws(websocket: WebSocket, session_id: str) -> None:
 
 
 @router.websocket("/ws/status/{session_id}")
-async def status_ws(websocket: WebSocket, session_id: str) -> None:
+async def status_ws(websocket: WebSocket, session_id: uuid.UUID) -> None:
     """Subscribe to session lifecycle status changes."""
+    session_id = str(session_id)
     manager = get_session_manager()
     session = manager.get(session_id)
     if session is None:
@@ -188,6 +214,13 @@ async def status_ws(websocket: WebSocket, session_id: str) -> None:
         return
 
     await websocket.accept()
+
+    token = websocket.query_params.get("token")
+    from core.security import verify_ws_token
+    if not verify_ws_token(token, session_id):
+        logger.warning(f"Unauthorized WS connection attempt for session {session_id}")
+        await websocket.close(code=1008, reason="Unauthorized")
+        return
     async with session.lock:
         session.ws_status = websocket
 
@@ -195,9 +228,6 @@ async def status_ws(websocket: WebSocket, session_id: str) -> None:
         f"Session {session_id[:8]}…: /status subscriber accepted "
         f"(ws_id={id(websocket)})"
     )
-    logger.warning(
-        "[DEBUG-LIFECYCLE] STATUS WS ASSIGNED: session=%s ws_id=%s at t=%.4f",
-        session_id[:8], id(websocket), _time.monotonic(),
     )
     try:
         while True:
@@ -208,29 +238,14 @@ async def status_ws(websocket: WebSocket, session_id: str) -> None:
         ):
             raise exc
     finally:
-        _t_close = _time.monotonic()
-        logger.warning(
-            "[DEBUG-LIFECYCLE] STATUS WS FINALLY entered: session=%s ws_id=%s at t=%.4f",
-            session_id[:8], id(websocket), _t_close,
-        )
         async with session.lock:
             if session.ws_status is websocket:
                 session.ws_status = None
-                logger.warning(
-                    "[DEBUG-LIFECYCLE] STATUS WS CLEARED (ws_status=None): session=%s ws_id=%s at t=%.4f",
-                    session_id[:8], id(websocket), _time.monotonic(),
-                )
                 logger.info(
                     f"Session {session_id[:8]}…: /status subscriber closed "
                     f"(ws_id={id(websocket)}) — reference cleared"
                 )
             else:
-                logger.warning(
-                    "[DEBUG-LIFECYCLE] STATUS WS stale close — active ref preserved: session=%s closing_ws_id=%s active_ws_id=%s at t=%.4f",
-                    session_id[:8], id(websocket),
-                    id(session.ws_status) if session.ws_status is not None else "None",
-                    _time.monotonic(),
-                )
                 logger.info(
                     f"Session {session_id[:8]}…: /status subscriber closed "
                     f"(ws_id={id(websocket)}) — stale close, active reference preserved "

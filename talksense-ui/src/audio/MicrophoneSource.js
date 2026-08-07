@@ -211,8 +211,18 @@ export class MicrophoneSource extends AudioSource {
           targetRate: TARGET_SAMPLE_RATE,
           chunkSamples: CHUNK_SAMPLES,
         },
-        numberOfOutputs: 0, 
+        numberOfOutputs: 1, 
       });
+
+      this.sourceNode = this.audioContext.createMediaStreamSource(this.stream);
+      this.sourceNode.connect(this.workletNode);
+
+      // --- MINIMAL ARCHITECTURAL FIX: Prevent branch pruning ---
+      const silenceGain = this.audioContext.createGain();
+      silenceGain.gain.value = 0.0001;
+      this.workletNode.connect(silenceGain);
+      silenceGain.connect(this.audioContext.destination);
+      // ---------------------------------------------------------
 
       this.workletNode.port.onmessage = (event) => {
         const int16Chunk = event.data;

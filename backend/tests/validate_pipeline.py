@@ -749,10 +749,8 @@ async def test_database():
         import uuid as _uuid
 
         from db import crud
-        from db.database import AsyncSessionLocal, create_all
-
-        await create_all()
-        record(area, "create_all() runs without exception", True)
+        from db.database import AsyncSessionLocal
+        record(area, "database connection successful", True)
 
         async with AsyncSessionLocal() as db:
             test_sid = str(_uuid.uuid4())

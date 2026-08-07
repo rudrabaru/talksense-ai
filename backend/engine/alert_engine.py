@@ -77,7 +77,6 @@ class AlertEngine:
 
         # ── Universal alerts ──────────────────────────────────────────────────
         candidates += self._check_sentiment_crash(state, prev_health)
-        candidates += self._check_speaking_imbalance(state)
         candidates += self._check_long_silence(state)
         candidates += self._check_engagement_drop(state)
 
@@ -135,22 +134,7 @@ class AlertEngine:
             ]
         return []
 
-    @staticmethod
-    def _check_speaking_imbalance(state) -> list[Alert]:
-        ratios = state.speaking_ratio.values()
-        if not ratios:
-            return []
-        dominant = max(ratios)
-        if dominant > 80 and state.duration_seconds > 120:
-            return [
-                Alert(
-                    id=str(uuid.uuid4()),
-                    level="critical",
-                    message="Speaking imbalance detected — one person dominates the conversation.",  # noqa: E501
-                    alert_type="speaking_imbalance",
-                )
-            ]
-        return []
+
 
     @staticmethod
     def _check_repeated_objections(state) -> list[Alert]:

@@ -170,7 +170,11 @@ export async function createSession(mode = 'meeting', clientId = null) {
         throw new Error(error.detail || 'Failed to create session');
     }
 
-    return response.json();
+    const data = await response.json();
+    if (data.ws_token) {
+        localStorage.setItem(`ws_token_${data.session_id}`, data.ws_token);
+    }
+    return data;
 }
 
 /**
@@ -273,4 +277,21 @@ export async function compareSessions(id1, id2) {
     }
 
     return response.json();
+}
+
+/**
+ * Get active diarization engine configuration from backend
+ * @returns {Promise<Object>} { engine: string }
+ */
+export async function getDiarizationEngine() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/engine`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch engine');
+        }
+        return await response.json();
+    } catch (err) {
+        console.error('Error fetching diarization engine:', err);
+        return { engine: 'error' };
+    }
 }

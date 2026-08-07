@@ -49,9 +49,12 @@ class ConversationEngine:
     Stateless engine — all state lives in ConversationState.
     One engine instance shared across all sessions.
 
+    The engine reads from state.transcript_segments[] using internal
+    watermarks to compute the delta of genuinely new text.
+
     Usage:
         engine = get_conversation_engine()
-        updated_state, new_alerts = engine.process_segments(segments, state, mode)
+        updated_state, new_alerts = engine.process_segments(state, mode)
     """
 
     # Per-session AlertEngine instances (keyed by session_id)
@@ -67,7 +70,6 @@ class ConversationEngine:
 
     def process_segments(
         self,
-        segments: list,
         state: ConversationState,
         mode: str,
         session_id: str = "default",
@@ -75,10 +77,14 @@ class ConversationEngine:
         speaker_centroids: dict | None = None,
     ) -> tuple[ConversationState, list[dict]]:
         """
-        Process new segments and return updated state + new alerts.
+        Process new transcript data and return updated state + new alerts.
+
+        The engine reads directly from state.transcript_segments[] using its
+        own watermarks.  It computes the delta (new segments + boundary growth
+        from overlap merges) and passes only genuinely new text to the metric
+        updaters.
 
         Args:
-            segments:   DiarizedSegment list (already enriched with sentiment).
             state:      Current ConversationState (mutated in place).
             mode:       "meeting" | "sales" | "interview".
             session_id: Used to locate the per-session AlertEngine.
@@ -86,26 +92,63 @@ class ConversationEngine:
         Returns:
             (updated ConversationState, list of new alert dicts)
         """
-        if not segments:
+        all_segments = state.transcript_segments
+        new_start = state._engine_processed_index
+
+        # ── Derive the delta: boundary growth + genuinely new segments ────────
+        segments_to_process: list[dict] = []
+
+        # 1. Boundary check: did the last-processed segment grow via merge?
+        if new_start > 0 and new_start <= len(all_segments):
+            boundary_seg = all_segments[new_start - 1]
+            boundary_text = boundary_seg.get("text", "") if isinstance(boundary_seg, dict) else getattr(boundary_seg, "text", "")
+            boundary_words = boundary_text.split()
+            prev_word_count = state._boundary_word_count
+
+            if len(boundary_words) > prev_word_count:
+                # The overlap merge extended this segment — extract only new words
+                delta_words = boundary_words[prev_word_count:]
+                speaker = boundary_seg.get("speaker", "Speaker 1") if isinstance(boundary_seg, dict) else getattr(boundary_seg, "speaker", "Speaker 1")
+                segments_to_process.append({
+                    "text": " ".join(delta_words),
+                    "speaker": speaker,
+                    "start": boundary_seg.get("start", 0.0) if isinstance(boundary_seg, dict) else getattr(boundary_seg, "start", 0.0),
+                    "end": boundary_seg.get("end", 0.0) if isinstance(boundary_seg, dict) else getattr(boundary_seg, "end", 0.0),
+                    "sentiment": boundary_seg.get("sentiment", 0.0) if isinstance(boundary_seg, dict) else getattr(boundary_seg, "sentiment", 0.0),
+                })
+
+        # 2. Add genuinely new segments (everything after the watermark)
+        for seg in all_segments[new_start:]:
+            segments_to_process.append(seg if isinstance(seg, dict) else seg.__dict__)
+
+        # 3. Advance watermarks BEFORE processing (safe: we hold the session lock)
+        state._engine_processed_index = len(all_segments)
+        if all_segments:
+            last_seg = all_segments[-1]
+            last_text = last_seg.get("text", "") if isinstance(last_seg, dict) else getattr(last_seg, "text", "")
+            state._boundary_word_count = len(last_text.split())
+        else:
+            state._boundary_word_count = 0
+
+        if not segments_to_process:
             return state, []
 
         prev_health = state.health_score
 
         # 1. Update speaking ratios and participation
-        self._update_speaking_metrics(segments, state)
+        self._update_speaking_metrics(segments_to_process, state)
 
         # 2. Update aggregate sentiment
-        self._update_sentiment(segments, state)
+        self._update_sentiment(segments_to_process, state)
 
-        # 3. Count filler words
-        self._update_fillers(segments, state)
+        # 3. Count filler words (incremental — processes only new segments)
+        self._update_fillers(segments_to_process, state)
 
-        # 4. Mode-specific analysis
-        all_segments = state.transcript_segments  # full session history
+        # 4. Mode-specific analysis (incremental — processes only new segments)
         if mode == "sales":
-            self._update_sales_metrics(all_segments, state)
+            self._update_sales_metrics(segments_to_process, state)
         elif mode == "meeting":
-            self._update_meeting_metrics(all_segments, state)
+            self._update_meeting_metrics(segments_to_process, state)
 
         # 5. Compute health score via scoring profile
         state.health_score = self._compute_health(state, mode)
@@ -378,7 +421,7 @@ class ConversationEngine:
 
     @staticmethod
     def _update_fillers(segments: list, state: ConversationState) -> None:
-        """Count filler words across new segments."""
+        """Count filler words across new segments (incremental O(1))."""
         import re
 
         for seg in segments:
@@ -393,9 +436,14 @@ class ConversationEngine:
                 pattern = r"\b" + re.escape(filler) + r"\b"
                 state.filler_count += len(re.findall(pattern, text))
 
+        # Advance watermark (safety guard for index-based callers)
+        state.fillers_processed_index = len(state.transcript_segments)
+
     @staticmethod
-    def _update_sales_metrics(all_segments: list, state: ConversationState) -> None:
-        """Run sales signal detection on full session transcript."""
+    def _update_sales_metrics(new_segments: list, state: ConversationState) -> None:
+        """Incrementally detect sales signals from NEW segments only (O(1))."""
+        if not new_segments:
+            return
         try:
             from services.context_analyzer import (
                 BUYING_SIGNAL_KEYWORDS,
@@ -405,16 +453,15 @@ class ConversationEngine:
             from services.conversation_state_resolver import resolve_conversation_state
             from services.linguistic_parser import annotate_segments
 
-            # Convert to the format context_analyzer expects
-            seg_dicts = [s if isinstance(s, dict) else s.__dict__ for s in all_segments]
+            # Convert only NEW segments to dicts
+            seg_dicts = [s if isinstance(s, dict) else s.__dict__ for s in new_segments]
             annotate_segments(seg_dicts)
             resolve_conversation_state(seg_dicts)
 
-            # Detect objections
-            # OBJECTION_KEYWORDS is a dict: {"Pricing": ["price", "cost", ...],
-            # "Timeline": [...], ...}
-            # Flatten all keyword lists for matching
-            objections = []
+            # Build set of already-known objection texts for dedup
+            known_texts = {o.get("text", "") for o in state.objections}
+
+            # Detect objections in NEW segments only, append to existing
             for seg in seg_dicts:
                 start_time = seg.get("start_time", 0.0)
                 for clause in seg.get("clauses", []):
@@ -422,46 +469,38 @@ class ConversationEngine:
                         continue
                     text = clause.get("text", "").lower()
                     if isinstance(OBJECTION_KEYWORDS, dict):
-                        # Nested dict: {category: [kw1, kw2, ...]}
                         for category, kw_list in OBJECTION_KEYWORDS.items():
                             for kw in kw_list if isinstance(kw_list, list) else []:
-                                if kw in text and text not in [
-                                    o.get("text", "") for o in objections
-                                ]:
-                                    objections.append(
-                                        {
-                                            "text": clause.get("text", ""),
-                                            "keyword": kw,
-                                            "category": category,
-                                            "timestamp": start_time,
-                                        }
-                                    )
+                                if kw in text and text not in known_texts:
+                                    obj = {
+                                        "text": clause.get("text", ""),
+                                        "keyword": kw,
+                                        "category": category,
+                                        "timestamp": start_time,
+                                    }
+                                    state.objections.append(obj)
+                                    state.objection_timeline.append(obj)
+                                    known_texts.add(text)
                                     break
                             else:
                                 continue
                             break
                     else:
-                        # Flat list (fallback)
                         for kw in OBJECTION_KEYWORDS:
-                            if kw in text and text not in [
-                                o.get("text", "") for o in objections
-                            ]:
-                                objections.append(
-                                    {
-                                        "text": clause.get("text", ""),
-                                        "keyword": kw,
-                                        "timestamp": start_time,
-                                    }
-                                )
+                            if kw in text and text not in known_texts:
+                                obj = {
+                                    "text": clause.get("text", ""),
+                                    "keyword": kw,
+                                    "timestamp": start_time,
+                                }
+                                state.objections.append(obj)
+                                state.objection_timeline.append(obj)
+                                known_texts.add(text)
                                 break
-            state.objections = objections
-            state.objection_timeline = objections
 
-            # Detect buying signals via sales assessment
-            signals = assess_sales_signals(seg_dicts, objections, [])
+            # Detect buying signals in NEW segments only
+            signals = assess_sales_signals(seg_dicts, state.objections, [])
             if signals.get("value_articulated"):
-                # Extract the specific text that triggered it
-                buying_texts = []
                 for s in seg_dicts:
                     start_time = s.get("start_time", 0.0)
                     for c in s.get("clauses", []):
@@ -474,20 +513,25 @@ class ConversationEngine:
                                 kw in c.get("text", "").lower()
                                 for kw in BUYING_SIGNAL_KEYWORDS
                             ):
-                                buying_texts.append(
+                                state.buying_signal_timeline.append(
                                     {"text": c.get("text", ""), "timestamp": start_time}
                                 )
+                # Keep last 3 buying signal strings
                 state.buying_signals = [
-                    b["text"] for b in buying_texts[-3:]
-                ]  # keep last 3 strings
-                state.buying_signal_timeline = buying_texts
+                    b["text"] for b in state.buying_signal_timeline[-3:]
+                ]
+
+            # Advance watermark
+            state.sales_metrics_processed_index = len(state.transcript_segments)
 
         except Exception:
             pass
 
     @staticmethod
-    def _update_meeting_metrics(all_segments: list, state: ConversationState) -> None:
-        """Run meeting signal detection on full session transcript."""
+    def _update_meeting_metrics(new_segments: list, state: ConversationState) -> None:
+        """Incrementally detect meeting signals from NEW segments only (O(1))."""
+        if not new_segments:
+            return
         try:
             from services.context_analyzer import (
                 compute_meeting_quality_v2,
@@ -498,20 +542,44 @@ class ConversationEngine:
             from services.conversation_state_resolver import resolve_conversation_state
             from services.linguistic_parser import annotate_segments
 
-            seg_dicts = [s if isinstance(s, dict) else s.__dict__ for s in all_segments]
+            # Convert only NEW segments to dicts
+            seg_dicts = [s if isinstance(s, dict) else s.__dict__ for s in new_segments]
             annotate_segments(seg_dicts)
             resolve_conversation_state(seg_dicts)
 
-            signals = detect_signals(seg_dicts)
-            quality = compute_meeting_quality_v2(signals)
+            # Detect signals in new segments, merge with cached signals via boolean OR
+            new_signals = detect_signals(seg_dicts)
+            cached = state._meeting_signals_cache
+            merged = {}
+            for key in set(list(new_signals.keys()) + list(cached.keys())):
+                merged[key] = bool(new_signals.get(key)) or bool(cached.get(key))
+            state._meeting_signals_cache = merged
+
+            quality = compute_meeting_quality_v2(merged)
 
             # Store as a metadata field for report generation
             state.__dict__["meeting_quality"] = quality["label"]
-            state.__dict__["meeting_signals"] = signals
+            state.__dict__["meeting_signals"] = merged
 
-            # Real-time extraction
-            state.action_items = extract_actions(seg_dicts)
-            state.decisions = detect_decisions(seg_dicts)
+            # Append new action items and decisions (incremental)
+            new_actions = extract_actions(seg_dicts)
+            new_decisions = detect_decisions(seg_dicts)
+
+            # Dedup by task text before appending
+            existing_tasks = {a.get("task", "") for a in state.action_items}
+            for a in new_actions:
+                if a.get("task", "") not in existing_tasks:
+                    state.action_items.append(a)
+                    existing_tasks.add(a.get("task", ""))
+
+            existing_decisions = {d.get("text", "") for d in state.decisions}
+            for d in new_decisions:
+                if d.get("text", "") not in existing_decisions:
+                    state.decisions.append(d)
+                    existing_decisions.add(d.get("text", ""))
+
+            # Advance watermark
+            state.meeting_metrics_processed_index = len(state.transcript_segments)
 
         except Exception as exc:
             logger.error(f"ConversationEngine: meeting metrics error — {exc}")
