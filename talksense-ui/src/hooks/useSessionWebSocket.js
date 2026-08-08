@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 
 // --- Constants ---------------------------------------------------------------
 const WS_BASE_URL      = "ws://localhost:8000"; // Backend WebSocket base
@@ -726,6 +726,13 @@ export function useSessionWebSocket(sessionId) {
               return;
             }
 
+            if (alert.level === "resolved") {
+              if (alert.alert_type) {
+                safeSetState(setAlerts, (prev) => prev.filter(a => a.alert_type !== alert.alert_type));
+              }
+              return;
+            }
+
             // message is required -- discard if absent or blank.
             if (typeof alert.message !== "string" || alert.message.trim().length === 0) {
               console.warn("[useSessionWebSocket] alerts: missing message field, discarding.", alert);
@@ -926,11 +933,208 @@ export function useSessionWebSocket(sessionId) {
     };
   }, [sessionStatus, metrics?.speakerAttributionStatus, metrics?.postSessionAi, reconcileState]);
 
+  // --- Speaker Name Resolver ---
+  const resolveSpeakerName = useCallback((rawSpeaker) => {
+    const base = (rawSpeaker && rawSpeaker.trim()) ? rawSpeaker : "Speaker 1";
+    if (metrics?.postSessionAi?.roles && metrics.postSessionAi.roles[base]) {
+      return metrics.postSessionAi.roles[base];
+    }
+    // Live Fallback before classification
+    if (base === "Speaker 1") return "System";
+    return base; // Keep as "Speaker X" to prevent UI chart collisions
+  }, [metrics?.postSessionAi?.roles]);
+
+  // --- Enhanced Metrics (Computed Locally) ------------------------------------
+  const enhancedMetrics = useMemo(() => {
+    const baseMetrics = metrics || {};
+    if (!transcript || transcript.length === 0) return metrics;
+
+    const durationBySpeaker = {};
+    let totalDuration = 0;
+    
+    // NEW: for duration-weighted sentiment
+    let weightedSentimentSum = 0;
+    let sentimentWeightTotal = 0;
+
+    // NEW: for accurate filler detection
+    let computedFillerCount = 0;
+
+    transcript.forEach(seg => {
+      if (typeof seg.start === 'number' && typeof seg.end === 'number' && seg.end > seg.start) {
+        const dur = seg.end - seg.start;
+        
+        // Use raw speaker IDs for internal calculations!
+        const rawSpeaker = (seg.speaker && seg.speaker.trim()) ? seg.speaker : "Speaker 1";
+        
+        durationBySpeaker[rawSpeaker] = (durationBySpeaker[rawSpeaker] || 0) + dur;
+        totalDuration += dur;
+
+        // Duration-weighted sentiment (ignoring extremely low confidence if provided)
+        if (typeof seg.sentiment === 'number') {
+           const conf = typeof seg.sentiment_confidence === 'number' ? seg.sentiment_confidence : 1.0;
+           if (conf > 0.2) { // Skip total garbage
+             weightedSentimentSum += seg.sentiment * dur;
+             sentimentWeightTotal += dur;
+           }
+        }
+      }
+
+      // Safe Filler Detection (bypasses flawed backend regex and double-counting)
+      if (typeof seg.text === 'string') {
+        const text = seg.text.toLowerCase();
+        const unambiguous = text.match(/\b(um|uh|uhh|umm|erm|hmm|ah)\b/g);
+        if (unambiguous) computedFillerCount += unambiguous.length;
+
+        const likeMatches = text.match(/(?:,\s*like\s*,)|(?:^like\s*,)/g);
+        if (likeMatches) computedFillerCount += likeMatches.length;
+
+        const youKnowMatches = text.match(/(?<!\b(?:do|did|that|as|let|if)\s+)you know\b/g);
+        if (youKnowMatches) computedFillerCount += youKnowMatches.length;
+
+        const advMatches = text.match(/(?:^|,\s*)(basically|actually)(?:\s*,|$)/g);
+        if (advMatches) computedFillerCount += advMatches.length;
+      }
+    });
+
+    if (totalDuration === 0) return baseMetrics;
+
+    const computedRatio = {};
+    Object.entries(durationBySpeaker).forEach(([speaker, dur]) => {
+      computedRatio[speaker] = parseFloat(((dur / totalDuration) * 100).toFixed(1));
+    });
+    
+    // Map speaking ratios to Display Names for UI labels
+    const displayRatio = {};
+    Object.entries(computedRatio).forEach(([rawSpeaker, ratio]) => {
+      const display = resolveSpeakerName(rawSpeaker);
+      const key = (displayRatio[display] !== undefined) ? `${display} (${rawSpeaker})` : display;
+      displayRatio[key] = ratio;
+    });
+    
+    let speakingBalanceText = "Calculating...";
+    const sortedRatios = Object.entries(displayRatio).sort((a, b) => b[1] - a[1]);
+    
+    if (sortedRatios.length === 1) {
+      speakingBalanceText = `Only one speaker detected so far (${sortedRatios[0][0]}).`;
+    } else if (sortedRatios.length > 1) {
+      const highestSpeaker = sortedRatios[0];
+      if (highestSpeaker[1] >= 70) {
+        speakingBalanceText = `Strongly dominant: ${highestSpeaker[0]} is speaking most of the time. Pause and ask an open question.`;
+      } else if (highestSpeaker[1] >= 55) {
+        speakingBalanceText = `Slightly dominant: ${highestSpeaker[0]} is speaking slightly more than the other participant.`;
+      } else {
+        speakingBalanceText = `Balanced: Speaking is well balanced.`;
+      }
+    }
+
+    // --- Dynamic Session Health Calculation (Latency-Safe) ---
+    let healthScore = 100;
+    
+    // 1. Dominance Penalty
+    if (sortedRatios.length > 0) {
+      const highestRatio = sortedRatios[0][1];
+      if (highestRatio > 65) {
+        healthScore -= (highestRatio - 65) * 0.71; // max ~25 penalty
+      }
+    }
+
+    // 2. Filler Penalty (Normalized to actual speaking duration)
+    let computedFillerPenalty = 0;
+    const speakingMinutes = Math.max(1, totalDuration / 60);
+    // Use the safe frontend computedFillerCount instead of flawed backend metrics.filler_count
+    const fpm = computedFillerCount / speakingMinutes;
+    if (fpm > 3) {
+      computedFillerPenalty = (fpm - 3) * 5;
+    }
+    computedFillerPenalty = Math.min(25, Math.max(0, computedFillerPenalty));
+    healthScore -= computedFillerPenalty;
+
+    // 3. Conversation Flow & Pause Penalty
+    let computedPausePenalty = 0;
+    let computedPauses = 0;
+    let computedSwitches = 0;
+    let computedInterruptions = 0;
+
+    if (transcript.length > 1) {
+      let totalVerifiedSilencePenalty = 0;
+      let lastSpeaker = transcript[0].speaker || "Speaker 1";
+      let maxEndSoFar = transcript[0].end;
+
+      for (let i = 1; i < transcript.length; i++) {
+        const seg = transcript[i];
+        const currentSpeaker = seg.speaker || "Speaker 1";
+        
+        const gap = seg.start - maxEndSoFar;
+        
+        // Pause Count (>2.0s gap)
+        if (gap > 2) {
+          computedPauses++;
+        }
+        
+        // Task 3: Pause Penalty (>8.0s gap)
+        if (gap > 8) {
+          totalVerifiedSilencePenalty += (gap - 8) * 1.5;
+        }
+
+        // Speaker Switch & Interruption
+        if (currentSpeaker !== lastSpeaker) {
+          computedSwitches++;
+          
+          // Interruption: >0.5s vocal overlap
+          if (gap < -0.5) {
+            computedInterruptions++;
+          }
+          lastSpeaker = currentSpeaker;
+        }
+
+        maxEndSoFar = Math.max(maxEndSoFar, seg.end);
+      }
+      computedPausePenalty = Math.min(25, totalVerifiedSilencePenalty);
+      healthScore -= computedPausePenalty;
+    }
+
+    // --- Dynamic Sentiment Calculation ---
+    let computedSentiment = baseMetrics.sentiment; // Fallback to backend string if no segments
+    if (sentimentWeightTotal > 0) {
+      const avgSentiment = weightedSentimentSum / sentimentWeightTotal; // [-1.0, 1.0]
+      computedSentiment = Math.round(((avgSentiment + 1) / 2) * 100); // [0, 100]
+    }
+
+    // 4. Sentiment Adjuster (Updated to use computedSentiment)
+    if (typeof computedSentiment === 'number') {
+       if (computedSentiment < 40) healthScore -= 10;
+       if (computedSentiment > 60) healthScore += 10;
+    } else if (typeof computedSentiment === 'string') {
+       const s = computedSentiment.toLowerCase();
+       if (s === 'negative') healthScore -= 10;
+       if (s === 'positive') healthScore += 10;
+    }
+
+    healthScore = Math.max(0, Math.min(100, Math.round(healthScore)));
+
+    return {
+      ...baseMetrics,
+      sentiment: computedSentiment,
+      filler_count: computedFillerCount,
+      pauses: computedPauses,
+      speaker_switches: computedSwitches,
+      interruptions: computedInterruptions,
+      health_score: healthScore,
+      filler_penalty: computedFillerPenalty,
+      pause_penalty: computedPausePenalty,
+      speaking_ratio: displayRatio,
+      speaking_balance_text: speakingBalanceText
+    };
+  }, [metrics, transcript, resolveSpeakerName]);
+
   // --- Exposed API ------------------------------------------------------------
   return {
     // Data state
-    transcript,
-    metrics,
+    transcript: useMemo(() => transcript.map(seg => ({
+        ...seg,
+        speaker: resolveSpeakerName(seg.speaker)
+    })), [transcript, resolveSpeakerName]),
+    metrics: enhancedMetrics,
     alerts,
     sessionStatus,
 

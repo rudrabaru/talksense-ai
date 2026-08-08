@@ -162,6 +162,7 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt, mode }) => {
   const {
     health_score,
     speaking_ratio,
+    speaking_balance_text,
     filler_count,
     duration_seconds,
     interruptions,
@@ -264,7 +265,12 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt, mode }) => {
 
         {/* ── 2. Speaking Ratio ── */}
         <div>
-          <strong style={{ display: "block", marginBottom: "12px", color: "#1e293b", fontSize: "0.95em" }}>Speaking Ratio</strong>
+          <strong style={{ display: "block", marginBottom: "8px", color: "#1e293b", fontSize: "0.95em" }}>Speaking Ratio</strong>
+          {speaking_balance_text && (
+            <div style={{ marginBottom: "12px", fontSize: "0.85em", color: "#475569", fontStyle: "italic" }}>
+              {speaking_balance_text}
+            </div>
+          )}
           {renderSpeakingRatio()}
         </div>
 
@@ -336,16 +342,103 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt, mode }) => {
           <div>
             <strong style={{ display: "block", marginBottom: "8px", color: "#1e293b", fontSize: "0.95em" }}>Role Classification</strong>
             <div style={{ fontSize: "0.85em", color: "#475569" }}>
-              {metrics.speakerRoles ? (
+              {metrics.postSessionAi?.roles ? (
                 <ul style={{ margin: 0, paddingLeft: "20px" }}>
-                  {Object.entries(metrics.speakerRoles).map(([speaker, role]) => (
+                  {Object.entries(metrics.postSessionAi.roles).map(([speaker, role]) => (
                     <li key={speaker}>
-                      <strong>{speaker}</strong> → {role === "sales_rep" ? "Sales Rep" : "Customer"}
+                      <strong>{speaker}</strong> → {role.charAt(0).toUpperCase() + role.slice(1)}
                     </li>
                   ))}
                 </ul>
               ) : (
                 <span style={{ fontStyle: "italic" }}>Role Classification Pending</span>
+              )}
+            </div>
+          </div>
+
+          {/* Buying Signals */}
+          <div>
+            <strong style={{ display: "block", marginBottom: "8px", color: "#1e293b", fontSize: "0.95em" }}>Positive Intent / Buying Signals</strong>
+            <div style={{ fontSize: "0.85em", color: "#475569" }}>
+              {metrics.postSessionAi?.buying_signals && metrics.postSessionAi.buying_signals.length > 0 ? (
+                <ul style={{ margin: 0, paddingLeft: "20px" }}>
+                  {metrics.postSessionAi.buying_signals.map((sig, idx) => {
+                    const speakerDisplayName = metrics.postSessionAi?.roles?.[sig.speaker] || sig.speaker;
+                    return (
+                      <li key={idx} style={{ marginBottom: "6px" }}>
+                        <strong>{speakerDisplayName}</strong>: <span style={{ fontStyle: "italic", color: "#065f46" }}>"{sig.signal}"</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : metrics.postSessionAi ? (
+                <span style={{ fontStyle: "italic" }}>No buying signals detected.</span>
+              ) : (
+                <span style={{ fontStyle: "italic" }}>Detection pending post-session analysis...</span>
+              )}
+            </div>
+          </div>
+
+          {/* Objections */}
+          <div>
+            <strong style={{ display: "block", marginBottom: "8px", color: "#1e293b", fontSize: "0.95em" }}>Detected Objections</strong>
+            <div style={{ fontSize: "0.85em", color: "#475569" }}>
+              {metrics.postSessionAi?.objections && metrics.postSessionAi.objections.length > 0 ? (
+                <ul style={{ margin: 0, paddingLeft: "20px" }}>
+                  {metrics.postSessionAi.objections.map((obj, idx) => {
+                    const speakerDisplayName = metrics.postSessionAi?.roles?.[obj.speaker] || obj.speaker;
+                    return (
+                      <li key={idx} style={{ marginBottom: "6px" }}>
+                        <span style={{ fontWeight: "bold", color: "#b91c1c", marginRight: "4px" }}>[{obj.objection}]</span>
+                        <strong>{speakerDisplayName}</strong>: <span style={{ fontStyle: "italic", color: "#475569" }}>"{obj.quote}"</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : metrics.postSessionAi ? (
+                <span style={{ fontStyle: "italic" }}>No objections detected.</span>
+              ) : (
+                <span style={{ fontStyle: "italic" }}>Detection pending post-session analysis...</span>
+              )}
+            </div>
+          </div>
+
+          {/* Objection Handling */}
+          <div>
+            <strong style={{ display: "block", marginBottom: "8px", color: "#1e293b", fontSize: "0.95em" }}>Objection Handling Analysis</strong>
+            <div style={{ fontSize: "0.85em", color: "#475569" }}>
+              {metrics.postSessionAi?.objection_handling && metrics.postSessionAi.objection_handling.length > 0 ? (
+                <ul style={{ paddingLeft: "0", margin: "0", listStyle: "none" }}>
+                  {metrics.postSessionAi.objection_handling.map((handle, idx) => {
+                    const speakerDisplayName = metrics.postSessionAi?.roles?.[handle.speaker] || handle.speaker;
+                    const qualColor = handle.handling_quality === "effective" ? "#10b981" : handle.handling_quality === "partial" ? "#f59e0b" : "#ef4444";
+                    return (
+                      <li key={idx} style={{ margin: "10px 0", padding: "8px", border: "1px solid #e2e8f0", borderRadius: "6px", backgroundColor: "#f8fafc" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+                          <span style={{ fontWeight: "bold", color: "#b91c1c" }}>[{handle.objection}]</span>
+                          <span style={{ fontWeight: "bold", color: qualColor }}>
+                            {handle.handled ? handle.handling_quality.toUpperCase() : "IGNORED"}
+                          </span>
+                        </div>
+                        <div style={{ marginBottom: "6px" }}>
+                          <span style={{ fontWeight: "bold" }}>{speakerDisplayName}:</span> <span style={{ fontStyle: "italic" }}>"{handle.quote}"</span>
+                        </div>
+                        <div>
+                          <span style={{ fontWeight: "600", color: "#1e293b" }}>Assessment:</span> {handle.handling_evidence}
+                        </div>
+                        {handle.handling_quote && (
+                          <div style={{ marginTop: "4px", color: "#64748b", fontStyle: "italic", fontSize: "0.95em" }}>
+                            <span style={{ fontWeight: "600" }}>Response:</span> "{handle.handling_quote}"
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : metrics.postSessionAi ? (
+                <span style={{ fontStyle: "italic" }}>No objections to handle.</span>
+              ) : (
+                <span style={{ fontStyle: "italic" }}>Analysis pending post-session...</span>
               )}
             </div>
           </div>

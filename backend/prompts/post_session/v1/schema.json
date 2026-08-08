@@ -40,7 +40,49 @@
                 },
                 "required": ["task", "assignee"]
             }
+        },
+        "buying_signals": {
+            "type": "array",
+            "description": "A list of meaningful positive buying or interest signals from the Candidate/Customer (e.g. explicit interest, asking about next steps, discussing timeline, strong positive intent). Do NOT include generic positive statements.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "signal": {"type": "string"},
+                    "speaker": {"type": "string"}
+                },
+                "required": ["signal", "speaker"]
+            }
+        },
+        "objections": {
+            "type": "array",
+            "description": "A list of genuine, contextual objections raised during the conversation (e.g. price/budget, timing, technical limitations, lack of authority, uncertainty). Ignore generic negative sentiment that is not a concrete objection.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "objection": {"type": "string", "description": "The category or brief summary of the objection (e.g. 'Price', 'Timing')."},
+                    "quote": {"type": "string", "description": "The verbatim quote from the transcript illustrating the objection."},
+                    "speaker": {"type": "string", "description": "The raw speaker ID of the person raising the objection."}
+                },
+                "required": ["objection", "quote", "speaker"]
+            }
+        },
+        "objection_handling": {
+            "type": "array",
+            "description": "An analysis of how the Interviewer/Host handled each genuine objection.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "objection": {"type": "string", "description": "The category/summary of the objection."},
+                    "speaker": {"type": "string", "description": "The speaker ID who raised the objection."},
+                    "quote": {"type": "string", "description": "The original objection quote."},
+                    "handled": {"type": "boolean", "description": "Whether the interviewer attempted to handle the objection."},
+                    "handling_quality": {"type": "string", "enum": ["effective", "partial", "poor"], "description": "The quality of the handling."},
+                    "handling_evidence": {"type": "string", "description": "Brief evidence or explanation of why it was handled effectively, partially, or poorly."},
+                    "handling_quote": {"type": "string", "description": "Optional verbatim quote from the interviewer demonstrating how they handled it."}
+                },
+                "required": ["objection", "speaker", "quote", "handled", "handling_quality", "handling_evidence"]
+            }
         }
     },
-    "required": ["executive_summary", "speaker_map", "roles", "decisions", "action_items"]
+    "required": ["executive_summary", "speaker_map", "roles", "decisions", "action_items", "buying_signals", "objections", "objection_handling"]
 }
