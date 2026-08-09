@@ -550,6 +550,7 @@ async def get_dashboard_snapshot(
             "talk_timeline": None,
             "active_alerts": conv.active_alerts,
             "transcript_segments": conv.transcript_segments[-50:],  # last 50 segments
+            "post_session_ai": None,
             "last_updated": time.time(),
             "audio_url": None,
         }
@@ -564,6 +565,7 @@ async def get_dashboard_snapshot(
         segments = await crud.get_transcript_segments(db, session_id, limit=50)
         metrics_list = await crud.get_latest_session_metrics(db, session_id)
         alerts = await crud.get_alerts(db, session_id, limit=50)
+        analysis_result = await crud.get_latest_analysis_result(db, session_id)
 
         # Reconstruct metrics dictionary
         from typing import Any
@@ -744,6 +746,7 @@ async def get_dashboard_snapshot(
             "analytics_health": analytics_health,
             "active_alerts": mapped_alerts,
             "transcript_segments": mapped_segments,
+            "post_session_ai": analysis_result.report_json if analysis_result else None,
             "last_updated": latest_ts,
             "audio_url": (
                 f"/sessions/{session_id}/audio" if db_session.audio_file_path else None
