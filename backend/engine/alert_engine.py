@@ -45,6 +45,7 @@ MAX_ACTIVE_ALERTS = 3
 
 class AlertEngine:
     """Stateful alert engine for a single session."""
+
     def __init__(self):
         self._last_fired: dict[str, float] = {}
         self._active_conditions: dict[str, Alert] = {}
@@ -54,7 +55,7 @@ class AlertEngine:
     def evaluate(self, state, mode: str, prev_health: int) -> list[dict]:
         now = time.time()
         new_alerts: list[Alert] = []
-        
+
         # Determine which conditions are CURRENTLY met
         current_conditions: dict[str, Alert] = {}
 
@@ -97,11 +98,11 @@ class AlertEngine:
                     id=str(uuid.uuid4()),
                     level="resolved",
                     message="Condition resolved.",
-                    alert_type=a_type
+                    alert_type=a_type,
                 )
                 new_alerts.append(resolved_alert)
                 resolved_types.append(a_type)
-                
+
         # Remove resolved from active
         for a_type in resolved_types:
             del self._active_conditions[a_type]
@@ -128,7 +129,7 @@ class AlertEngine:
                         id=str(uuid.uuid4()),
                         level="warning",
                         message=f"{speaker_label} is dominating the conversation. Pause and ask an open question.",
-                        alert_type="speaking_dominance"
+                        alert_type="speaking_dominance",
                     )
         return None
 
@@ -138,13 +139,13 @@ class AlertEngine:
                 id=str(uuid.uuid4()),
                 level="warning",
                 message="Long silence detected — re-engage by checking in.",
-                alert_type="long_silence"
+                alert_type="long_silence",
             )
         return None
 
     def _check_excessive_fillers(self, state, now) -> Alert | None:
         last_fired = self._last_fired.get("excessive_fillers", 0.0)
-        
+
         # If we had a jump in fillers
         if state.filler_count >= self._last_filler_count + 3:
             self._last_filler_count = state.filler_count
@@ -152,9 +153,9 @@ class AlertEngine:
                 id=str(uuid.uuid4()),
                 level="warning",
                 message=f"Excessive filler words detected ({state.filler_count}). Speak more deliberately.",
-                alert_type="excessive_fillers"
+                alert_type="excessive_fillers",
             )
-            
+
         # Keep active for 15 seconds after firing
         if "excessive_fillers" in self._active_conditions:
             if (now - last_fired) < 15:
@@ -163,16 +164,16 @@ class AlertEngine:
 
     def _check_interruptions(self, state, now) -> Alert | None:
         last_fired = self._last_fired.get("too_many_interruptions", 0.0)
-        
+
         if state.interruptions >= self._last_interruptions + 2:
             self._last_interruptions = state.interruptions
             return Alert(
                 id=str(uuid.uuid4()),
                 level="warning",
                 message="Multiple interruptions detected. Allow the other person to finish.",
-                alert_type="too_many_interruptions"
+                alert_type="too_many_interruptions",
             )
-            
+
         # Keep active for 15 seconds
         if "too_many_interruptions" in self._active_conditions:
             if (now - last_fired) < 15:
