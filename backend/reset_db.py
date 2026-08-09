@@ -1,10 +1,9 @@
 import asyncio
-from sqlalchemy.ext.asyncio import create_async_engine
-from core.config import get_settings
 
 # Alembic handles metadata
-from sqlalchemy import MetaData
-import logging
+from sqlalchemy.ext.asyncio import create_async_engine
+
+from core.config import get_settings
 
 
 async def reset_db():
