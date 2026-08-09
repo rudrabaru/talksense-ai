@@ -58,3 +58,6 @@ talksense-ui/playwright-report/
 talksense-ui/test-results/
 backend/session_audio/
 backend/benchmark_report.md
+
+# Scratch / temporary test scripts
+scratch/
