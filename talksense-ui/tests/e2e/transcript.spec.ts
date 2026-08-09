@@ -67,7 +67,8 @@ test.describe('Transcript rendering', () => {
     const transcriptText = page.locator('text="This is a mock injected transcript."');
     await expect(transcriptText).toBeVisible({ timeout: 10000 });
 
-    const speakerLabel = page.getByText('Speaker 1').first();
+    // Speaker 1 is displayed as "System" before post-session role classification completes (Task 7)
+    const speakerLabel = page.getByText('System').first();
     await expect(speakerLabel).toBeVisible();
   });
 });
