@@ -1,0 +1,187 @@
+FORMAT:
+
+
+
+
+
+
+
+
+
+
+PRESENTATION:
+Department of Information Technology / Artificial Intelligence and Data Science
+Summer Project
+Presented By:
+1. ET23BTAI042 - Parthiv Patel
+2. ET23BTAI063 - Rushabh Solanki
+3. ET23BTAI066 - Yash Thummar
+Real-Time AI-Powered Meeting Intelligence Platform
+Sarvajanik University
+Sarvajanik College of Engineering and Technology
+TalkSense AI
+2
+Problem & Motivation
+• Current tools analyze conversations only after meetings end — insights arrive too late. 
+• No live coaching, speaker feedback, or engagement tracking during conversations. 
+• Manual evaluation remains subjective, inconsistent, and unscalable. 
+• Recruiters, sales teams, and managers need real-time conversation intelligence. 
+Current State Required State
+Post-meeting analysis Real-time analysis
+Delayed insights Live insights
+Manual evaluation Automated evaluation
+No live feedback Live coaching
+Proposed Solution & Key Features
+• Live speech transcription enables instant conversation understanding. 
+• NLP-powered sentiment, filler detection, and speaker analytics run continuously. 
+• Sales and meeting intelligence surfaces actionable insights during live conversations. 
+• Modular architecture supports real-time streaming, storage, and live dashboards. 
+• Transcription
+• Sentiment
+• Filler Detection
+• Speaker Analytics
+• Sales Intelligence
+• Meeting Intelligence
+• Coaching
+• Live Dashboard
+TALKSENSE 
+AI
+3
+• Modular layered design separates audio, AI,
+analytics, and storage concerns.
+• Low-latency WebSocket streaming connects the
+frontend and backend in real time.
+• GPU-accelerated Faster-Whisper delivers word-
+level speech transcription.
+• Independent NLP and Conversation Engines
+enable extensible analytics processing.
+User
+React Frontend
+WebSocket API
+FastAPI Backend
+Audio Pipeline (V AD + Buffer)
+Faster-Whisper (GPU)
+Conversation Engine
+NLP Engine
+Dashboard Updates  
+ PostgreSQL
+System Architecture
+4
+AI Pipeline & Workflow
+5
+• Background V AD + Buffering keeps audio streaming responsive and unblocked.
+• Optimized GPU scheduling enables fast, parallel speech transcription.
+• Intelligent transcript merging eliminates duplicate speech at processing boundaries.
+• Incremental analysis processes only new data — constant-time at any meeting length.
+Audio Capture V AD + Buffering Faster-Whisper
+(GPU)
+Conversation 
+Engine
++ NLP Engine
+Live Dashboard
+KEY OPTIMIZATION Incremental Analysis Constant-Time 
+Performance
+Technology Stack
+6
+• Frontend: Responsive live 
+dashboard
+• Backend: Real-time 
+asynchronous APIs
+• AI / ML: Speech intelligence 
+and NLP
+• Data & CI: Reliable session 
+storage and automated 
+validation
+Frontend React • TypeScript • Vite • Tailwind CSS
+Backend FastAPI • Python
+Database PostgreSQL • SQLAlchemy
+AI / ML Faster-Whisper • Transformers • Hugging Face • PyTorch
+Infrastructure GitHub • GitHub Actions
+Implementation & Results
+• All major components successfully 
+implemented, tested, and validated. 
+• Conversation Engine achieves 
+constant-time performance regardless 
+of session length.
+• Unified health monitoring verifies 
+database, AI model, and 
+authentication status.
+• Automated CI pipeline validates 
+code quality on every change.
+Component Status
+React Frontend ✓ Verified
+FastAPI Backend ✓ Verified
+PostgreSQL Database ✓ Verified
+Faster-Whisper (GPU) ✓ Optimized
+Conversation Engine ✓ Constant-Time Verified
+NLP Engine ✓ Verified
+Health Monitoring ✓ Active
+CI Pipeline ✓ Implemented
+✓ Live Transcription • ✓ AI Analytics • ✓ Live Dashboard • ✓ Constant-Time 
+Processing • ✓ CI Pipeline • ✓ Verified Implementation
+7
+Project Timeline & Future Scope
+8
+❖ PROJECT TIMELINE
+Week 1
+Requirements, Research
+& Architecture
+Week 2
+Backend, Frontend
+& Database
+Week 3
+AI Integration, Testing
+& Optimization
+Week 4
+Validation, 
+Documentation
+& Presentation
+FUTURE SCOPE
+• Live speaker identification & diarization
+• Cloud deployment
+• Multi-language support
+• AI meeting summaries
+• Mobile application
+• Organization analytics
+Conclusion
+9
+• Real-Time Intelligence: Conversations are 
+understood while they happen, not after they end.
+• Validated Architecture: Modular, validated 
+architecture ready for real-world deployment.
+• Live AI Insights: Live AI insights support better 
+decisions in interviews, sales, and collaboration.
+• Business Value: TalkSenseAI demonstrates that 
+real-time meeting intelligence is achievable.
+Real-Time 
+Intelligence
+Conversations are 
+understood while they 
+happen, not after they 
+end.
+Validated 
+Architecture
+Modular, validated 
+architecture ready for 
+real-world deployment.
+Live AI Insights
+Live AI insights support 
+better decisions in 
+interviews, sales, and 
+collaboration.
+Business Value
+TalkSenseAI 
+demonstrates that 
+real-time meeting 
+intelligence is 
+achievable.
+References
+10
+1. FastAPI Documentation — https://fastapi.tiangolo.com
+2. React Documentation — https://react.dev
+3. PostgreSQL Documentation — https://www.postgresql.org
+4. SQLAlchemy — https://www.sqlalchemy.org
+5. PyTorch — https://pytorch.org
+6. Faster-Whisper — https://github.com/SYSTRAN/faster-whisper
+7. Hugging Face Transformers — https://huggingface.co/docs/transformers
+8. GitHub Actions — https://docs.github.com/en/actions
