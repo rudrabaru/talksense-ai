@@ -1,91 +1,55 @@
 # TalkSense AI
 
-**Offline-First Conversation Intelligence Platform for Meetings and Sales Calls**
+**Real-Time Conversation Intelligence Platform for Meetings and Sales Calls**
 
 ---
 
 ## Overview
 
-TalkSense AI is an **offline-first conversation intelligence platform** that analyzes meeting recordings and sales calls to extract actionable insights. Unlike cloud-based solutions that rely on proprietary LLMs, TalkSense AI uses **pretrained open-source models** (Whisper for transcription, multilingual sentiment analysis) combined with a **rule-based context intelligence layer** to deliver explainable, transparent insights.
+TalkSense AI is a full-stack conversation intelligence platform that analyzes meeting recordings and live sales calls to extract actionable insights. It combines **real-time streaming analytics** (using open-source models for transcription and NLP) with an **asynchronous Post-Session AI Pipeline** (using Gemini) to deliver deep, structured insights and speaker-attributed summaries.
 
 ### Problem Statement
 
-Teams and sales professionals struggle to extract actionable insights from recorded conversations. Existing solutions either:
-- Require expensive cloud subscriptions with opaque AI processing
-- Lack explainability (black-box LLM summaries)
-- Don't differentiate between meeting contexts (internal discussions vs. client calls)
+Teams and sales professionals struggle to extract actionable insights from live conversations and recordings. Existing solutions either:
+- Are strictly offline, missing the opportunity to coach reps during the call.
+- Lack transparency in how their "AI" determines deal health or meeting quality.
+- Suffer from high latency when trying to provide live metrics.
 
-TalkSense AI addresses this by providing **mode-aware analysis** that interprets the same transcript differently based on conversation type, while maintaining full transparency in how insights are generated.
-
-### Value Proposition
-
-- **Offline-First**: No cloud dependencies, no API costs, complete data privacy
-- **Explainable AI**: Rule-based intelligence layer shows exactly how insights are derived
-- **Context-Aware**: Same transcript analyzed differently for Meeting vs. Sales modes
-- **Fast**: Analysis completes in under 60 seconds for most recordings
-- **Transparent**: No black-box LLM summarization—every insight is traceable
+TalkSense AI addresses this by providing **mode-aware real-time analysis** coupled with powerful **post-session LLM summarization**, ensuring both immediate coaching and deep historical insight.
 
 ---
 
 ## Key Features
 
-### Meeting Intelligence
+### 🎙️ Real-Time Intelligence (Live)
+- **Live Transcription**: Sub-second speech-to-text using local Faster-Whisper.
+- **Dynamic Scoring**: Live Meeting/Sales Quality scores updated incrementally as you speak.
+- **Live Alerts & Coaching**: Real-time detection of buying signals, objections, and blockers pushed directly to the UI.
+- **Sentiment Tracking**: High-frequency NLP sentiment analysis plotting the mood of the conversation live.
 
-Designed for **internal team discussions** and **project meetings**:
-
-- **Executive Summary**: Quality assessment based on decision-making and ownership signals
-- **Meeting Quality Score**: Evaluates execution clarity (High/Medium/Low)
-- **Decisions Detected**: Extracts directional commitments and locked-in decisions
-- **Action Items**: Identifies tasks with ownership and timeline extraction
-- **Tension Points**: Flags unresolved blockers, risks, and dependencies
-- **Sentiment Analysis**: Per-segment sentiment tracking with confidence scores
-- **Key Insights**: Highlights critical moments requiring attention
-
-### Sales Call Intelligence
-
-Optimized for **client conversations** and **sales discovery calls**:
-
-- **Executive Summary**: Deal quality assessment based on buyer engagement signals
-- **Sales Quality Score**: Evaluates deal momentum (High/Medium/Low)
-- **Objections Detected**: Identifies pricing, timing, authority, and feature concerns
-- **Objection Handling**: Recommends resolution strategies for each objection type
-- **Buying Signals**: Detects budget alignment, decision-maker presence, and value articulation
-- **Follow-Up Actions**: Stage-based recommendations (e.g., "Send proposal by Friday")
-- **Commitment Tracking**: End-of-call commitment detection with timeline extraction
-- **Deal Risk Flags**: Identifies disqualification signals (no intent, deferred decisions)
+### 🧠 Post-Session AI Pipeline (Gemini)
+- **Speaker Diarization & Attribution**: LLM-driven speaker mapping (Interviewer vs. Candidate, Rep vs. Prospect) applied immediately after the call ends.
+- **Executive Summaries**: High-level assessments of deal quality or meeting execution.
+- **Objection Handling Strategies**: Post-call generated recommendations for resolving identified concerns.
+- **Follow-Up Actions**: Stage-based recommendations extracted with concrete timelines.
 
 ---
 
 ## System Architecture
 
-TalkSense AI follows a **3-stage processing pipeline**:
+TalkSense AI follows a **Hybrid Processing Pipeline**:
 
-```
-Audio Upload → Speech-to-Text → NLP Enrichment → Context Analysis → Structured Insights
-```
+### 1. Real-Time Engine (Local / FastAPI / WebSockets)
+- **Audio Capture**: Browser MediaRecorder captures audio chunks and sends them via WebSocket.
+- **VAD (Voice Activity Detection)**: Silero VAD filters out silence to optimize compute.
+- **STT (Speech-to-Text)**: Faster-Whisper (`large-v3`) provides rapid, word-level timestamped transcripts.
+- **NLP (Sentiment & Context)**: Hugging Face Transformers perform sentiment analysis while a highly optimized rule-engine (`AlertEngine`, `ConversationEngine`) detects objections and buying signals.
+- **Broadcast**: Insights are streamed back to the React UI instantly.
 
-### Stage 1: Speech-to-Text (Whisper)
-- **Model**: OpenAI Whisper (`large-v3` with Faster-Whisper)
-- **Timestamping**: Word-level boundary strictness for optimal speaker overlap detection.
-- **Output**: Timestamped transcript segments
-- **Performance**: Balances speed and accuracy for real-time processing
-
-### Stage 2: NLP Enrichment
-- **Sentiment Analysis**: `tabularisai/multilingual-sentiment-analysis` (Hugging Face Transformers)
-- **Keyword Extraction**: Rule-based pattern matching for domain-specific terms
-- **Semantic Merging**: Combines fragmented segments using linguistic continuity markers
-- **Output**: Enriched segments with sentiment labels, confidence scores, and keywords
-
-### Stage 3: Context Intelligence Layer
-- **Meeting Mode**: Analyzes for decisions, action items, ownership, and blockers
-- **Sales Mode**: Analyzes for objections, buying signals, commitment, and deal risk
-- **Quality Scoring**: Binary signal detection (ownership, execution decisions, commitments)
-- **Insight Generation**: Rule-based extraction with explainable logic
-
-### Key Design Principle
-**Same transcript, different interpretation**: The context analyzer applies mode-specific rules to extract insights tailored to the conversation type. For example, "I'll send the proposal by Friday" is:
-- **Meeting Mode**: Action item with owner and deadline
-- **Sales Mode**: Hard commitment + buying signal + follow-up action
+### 2. Post-Session Pipeline (Cloud LLM)
+- Triggered automatically when a session is marked `COMPLETED`.
+- A resilient, async worker orchestrates a prompt bundle (schema, instructions) and the full transcript to **Gemini**.
+- **Outputs**: Pydantic-validated JSON containing speaker mapping, executive summary, refined action items, and structural metadata.
 
 ---
 
@@ -93,279 +57,133 @@ Audio Upload → Speech-to-Text → NLP Enrichment → Context Analysis → Stru
 
 ### Backend
 - **Framework**: FastAPI (async ASGI API)
-- **Database**: PostgreSQL (with SQLAlchemy ORM & `asyncpg` driver)
-- **Speech-to-Text**: Faster Whisper (`faster-whisper`)
-- **Voice Activity Detection**: Silero VAD (`silero-vad`)
-- **Speaker Diarization**: Pyannote Speaker Diarization (`pyannote.audio`)
-- **NLP Processing**: Hugging Face Transformers (`transformers`, `torch`) for sentiment analysis and keyphrase extraction
-- **Server**: Uvicorn (ASGI server)
-- **Migrations**: Alembic (`alembic`)
+- **Database**: PostgreSQL 16 (SQLAlchemy ORM + Alembic + asyncpg)
+- **Speech-to-Text**: Faster Whisper
+- **Voice Activity Detection**: Silero VAD
+- **NLP Processing**: Hugging Face Transformers (`tabularisai/multilingual-sentiment-analysis`)
+- **Generative AI**: Google Gemini (`google-genai`) for post-session analysis
+- **Communication**: WebSockets (Real-time data streaming)
 
 ### Frontend
-- **Framework**: React 19
-- **Build Tool**: Vite
-- **Routing**: React Router DOM
+- **Framework**: React 19 + Vite
+- **Routing**: React Router DOM 7
 - **Styling**: Tailwind CSS
-- **Communication**: WebSockets (for real-time streaming audio metrics) and HTTP REST APIs
-- **PDF Export**: jsPDF + html2canvas
+- **Audio**: Web Audio API / `AudioSourceManager`
+- **Testing**: Playwright (E2E)
 
 ---
 
 ## Project Structure
 
+Following our comprehensive repository cleanup, the codebase is strictly organized into production runtime and testing:
+
 ```
 talksense-ai/
 ├── backend/
-│   ├── main.py                    # FastAPI app + WebSocket & HTTP endpoints
-│   ├── core/
-│   │   └── config.py              # Settings definition (Pydantic Settings)
-│   ├── db/
-│   │   ├── database.py            # PostgreSQL async connection pool & session
-│   │   ├── models.py              # SQLAlchemy ORM models
-│   │   └── crud.py                # Database queries and session flushes
-│   ├── services/
-│   │   ├── speech_to_text.py      # Whisper transcription pipeline
-│   │   ├── nlp_engine.py          # Sentiment + keyword extraction
-│   │   └── context_analyzer.py    # Meeting/Sales intelligence rules
-│   ├── tests/                     # Unit and integration tests
-│   ├── requirements.txt           # Production dependencies
-│   ├── requirements-dev.txt       # Dev & CI dependencies
-│   ├── pyproject.toml             # Dev tools (Black, Ruff, Pyright) configuration
-│   └── pytest.ini                 # Pytest configuration
+│   ├── main.py                    # FastAPI app + startup lifecycle
+│   ├── core/                      # Config (Pydantic Settings) & Security (JWT)
+│   ├── db/                        # PostgreSQL models, async CRUD, migrations
+│   ├── audio/                     # Silero VAD, Faster-Whisper, Audio Buffers
+│   ├── ws/                        # WebSocket connection managers & broadcast logic
+│   ├── engine/                    # Real-time Conversation & Alert Engine
+│   ├── services/                  # Post-session pipeline, LLM integration, NLP
+│   ├── config/                    # Static configuration (keywords.json)
+│   ├── prompts/                   # Versioned prompt bundles for Gemini
+│   ├── evaluation/                # Health checks and threshold evaluations
+│   └── tests/                     # Comprehensive Pytest suite
 │
 ├── talksense-ui/
 │   ├── src/
-│   │   ├── pages/
-│   │   │   ├── HomePage.jsx       # Landing page
-│   │   │   ├── UploadPage.jsx     # Audio upload + mode selection
-│   │   │   └── ResultsPage.jsx    # Insights dashboard
-│   │   ├── services/
-│   │   │   └── api.js             # Backend API client
-│   │   └── assets/                # Logos, images
-│   ├── package.json               # Node dependencies
-│   └── vite.config.js             # Vite configuration
+│   │   ├── pages/                 # 8 Core Views (Dashboard, Upload, History, etc)
+│   │   ├── components/            # Reusable UI (Sidebar, TranscriptPanel, Metrics)
+│   │   ├── hooks/                 # WebSockets & Audio capture hooks
+│   │   ├── audio/                 # Audio Sources (Microphone, System, PCM)
+│   │   └── services/              # HTTP API abstractions
+│   └── tests/                     # Playwright E2E tests
 │
-├── sample_audio/                  # Demo audio files
-├── sample_results/                # Pre-generated demo results (JSON)
-└── README.md                      # This file
+└── docs/                          # Architecture diagrams, Setup guides, Archives
 ```
-
----
-
-## System Architecture
-
-TalkSense AI leverages a **3-stage processing pipeline** with real-time feedback mechanisms:
-
-1. **Audio Upload & Streaming (HTTP & WebSockets)**:
-   - High-throughput endpoint handles standard audio uploads.
-   - WebSockets support live/streaming metric updates and real-time state synchronization.
-2. **Audio Processing (VAD, Whisper, Pyannote)**:
-   - **Voice Activity Detection**: Silero VAD filters non-speech segments.
-   - **Speech-to-Text**: Faster-Whisper (`large-v3`) transcribes speech into word-level text.
-   - **Speaker Diarization**: Pyannote Speaker Diarization attributes exact words to detected speakers.
-   - **System Performance**: **91.3% Speaker Accuracy**, **0.925 Macro F1**, **48.4% Legacy Boundary Recall @ 500ms**.
-3. **NLP Processing & Context Analysis**:
-   - Sentiment analysis is done at a segment level using pretrained Hugging Face Transformers.
-   - Rule-based contextual intelligence categorizes data depending on the selected mode (**Meeting** or **Sales**).
-4. **Session Management & Database (PostgreSQL)**:
-   - Metadata, transcripts, speaker metrics, and summaries are persisted in PostgreSQL.
-   - Alembic manages database versioning and migrations.
 
 ---
 
 ## Setup & Run Instructions
 
 ### Prerequisites
-
 - **Python**: 3.10+
-- **Node.js**: 18.x+
-- **FFmpeg**: Required by Whisper for audio processing
-  - Windows: `choco install ffmpeg` or download from [ffmpeg.org](https://ffmpeg.org)
-  - macOS: `brew install ffmpeg`
-  - Linux: `sudo apt install ffmpeg`
+- **Node.js**: 20.x+
+- **PostgreSQL**: 16+
+- **FFmpeg**: Required by Whisper
+- **Gemini API Key**: Required for Post-Session pipeline
 
-### Environment Variables
-
-Before running the application, you must configure the backend environment variables.
-
-1. Navigate to the backend directory and copy the environment example template:
+### Backend Setup
+1. Create and activate a virtual environment:
    ```bash
-   cp backend/.env.example backend/.env
+   python -m venv backend/venv
+   source backend/venv/bin/activate  # On Windows: backend\venv\Scripts\Activate.ps1
    ```
-2. Open `backend/.env` and fill in the required variables (e.g., your database connection string, Hugging Face Token for speaker diarization, Gemini API Key if using LLM classification features).
-
-### Backend Setup & Run
-
-1. Navigate to the project root and create a virtual environment:
-   ```bash
-   python -m venv venv
-   ```
-2. Activate the virtual environment:
-   - **Windows (PowerShell)**: `venv\Scripts\Activate.ps1`
-   - **macOS/Linux**: `source venv/bin/activate`
-3. Install production/runtime dependencies:
+2. Install dependencies:
    ```bash
    pip install -r backend/requirements.txt
+   pip install -r backend/requirements-dev.txt
    ```
-4. Run Alembic database migrations to set up the PostgreSQL schema:
+3. Setup Environment:
+   ```bash
+   cp backend/.env.example backend/.env
+   # Edit .env with your DB credentials, JWT_SECRET, and GEMINI_API_KEY
+   ```
+4. Run Migrations & Start Server:
    ```bash
    cd backend
    alembic upgrade head
+   uvicorn main:app --reload
    ```
-5. Start the FastAPI development server:
-   ```bash
-   uvicorn backend.main:app --reload
-   ```
-   The backend will run at: `http://localhost:8000`
 
-### Frontend Setup & Run
-
-1. Navigate to the frontend directory:
+### Frontend Setup
+1. Install dependencies:
    ```bash
    cd talksense-ui
+   npm ci
    ```
-2. Install npm dependencies:
+2. Setup Environment:
    ```bash
-   npm install
+   cp .env.example .env.local
+   # Ensure VITE_WS_URL and VITE_API_URL point to your local backend
    ```
-3. Start the development server:
+3. Start Dev Server:
    ```bash
    npm run dev
    ```
-   The frontend will run at: `http://localhost:5173`
 
 ---
 
-## Development & Testing
+## Development & CI/CD
 
-For local development, testing, and CI/CD validation, follow the guidelines below.
+This project enforces strict code quality through GitHub Actions.
 
-### Backend Verification
-
-First, install the development dependencies:
-```bash
-pip install -r backend/requirements-dev.txt
-```
-
-**Running Tests**
-Run the pytest suite from the `backend/` directory:
+### Backend Validation
 ```bash
 cd backend
-pytest
+black --check .             # Formatting
+ruff check .                # Linting
+pyright                     # Type Checking
+pytest tests/ -v            # Unit & Integration Tests
 ```
 
-**Code Formatting**
-Ensure code follows Black style guidelines:
-```bash
-cd backend
-black --check .
-```
-
-**Linting**
-Run Ruff to check for syntax and stylistic issues:
-```bash
-cd backend
-ruff check .
-```
-
-**Type Checking**
-Run Pyright to perform static type analysis:
-```bash
-cd backend
-pyright
-```
-
-### Frontend Verification
-
-**CI Installation**
-Perform a clean installation of node dependencies:
+### Frontend Validation
 ```bash
 cd talksense-ui
-npm ci
-```
-
-**Building for Production**
-Verify the production build succeeds:
-```bash
-cd talksense-ui
-npm run build
-```
-
-**Linting**
-Run ESLint to check for frontend code issues:
-```bash
-cd talksense-ui
-npm run lint
+npm run lint                # ESLint
+npm run build               # Production Build test
+npm run test:e2e            # Playwright tests
 ```
 
 ---
 
-## Design Decisions & Constraints
-
-### Offline-First Rationale
-- **Data Privacy**: No conversation data leaves the local machine
-- **Cost Efficiency**: No cloud API costs (OpenAI, Google Cloud, etc.)
-- **Transparency**: Users can inspect and modify the intelligence layer
-- **Hackathon Scope**: Faster iteration without cloud infrastructure setup
-
-### Pretrained Models (No Custom Training)
-- **Whisper**: Industry-standard STT with strong multilingual support
-- **Sentiment Model**: Pretrained multilingual model (no domain-specific fine-tuning)
-- **Trade-off**: Slightly lower accuracy vs. custom-trained models, but faster deployment
-
-### Rule-Based Intelligence Layer
-- **Explainability**: Every insight is traceable to specific rules and patterns
-- **No Black-Box AI**: Unlike LLM-based summarization, logic is fully transparent
-- **Trade-off**: Requires manual rule curation, but ensures predictable outputs
-
-### Hackathon-Driven Scope
-- **MVP Focus**: Core features only (no integrations, no user auth)
-- **Demo-Ready**: Pre-generated sample results for quick evaluation
-- **Monolithic Architecture**: Single FastAPI app (no microservices complexity)
+## Recent Architecture Changes (The "Cleanup" Release)
+- **Experimental Code Removed**: Historical hackathon artifacts (e.g., Diart docker pipelines, dozens of standalone benchmark scripts, and generated JSON/WAV dumps) have been permanently cleaned up to ensure a clean, understandable runtime.
+- **Simplified Diarization**: Moved entirely away from complex real-time audio diarization in favor of a robust, highly accurate LLM-driven post-session diarization step.
+- **Robustness**: Complete E2E testing added, Pytest suite stabilized, and `.gitignore` hardened against log/audio pollution.
 
 ---
 
-## Limitations
-
-- **Sentiment Model**: Not fine-tuned for business conversations (may misclassify domain-specific language)
-- **Speaker Diarization**: Not implemented (cannot distinguish between multiple speakers)
-- **Language Support**: Optimized for English (multilingual model supports others, but rules are English-centric)
-- **Scalability**: Single-threaded processing (no distributed task queue)
-- **Audio Quality**: Performance degrades with poor audio quality or heavy background noise
-- **Rule Coverage**: Context intelligence rules are not exhaustive (edge cases may be missed)
-
----
-
-## Future Improvements
-
-- **Hybrid LLM Integration**: Optional LLM-based summarization for nuanced insights (e.g., GPT-4 for executive summaries)
-- **Speaker Diarization**: Identify and label individual speakers in multi-person conversations
-- **Fine-Tuned Sentiment**: Domain-specific sentiment model trained on business conversations
-- **Real-Time Processing**: WebSocket-based streaming for live transcription
-- **Integration APIs**: Slack, Zoom, Google Meet integrations for automatic recording ingestion
-- **Custom Rule Builder**: UI for non-technical users to define custom intelligence rules
-- **Multi-Language Support**: Expand rule sets for non-English languages
-
----
-
-## License & Usage
-
-This project was developed as a **hackathon submission** and is intended for **educational and demonstration purposes**. 
-
-- **Not Production-Ready**: This is an MVP built under time constraints
-- **No Warranty**: Use at your own risk
-- **Open for Learning**: Feel free to explore, fork, and adapt for your own projects
-
----
-
-## Acknowledgments
-
-- **OpenAI Whisper**: Speech-to-text foundation
-- **Hugging Face**: Pretrained sentiment analysis model
-- **FastAPI**: High-performance backend framework
-- **React + Vite**: Modern frontend stack
-
----
-
-**Built for SCET Breakout Hackathon 2026**  
-*Demonstrating the power of explainable AI in conversation intelligence*
+**Built for SCET Breakout Hackathon 2026**
