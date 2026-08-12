@@ -61,3 +61,33 @@ backend/benchmark_report.md
 
 # Scratch / temporary test scripts
 scratch/
+
+# Runtime audio data
+session_audio/
+
+# Generated artifacts
+*.webp
+tree_output.txt
+tree_utf8.txt
+subagent_result.txt
+
+# Coverage / lint output
+.coverage
+coverage.xml
+ruff_errors.txt
+lint_output.txt
+
+# Test runner / puppeteer
+test_puppeteer/
+
+# Sample outputs (generated PDFs)
+sample_results/
+
+# Investigation artifacts
+investigate/
+
+# Backend generated result files
+backend/*.coverage
+backend/coverage.xml
+backend/ruff_errors.txt
+backend/output_scdr.txt

@@ -48,6 +48,39 @@ def test_validate_happy_path():
     assert result["decisions"] == ["Approved budget"]
     assert len(result["action_items"]) == 1
     assert result["action_items"][0]["task"] == "Send email"
+    assert result["buying_signals"] == []
+    assert result["objections"] == []
+    assert result["objection_handling"] == []
+
+
+def test_validate_with_new_ai_fields():
+    raw = """{
+        "executive_summary": "Meeting went well.",
+        "buying_signals": [
+            {"signal": "Customer asked about next steps", "speaker": "Customer A"}
+        ],
+        "objections": [
+            {"objection": "Price", "quote": "It is too expensive.", "speaker": "Customer A"}
+        ],
+        "objection_handling": [
+            {
+                "objection": "Price",
+                "speaker": "Customer A",
+                "quote": "It is too expensive.",
+                "handled": true,
+                "handling_quality": "effective",
+                "handling_evidence": "Offered a discount",
+                "handling_quote": "We can offer 10% off"
+            }
+        ]
+    }"""
+    result = validate_and_parse(raw)
+    assert len(result["buying_signals"]) == 1
+    assert result["buying_signals"][0]["signal"] == "Customer asked about next steps"
+    assert len(result["objections"]) == 1
+    assert result["objections"][0]["objection"] == "Price"
+    assert len(result["objection_handling"]) == 1
+    assert result["objection_handling"][0]["handling_quality"] == "effective"
 
 
 def test_validate_missing_lists_defaults():

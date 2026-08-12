@@ -1,7 +1,7 @@
 import json
 import logging
 import re
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
@@ -26,6 +26,30 @@ class RoleEntry(BaseModel):
     role: str
 
 
+class BuyingSignal(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    signal: str
+    speaker: str
+
+
+class Objection(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    objection: str
+    quote: str
+    speaker: str
+
+
+class ObjectionHandling(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    objection: str
+    speaker: str
+    quote: str
+    handled: bool
+    handling_quality: Literal["effective", "partial", "poor"]
+    handling_evidence: str
+    handling_quote: str | None = None
+
+
 class PostSessionResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
     executive_summary: str
@@ -33,6 +57,9 @@ class PostSessionResponse(BaseModel):
     roles: list[RoleEntry] = Field(default_factory=list)
     decisions: list[str] = Field(default_factory=list)
     action_items: list[ActionItem] = Field(default_factory=list)
+    buying_signals: list[BuyingSignal] = Field(default_factory=list)
+    objections: list[Objection] = Field(default_factory=list)
+    objection_handling: list[ObjectionHandling] = Field(default_factory=list)
 
     @field_validator("executive_summary")
     @classmethod

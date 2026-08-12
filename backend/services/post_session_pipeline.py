@@ -108,11 +108,12 @@ async def run_post_session_pipeline(session_id: str) -> None:
 
             transcript_string = ""
             for seg in db_segments:
-                speaker = seg.speaker_id or "Speaker"
+                speaker = "System"
                 start = seg.start_time or 0.0
                 end = seg.end_time or 0.0
                 text = seg.text or ""
-                transcript_string += f"{speaker} ({start:.1f}-{end:.1f}): {text}\n"
+                segment_id = str(seg.id)
+                transcript_string += f"[{segment_id}] {speaker} ({start:.1f}-{end:.1f}): {text}\n"
 
             if not transcript_string:
                 logger.info(
@@ -185,6 +186,14 @@ async def run_post_session_pipeline(session_id: str) -> None:
                     for item in raw_roles
                     if "speaker" in item
                 }
+
+            # Apply the speaker map back to the database segments
+            if "speaker_map" in parsed_json:
+                speaker_map_dict = parsed_json["speaker_map"]
+                for seg in db_segments:
+                    new_speaker = speaker_map_dict.get(str(seg.id))
+                    if new_speaker:
+                        seg.speaker_id = new_speaker
 
             # 8. Calculate Speaking Ratio based on DB segments
             speaker_word_counts = {}

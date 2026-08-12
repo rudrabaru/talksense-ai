@@ -674,9 +674,20 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
 
         # ── Segments — append-only list; index watermark is valid ────────────
         seg_start = session.last_flushed_segment_index
-        seg_delta = list(session.conversation.transcript_segments[seg_start:])
+        
+        # Deep copy and strip 'words' to prevent JSON serialization errors with TranscriptWord 
+        # objects during DB commit. Also cast numpy floats to python floats.
+        seg_delta = []
+        for s in session.conversation.transcript_segments[seg_start:]:
+            s_dict = dict(s) if isinstance(s, dict) else s.__dict__.copy()
+            s_dict["words"] = None
+            if "start" in s_dict and s_dict["start"] is not None:
+                s_dict["start"] = float(s_dict["start"])
+            if "end" in s_dict and s_dict["end"] is not None:
+                s_dict["end"] = float(s_dict["end"])
+            seg_delta.append(s_dict)
 
-        # ── Alerts — eviction-safe: merge active_alerts into alert_log ───────
+        # ── Alerts ── eviction-safe: merge active_alerts into alert_log ──────────
         # active_alerts is a sliding window (max 3); alerts can be evicted
         # before the next flush tick.  alert_log is an append-only dict
         # (id → alert_dict) that grows monotonically and is never evicted.
