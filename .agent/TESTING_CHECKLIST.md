@@ -13,11 +13,9 @@ This checklist defines testing requirements, verification criteria, and quality 
 
 ### Integration Tests
 - [ ] **Whisper GPU Execution**: Verify `Transcriber` loads the `small` or `medium` model on CUDA with `int8` compute types and returns timestamped transcription segments under the 700ms budget limit.
-- [ ] **Pyannote Diarization**: Test speaker turn labeling overlaps under parallel loads. Verify sequential CUDA fallback if HuggingFace tokens are not set.
 
 ### Manual QA Checks
 - [ ] **Silence Suppression**: Run a local microphone stream. Speak, pause for 10 seconds, and speak again. Confirm the terminal log shows no empty transcription invocations during the pause.
-- [ ] **Diarization Heuristic Degradation**: Disable Pyannote (`PYANNOTE_ENABLED=false`) in `.env`. Stream audio from two speakers and verify that speaker labels alternate cleanly by turn boundary heuristic.
 
 ---
 
@@ -69,7 +67,7 @@ This checklist defines testing requirements, verification criteria, and quality 
 ## 💻 5. Frontend (React UI Dashboard)
 
 ### Unit Tests
-- [ ] **Routing Configurations**: Verify React router maps new routes (`/start`, `/dashboard/:id`, `/report/:id`) correctly.
+- [ ] **Routing Configurations**: Verify React router maps routes (`/`, `/dashboard/:id`, `/upload`, `/results`, `/sessions`, `/compare`, `/audio-test`) correctly.
 
 ### Integration Tests
 - [ ] **useAudioCapture Hook**: Grant mic permissions. Verify the hook converts browser recording data into 16kHz PCM bytes.

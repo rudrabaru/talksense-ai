@@ -4,17 +4,13 @@ This file tracks the current active scope of development and file locks.
 
 ---
 
-- **Current Phase**: Phase 3 — Database & Persistence
-- **Current Objective**: Connect TalkSense AI's in-memory session state to PostgreSQL so that sessions survive restarts, reports can be generated, and client memory persists.
-- **Files Being Modified**:
-  - [models.py](file:///e:/Work/SCET%20Hackathon/talksense-ai/backend/db/models.py) (NEW)
-  - [database.py](file:///e:/Work/SCET%20Hackathon/talksense-ai/backend/db/database.py) (NEW)
-  - [crud.py](file:///e:/Work/SCET%20Hackathon/talksense-ai/backend/db/crud.py) (NEW)
-  - [main.py](file:///e:/Work/SCET%20Hackathon/talksense-ai/backend/main.py) (MODIFY - wire routes/lifespan startup)
-  - [session_manager.py](file:///e:/Work/SCET%20Hackathon/talksense-ai/backend/ws/session_manager.py) (MODIFY - add 5s flush loop)
+- **Current Phase**: All core phases (1–5) complete. Phase 6 (Interview Mode) is skeleton-only.
+- **Current Objective**: Documentation cleanup and accuracy audit. No active feature development.
+- **Files Being Modified**: Documentation files only (`.md` files).
 - **Files Locked**:
-  - [context_analyzer.py](file:///e:/Work/SCET%20Hackathon/talksense-ai/backend/services/context_analyzer.py) (Do NOT modify quality formulas, summaries, and insights)
-  - [nlp_engine.py](file:///e:/Work/SCET%20Hackathon/talksense-ai/backend/services/nlp_engine.py) (Locked sentiment classifier initialization)
+  - `backend/services/context_analyzer.py` — Do NOT modify quality formulas, summaries, and insights (`compute_meeting_quality_v2()`, `compose_executive_summary_v2()`, `generate_key_insights_v2()`)
+  - `backend/services/nlp_engine.py` — Locked sentiment classifier initialization
 - **Notes**:
-  - Do NOT use Alembic migration framework yet. Initialize tables with `Base.metadata.create_all()` on startup.
-  - Keep database tasks async or offloaded to avoid blocking WS audio ingestion frame loops.
+  - Database schema is managed by Alembic (`alembic upgrade head`). Do NOT use `create_all()`.
+  - Keep database tasks async to avoid blocking WS audio ingestion frame loops.
+  - Post-session AI pipeline uses Gemini 1.5 Flash (`ENABLE_POST_SESSION_AI=true`).

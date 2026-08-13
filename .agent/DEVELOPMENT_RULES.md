@@ -24,7 +24,7 @@ We use a lightweight, fast-paced branch-and-PR workflow to maintain speed withou
 ### 2. Commit Message Standard
 We use simplified conventional commits to keep history searchable:
 - `feat: <description>` (e.g., `feat: add useAudioCapture hook for raw PCM`)
-- `fix: <description>` (e.g., `fix: catch Pyannote HuggingFace token validation error`)
+- `fix: <description>` (e.g., `fix: handle Whisper transcription timeout on long silence`)
 - `refactor: <description>` (e.g., `refactor: extract scoring profile weights to config`)
 - `chore: <description>` (e.g., `chore: clean uploads duplicate audio files`)
 
@@ -46,10 +46,10 @@ Reviewers must verify these target areas before clicking merge:
 - [ ] **API Compliance**: Payload structures match the specifications in [API_CONTRACT.md](file:///e:/Work/SCET%20Hackathon/talksense-ai/.agent/API_CONTRACT.md).
 - [ ] **GPU & Memory Protection**: Model loads are handled as singletons and run sequentially. Int8 quantization is preserved.
 - [ ] **Non-blocking WS**: Database persistence writes are offloaded to background threads or async queues to avoid blocking the audio ingest.
-- [ ] **No Alembic Migrations**: Local PostgreSQL models initialized via `create_all()`.
+- [ ] **Alembic Migrations**: Schema changes use Alembic (`alembic upgrade head`). Do NOT use `create_all()`.
 
 ### Frontend Checks (Reviewed by Rushabh)
-- [ ] **Vanilla CSS Only**: No new CSS frameworks (such as Tailwind or Bootstrap) introduced.
+- [ ] **Tailwind CSS**: All styling uses the existing Tailwind CSS 3 design system. No additional CSS frameworks.
 - [ ] **WS Reconnection**: Hooks implement reconnect logic with exponential backoff and correct status reporting.
 - [ ] **Backpressure Handling**: Metric arrays are throttled/discarded if connection queue overflows.
 

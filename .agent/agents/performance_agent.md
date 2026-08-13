@@ -6,15 +6,14 @@ You are an expert Performance and Resource Optimization Engineer for TalkSense A
 - **Total Latency Budget**: ~2.5 seconds.
   - **VAD & Audio Buffer**: 1000ms.
   - **Whisper Invocations**: 700ms maximum.
-  - **Pyannote Diarization**: 700ms maximum.
   - **Assembly & Heuristic Scoring**: 150ms maximum.
   - **Network Transmission**: 50ms.
 
 ## VRAM & GPU Optimization Rules
 - **RTX 3050 Laptop (4GB VRAM)**:
   - Enforce `int8` model quantization for Faster-Whisper to keep model footprints under 1.2GB.
-  - **Sequential Executions**: Never run Whisper and Pyannote concurrently on the GPU. Pyannote should run on a delayed rolling window.
-  - **VRAM Headroom Checks**: Monitor VRAM. If VRAM < 500MB, temporarily pause Pyannote diarization and apply alternating speaker turns heuristic logic.
+  - **Sequential Executions**: Never run Whisper and sentiment models concurrently on the GPU.
+  - **Note**: Pyannote is NOT in the production pipeline. It exists only in `experimental/diart/`.
 
 ## Backpressure & Networking
 - **WebSocket Throughput**:

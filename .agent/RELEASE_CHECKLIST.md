@@ -15,7 +15,7 @@ This checklist defines the operational verification steps required before deploy
 ## ⚙️ 1. Backend Release
 
 - [ ] **Python Sandbox Alignment**: Verify the active python environment has all libraries in `backend/requirements.txt` installed.
-- [ ] **Model Cold Warmup**: Test FastAPI service initialization. Verify that the startup lifespan successfully caches the Silero VAD, Faster-Whisper, Pyannote Diarization, and Sentiment transformer models without crashing.
+- [ ] **Model Cold Warmup**: Test FastAPI service initialization. Verify that the startup lifespan successfully caches the Silero VAD, Faster-Whisper, and Sentiment transformer models without crashing.
 - [ ] **Thread-Pool Offloader**: Confirm long-running model transcription calculations run inside non-blocking `run_in_threadpool` executors.
 
 ---
@@ -31,7 +31,7 @@ This checklist defines the operational verification steps required before deploy
 ## 🗄️ 3. Database Rollout
 
 - [ ] **Relational PostgreSQL Setup**: Verify the target PostgreSQL database is active and running on Port 5432.
-- [ ] **Schema Initialisation**: Execute the startup table creation script. Verify that all 8 relational tables (`users`, `clients`, `sessions`, `transcript_segments`, `session_metrics`, `analysis_results`, `alerts`, `client_snapshots`) are created.
+- [ ] **Schema Initialisation**: Run `alembic upgrade head` to create all database tables. Verify that all 8 relational tables (`users`, `clients`, `sessions`, `transcript_segments`, `session_metrics`, `analysis_results`, `alerts`, `client_snapshots`) are created.
 - [ ] **Performance Indexes**: Confirm the following database indexes are applied:
   - `sessions(client_id)`
   - `transcript_segments(session_id)`
@@ -45,11 +45,11 @@ This checklist defines the operational verification steps required before deploy
 Verify that the production environment contains the following keys with valid parameters:
 
 - [ ] `DATABASE_URL`: Connection string (`postgresql+asyncpg://<user>:<pw>@<host>:5432/talksense`).
-- [ ] `HF_TOKEN`: Active Hugging Face read token (required to load pyannote gating).
+- [ ] `GEMINI_API_KEY`: Active Google AI Studio API key (required for post-session AI pipeline).
+- [ ] `ENABLE_POST_SESSION_AI`: Set to `true` (enables post-session Gemini analysis).
 - [ ] `WHISPER_MODEL`: Set to `small` (or `medium` depending on server GPU hardware capacity).
 - [ ] `WHISPER_COMPUTE_TYPE`: Set to `int8` (to save VRAM memory).
 - [ ] `WHISPER_DEVICE`: Set to `cuda` (or `cpu` for non-GPU staging).
-- [ ] `PYANNOTE_ENABLED`: Set to `true`.
 - [ ] `JWT_SECRET_KEY`: Set to a secure, randomly generated 32-byte hexadecimal string.
 - [ ] `ENV`: Set to `production` or `staging`.
 
@@ -68,7 +68,7 @@ Verify that the production environment contains the following keys with valid pa
 
 - [ ] **VRAM Allocation Budget**: Verify the GPU maintains at least 500MB headroom to handle audio transcriber calculations.
 - [ ] **WebSocket Backpressure**: Confirm the socket broadcaster drops metrics updates if a client connection buffer is saturated.
-- [ ] **Sequential Model Pipeline**: Ensure Pyannote and Whisper processes run sequentially to prevent CUDA out-of-memory errors on 4GB VRAM cards.
+- [ ] **Sequential Model Pipeline**: Ensure Whisper and sentiment models do not run simultaneously on 4GB VRAM cards to prevent CUDA out-of-memory errors.
 
 ---
 

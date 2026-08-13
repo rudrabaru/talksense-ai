@@ -1,5 +1,7 @@
 # Phase 3 — Database & Persistence
 
+> **STATUS: ✅ COMPLETE** — All tasks below have been implemented. Database uses Alembic migrations (not `create_all()`).
+
 ## Goal
 
 Connect TalkSense AI's in-memory session state to PostgreSQL so that sessions survive restarts, reports can be generated, and client memory persists across sessions.
@@ -25,14 +27,14 @@ Connect TalkSense AI's in-memory session state to PostgreSQL so that sessions su
   - Create `backend/db/database.py`
   - Async engine using `asyncpg`
   - `get_db()` FastAPI dependency
-  - `Base.metadata.create_all()` on startup (no Alembic yet)
+  - `Base.metadata.create_all()` on startup *(Historical: Alembic is now used instead)*
 
 - [ ] **3.4 — Create CRUD layer**
   - Create `backend/db/crud.py`
   - Functions: `create_session`, `get_session`, `update_session_status`, `save_transcript_segment`, `save_metric`, `save_alert`, `create_client`, `get_client`, `list_clients`, `save_analysis_result`, `update_client_snapshot`, `get_client_briefing`
 
 - [ ] **3.5 — Wire DB init to startup**
-  - Add `await database.create_all()` to `main.py` lifespan
+  - Add `await database.create_all()` to `main.py` lifespan *(Historical: replaced by `alembic upgrade head`)*
   - Import and call before model warmup
 
 - [ ] **3.6 — Add session flush to session_manager**
@@ -84,6 +86,6 @@ asyncpg
 
 ## DO NOT
 
-- Do NOT use Alembic for this phase — use `create_all()` for simplicity
+- ~~Do NOT use Alembic for this phase — use `create_all()` for simplicity~~ *(Historical: Alembic is now the active migration mechanism)*
 - Do NOT block the audio WebSocket pipeline with DB writes — always use `asyncio.create_task()`
 - Do NOT remove in-memory session state — DB is a mirror/persistence layer, not a replacement

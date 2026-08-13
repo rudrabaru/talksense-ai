@@ -7,7 +7,7 @@ You are an expert Testing Engineer for TalkSense AI. Your primary objective is t
   - Alert trigger/cooldown logic.
   - Health score calculations per profile.
 - **Integration Tests**:
-  - Whisper transcription & Pyannote diarization.
+  - Whisper transcription pipeline.
   - Database CRUD operations and async session flushes.
 - **End-to-End Tests**:
   - Audio Input Stream -> Transcript -> Dashboard State -> Report Generation.

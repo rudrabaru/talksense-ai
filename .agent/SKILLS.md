@@ -1,4 +1,4 @@
-# TalkSense AI v4 — Agent Skills Reference
+# TalkSense AI — Agent Skills Reference
 
 > **Read this file before touching any code in this repo.**
 > It is the single source of truth for architecture, conventions, and build status.
@@ -13,31 +13,25 @@ TalkSense AI is an **AI-Powered Conversation Intelligence Platform** that analyz
 - Those are supporting capabilities. **The dashboard IS the product.**
 - Core value: understand conversations while they happen → alerts, metrics, history.
 
-**Spec documents:**
-- Architecture blueprint → `docs/archive/TalkSenseAI_New_Plan.md`
-- Implementation plan   → `docs/new_implementation_plan.md`
-- Agent decisions log   → `.agent/` (all files here)
-
 ---
 
 ## 2. Tech Stack
 
 | Layer         | Technology                              |
 |---------------|-----------------------------------------|
-| Backend       | Python 3.11+, FastAPI, uvicorn          |
-| Frontend      | React (Vite), vanilla CSS               |
-| Database      | PostgreSQL 17.5 on localhost:5432       |
-| Transcription | `faster-whisper` small/medium, int8     |
-| Diarization   | `pyannote/speaker-diarization-3.1`      |
+| Backend       | Python 3.10+, FastAPI, uvicorn          |
+| Frontend      | React 19 (Vite), Tailwind CSS 3        |
+| Database      | PostgreSQL 16+ on localhost:5432        |
+| Migrations    | Alembic (`alembic upgrade head`)        |
+| Transcription | Faster-Whisper `small`, int8, CUDA     |
 | Sentiment     | `tabularisai/multilingual-sentiment-analysis` (HuggingFace transformers) |
 | VAD           | Silero VAD (CPU, lightweight)           |
-| GPU           | RTX 3050 Laptop, 4GB VRAM              |
-| PyTorch       | CUDA 12.x build (NOT cpu build)         |
-| Auth          | JWT + bcrypt (deferred — session_id keyed for now) |
+| Post-Session  | Google Gemini 1.5 Flash                 |
+| GPU           | RTX 3050 Laptop, 4GB VRAM (dev target) |
+| PyTorch       | CUDA 12.x build                        |
+| Auth          | JWT for WebSocket subscription channels only |
 
-**VRAM Budget Rule:** Whisper + Pyannote CANNOT run simultaneously on 4GB.  
-→ Pyannote runs on a rolling delayed window. Whisper runs first.  
-→ If VRAM < 500MB: pause Pyannote, use turn-boundary heuristic for speakers.
+> **IMPORTANT:** Pyannote speaker diarization is NOT in the production pipeline. It exists only in `experimental/diart/`. The production system uses Gemini for post-session speaker attribution.
 
 ---
 
@@ -46,80 +40,73 @@ TalkSense AI is an **AI-Powered Conversation Intelligence Platform** that analyz
 ```
 talksense-ai/
 ├── backend/
-│   ├── main.py                  ← FastAPI app entry point (v4, fully updated)
+│   ├── main.py                  ← FastAPI app entry point
 │   ├── requirements.txt         ← Python deps
 │   ├── .env.example             ← Copy to .env and fill in
+│   ├── alembic.ini              ← Alembic migration config
+│   ├── alembic/                 ← Migration scripts (1 baseline)
 │   ├── core/
-│   │   └── config.py            ← Pydantic-settings config (env vars)
-│   ├── audio/                   ← Real-time audio pipeline (ALL BUILT ✅)
+│   │   ├── config.py            ← Pydantic-settings config (env vars)
+│   │   └── security.py          ← JWT token create/verify
+│   ├── audio/                   ← Real-time audio pipeline
 │   │   ├── vad.py               ← Silero VAD wrapper
 │   │   ├── buffer.py            ← Audio accumulation buffer
 │   │   ├── transcriber.py       ← Faster-Whisper transcription service
-│   │   └── diarizer.py          ← Pyannote speaker diarization
-│   ├── engine/                  ← Conversation intelligence (ALL BUILT ✅)
+│   │   └── gpu_manager.py       ← GPU concurrency management
+│   ├── engine/                  ← Conversation intelligence
 │   │   ├── conversation_engine.py ← Heart of the product
 │   │   ├── scoring_profiles.py  ← Mode-specific scoring weights
 │   │   └── alert_engine.py      ← Real-time alert generation
-│   ├── ws/                      ← WebSocket layer (ALL BUILT ✅)
+│   ├── ws/                      ← WebSocket layer
 │   │   ├── audio_handler.py     ← /ws/audio/{session_id} endpoint
-│   │   ├── session_manager.py   ← Session state machine
+│   │   ├── session_manager.py   ← Session state machine + background flusher
 │   │   ├── broadcast.py         ← WebSocket broadcaster (4 channels)
-│   │   └── subscriptions.py     ← /ws/{channel}/{session_id} sub endpoints
-│   ├── db/                      ← ⚠️ NOT YET BUILT (Phase 3)
-│   │   ├── models.py            ← SQLAlchemy ORM models [TODO]
-│   │   ├── database.py          ← Async engine setup [TODO]
-│   │   └── crud.py              ← CRUD operations [TODO]
+│   │   └── subscriptions.py     ← /ws/{channel}/{session_id} (JWT-protected)
+│   ├── db/                      ← Database layer (COMPLETE)
+│   │   ├── models.py            ← SQLAlchemy ORM models (8 tables)
+│   │   ├── database.py          ← Async engine setup
+│   │   └── crud.py              ← CRUD operations
 │   ├── services/
-│   │   ├── context_analyzer.py  ← Legacy batch analysis (KEEP, DO NOT REWRITE)
-│   │   ├── nlp_engine.py        ← NLP enrichment (KEEP, adapted for streaming)
-│   │   ├── speech_to_text.py    ← Legacy whisper wrapper (batch only)
-│   │   ├── memory_service.py    ← ⚠️ NOT YET BUILT (Phase 5)
-│   │   └── report_service.py    ← ⚠️ NOT YET BUILT (Phase 5)
-│   └── utils/
-│       └── config_loader.py     ← Kept from v3
+│   │   ├── context_analyzer.py  ← Analytics (LOCKED — DO NOT REWRITE)
+│   │   ├── nlp_engine.py        ← NLP enrichment (sentiment + keywords)
+│   │   ├── speech_to_text.py    ← Legacy Whisper batch transcriber
+│   │   ├── post_session_pipeline.py ← Post-session AI orchestrator
+│   │   ├── llm_engine.py        ← Gemini API wrapper
+│   │   ├── response_validator.py ← LLM output validation
+│   │   ├── prompt_loader.py     ← Versioned prompt bundle loader
+│   │   ├── client_memory.py     ← Client snapshot aggregation
+│   │   ├── comparison.py        ← Session comparison logic
+│   │   ├── objection_handler.py ← Objection analysis (CI-tested)
+│   │   └── transcript_builder.py ← Transcript formatting (CI-tested)
+│   ├── config/                  ← Static configuration
+│   │   └── keywords.json        ← Detection keywords
+│   ├── prompts/                 ← Versioned Gemini prompt bundles
+│   └── tests/                   ← Pytest suite
 │
 ├── talksense-ui/src/
-│   ├── App.jsx                  ← ⚠️ NEEDS UPDATE (only has old routes)
-│   ├── index.css                ← Design system CSS
+│   ├── App.jsx                  ← Routing definition
+│   ├── index.css                ← Design system CSS (Tailwind directives)
 │   ├── pages/
-│   │   ├── HomePage.jsx         ← Kept (minor CTA updates needed)
-│   │   ├── UploadPage.jsx       ← Kept (batch mode)
-│   │   ├── ResultsPage.jsx      ← Kept (batch results)
-│   │   ├── SessionStartPage.jsx ← ⚠️ NOT YET BUILT (Phase 4)
-│   │   ├── DashboardPage.jsx    ← ⚠️ NOT YET BUILT (Phase 4) ← MAIN PRODUCT
-│   │   ├── ReportPage.jsx       ← ⚠️ NOT YET BUILT (Phase 5)
-│   │   ├── SessionHistoryPage.jsx ← ⚠️ NOT YET BUILT (Phase 5)
-│   │   └── ClientsPage.jsx      ← ⚠️ NOT YET BUILT (Phase 5)
+│   │   ├── HomePage.jsx         ← Landing page + session creation
+│   │   ├── DashboardPage.jsx    ← MAIN PRODUCT — live dashboard
+│   │   ├── UploadPage.jsx       ← Audio file upload (batch mode)
+│   │   ├── ResultsPage.jsx      ← Batch results display
+│   │   ├── SessionsPage.jsx     ← Session history
+│   │   ├── ComparisonPage.jsx   ← Session comparison
+│   │   ├── SystemAudioTester.jsx ← Audio device testing
+│   │   └── NotFoundPage.jsx     ← 404 handler
 │   ├── components/
-│   │   ├── InsightCard.jsx      ← Kept
-│   │   ├── ModeSelector.jsx     ← Kept
-│   │   ├── SentimentBadge.jsx   ← Kept
-│   │   ├── TranscriptBlock.jsx  ← Kept
-│   │   ├── TranscriptLive.jsx   ← Legacy live view (superseded by DashboardPage)
-│   │   ├── dashboard/           ← ⚠️ NOT YET BUILT (Phase 4)
-│   │   │   ├── TranscriptPanel.jsx  ← live scrolling transcript
-│   │   │   ├── IntelligencePanel.jsx ← metrics center panel
-│   │   │   └── AlertPanel.jsx       ← right panel alerts
-│   │   └── ClientBriefingCard.jsx ← ⚠️ NOT YET BUILT (Phase 5)
-│   ├── hooks/                   ← ⚠️ NOT YET BUILT (Phase 4)
-│   │   ├── useSessionWebSocket.js ← manages all 4 WS connections
-│   │   └── useAudioCapture.js   ← mic → WS streaming
+│   │   └── dashboard/           ← Live dashboard panels
+│   ├── hooks/
+│   │   └── useSessionWebSocket.js ← 4-channel WS with backoff
+│   ├── audio/                   ← Audio source management
 │   └── services/
-│       └── api.js               ← REST + WS client (BUILT ✅)
+│       └── api.js               ← REST + WS client
 │
-├── docs/
-│   ├── new_implementation_plan.md   ← Detailed phase-by-phase plan
-│   └── archive/TalkSenseAI_New_Plan.md ← Architecture blueprint
-│
-└── .agent/
-    ├── SKILLS.md                ← THIS FILE
-    ├── PROJECT_STATUS.md        ← Current build status per phase
-    ├── ARCHITECTURE.md          ← Key design decisions & rules
-    ├── QUICK_REFERENCE.md       ← Legacy: batch analysis fix guide (v3)
-    ├── CHANGELOG_NEGATIVE_DECISIONS.md ← Legacy: decision logic fix
-    ├── FINAL_FIX_STRATEGY.md    ← Legacy: frozen signals fix
-    ├── FROZEN_SIGNALS_FIX.md    ← Legacy: frozen signals deep dive
-    └── FROZEN_SIGNALS_QUICK_REF.md ← Legacy: frozen signals reference
+├── experimental/                ← Isolated experiments (NOT production)
+├── scripts/                     ← Development utility scripts
+├── docs/                        ← Setup guides, archives
+└── .github/workflows/           ← CI pipelines (4 workflows)
 ```
 
 ---
@@ -128,14 +115,12 @@ talksense-ai/
 
 | Phase | What | Status |
 |-------|------|--------|
-| Phase 1 | Real-Time Audio Pipeline | ✅ BUILT |
-| Phase 2 | Conversation Engine | ✅ BUILT |
-| Phase 3 | Database & Persistence | ⚠️ NOT STARTED |
-| Phase 4 | Live React Dashboard | ⚠️ NOT STARTED |
-| Phase 5 | Client Memory & Reports | ⚠️ NOT STARTED |
-| Phase 6 | Interview Mode | ⚠️ NOT STARTED |
-
-**Next build target: Phase 3 (DB) → Phase 4 (Dashboard).**
+| Phase 1 | Real-Time Audio Pipeline | ✅ COMPLETE |
+| Phase 2 | Conversation Engine | ✅ COMPLETE |
+| Phase 3 | Database & Persistence | ✅ COMPLETE |
+| Phase 4 | Live React Dashboard | ✅ COMPLETE |
+| Phase 5 | Client Memory & Reports | ✅ COMPLETE |
+| Phase 6 | Interview Mode | ⚠️ SKELETON (metrics hardcoded at 50) |
 
 ---
 
@@ -143,13 +128,13 @@ talksense-ai/
 
 The backend exposes **5 WebSocket endpoints** per session:
 
-| Channel | Endpoint | Direction | Payload |
-|---------|----------|-----------|---------|
-| Audio input | `/ws/audio/{session_id}` | Client → Server | Binary PCM chunks |
-| Transcript | `/ws/transcript/{session_id}` | Server → Client | `{speaker, text, sentiment, start, end}` |
-| Metrics | `/ws/metrics/{session_id}` | Server → Client | `{health_score, speaking_ratio, participation, ...}` |
-| Alerts | `/ws/alerts/{session_id}` | Server → Client | `{level, message, timestamp}` |
-| Status | `/ws/status/{session_id}` | Server → Client | `{status, elapsed_seconds}` |
+| Channel | Endpoint | Direction | Auth | Payload |
+|---------|----------|-----------|------|---------|
+| Audio input | `/ws/audio/{session_id}` | Client → Server | ❌ None | Binary PCM chunks |
+| Transcript | `/ws/transcript/{session_id}?token=JWT` | Server → Client | ✅ JWT | `{speaker, text, sentiment, start, end}` |
+| Metrics | `/ws/metrics/{session_id}?token=JWT` | Server → Client | ✅ JWT | `{health_score, speaking_ratio, ...}` |
+| Alerts | `/ws/alerts/{session_id}?token=JWT` | Server → Client | ✅ JWT | `{level, message, timestamp}` |
+| Status | `/ws/status/{session_id}?token=JWT` | Server → Client | ✅ JWT | `{status, elapsed_seconds}` |
 
 **Backpressure rule:** If client lags, DROP old `/metrics` updates. NEVER drop `/alerts`.
 
@@ -158,20 +143,23 @@ The backend exposes **5 WebSocket endpoints** per session:
 ## 6. REST API
 
 ```
-POST   /sessions              → create session, returns session_id + WS URLs
+GET    /health                → health check
+POST   /sessions              → create session (returns session_id + ws_token + WS URLs)
+GET    /sessions              → list all sessions
 GET    /sessions/{id}         → get session state
 DELETE /sessions/{id}         → end session
-GET    /dashboard/{id}        → full conversation snapshot (for reconnect)
+GET    /sessions/compare      → compare sessions
+GET    /sessions/{id}/audio   → get session audio
+GET    /dashboard/{id}        → full conversation snapshot (reconnect)
 POST   /clients               → create client
 GET    /clients               → list clients
-GET    /clients/{id}          → get client + briefing data
-GET    /reports/{session_id}  → post-session report
-POST   /auth/register         → JWT auth (deferred)
-POST   /auth/login            → JWT auth (deferred)
-GET    /auth/me               → JWT auth (deferred)
+GET    /clients/{id}          → get client details
 POST   /analyze               → LEGACY batch mode (keep forever)
-GET    /health                → health check
 ```
+
+**Auth status:** ALL REST endpoints are UNAUTHENTICATED. No auth middleware exists.
+
+**Routes that DO NOT EXIST:** `/auth/register`, `/auth/login`, `/auth/me`, `/reports/{session_id}`
 
 ---
 
@@ -202,23 +190,7 @@ Reject anything else immediately at the WebSocket handler.
 
 ---
 
-## 9. Conversation Engine Output Schema
-
-```json
-{
-  "sentiment": "positive",
-  "speaking_ratio": "60/40",
-  "health_score": 84,
-  "alerts": [],
-  "participation": { "Speaker 1": 60, "Speaker 2": 40 },
-  "filler_words": 3,
-  "objections": []
-}
-```
-
----
-
-## 10. Scoring Profiles
+## 9. Scoring Profiles
 
 ```json
 {
@@ -230,7 +202,7 @@ Reject anything else immediately at the WebSocket handler.
 
 ---
 
-## 11. Alert System Rules
+## 10. Alert System Rules
 
 | Alert | Level | Trigger |
 |-------|-------|---------|
@@ -243,15 +215,15 @@ Reject anything else immediately at the WebSocket handler.
 | Buying signal | 🔵 Info | Positive buying signal detected |
 | Sentiment shift | 🔵 Info | Negative → positive shift |
 
-**Cooldown:** Same alert type suppressed for 30s.  
-**Max active:** 3 alerts. Oldest dropped when exceeded.  
+**Cooldown:** Same alert type suppressed for 30s.
+**Max active:** 3 alerts. Oldest dropped when exceeded.
 **Duplicates:** Suppressed always.
 
 ---
 
-## 12. Database Schema (Phase 3 target)
+## 11. Database Schema
 
-Tables:
+8 tables managed by Alembic (baseline migration: `dc184fe69e15`):
 - `users` — id, email, password_hash, created_at
 - `clients` — id, user_id, name, industry, created_at
 - `sessions` — id, client_id, mode, title, started_at, ended_at, duration, status
@@ -261,119 +233,54 @@ Tables:
 - `alerts` — id, session_id, type, severity, message, timestamp
 - `client_snapshots` — id, client_id, snapshot_date, summary, sentiment_score
 
-Required indexes: `sessions(client_id)`, `transcript_segments(session_id)`, `alerts(session_id)`, `client_snapshots(client_id)`
-
-DB URL format: `postgresql+asyncpg://postgres:<password>@localhost:5432/talksense`
-
 ---
 
-## 13. Frontend Dashboard Layout (Phase 4 target)
-
-```
-┌─────────────────────────────────────────────────────┐
-│  Top Bar: Mode | Client | Timer | Health Score       │
-├──────────────┬──────────────────┬───────────────────┤
-│ LEFT         │ CENTER           │ RIGHT             │
-│ Live         │ Conversation     │ Alert Feed        │
-│ Transcript   │ Intelligence     │                   │
-│              │                  │ 🔴 Critical       │
-│ Speaker A    │ Sentiment: +72   │ 🟡 Warning        │
-│ Speaker B    │ Health: 84       │ 🔵 Info           │
-│ Speaker A    │ Talk Ratio: 60/40│                   │
-└──────────────┴──────────────────┴───────────────────┘
-```
-
-React routes to add (currently only has old routes):
-- `/` → HomePage (update CTAs)
-- `/start` → SessionStartPage
-- `/dashboard/:sessionId` → DashboardPage ← **main product**
-- `/upload` → UploadPage (keep)
-- `/results` → ResultsPage (keep)
-- `/history` → SessionHistoryPage
-- `/clients` → ClientsPage
-- `/report/:sessionId` → ReportPage
-
----
-
-## 14. What To Preserve — DO NOT REWRITE
+## 12. What To Preserve — DO NOT REWRITE
 
 | File | What's locked |
 |------|--------------|
 | `backend/services/context_analyzer.py` | `compute_meeting_quality_v2()`, `compose_executive_summary_v2()`, `generate_key_insights_v2()` — all 3 locked |
-| `backend/services/nlp_engine.py` | Sentiment pipeline, keyword extraction — keep, adapt for streaming |
+| `backend/services/nlp_engine.py` | Sentiment pipeline, keyword extraction |
 | `backend/audio/vad.py` | Silero VAD singleton — do not reload |
 | `backend/audio/transcriber.py` | Whisper singleton — do not reload |
-| `backend/audio/diarizer.py` | Pyannote singleton — do not reload |
 | `backend/engine/scoring_profiles.py` | Profile weights — configurable only via JSON, not hardcoded |
 
 ---
 
-## 15. Latency Budget
-
-```
-Buffer          1000ms
-Whisper          700ms
-Pyannote         700ms
-Assembly          50ms
-Analytics        100ms
-Network           50ms
-Total target:  ~2.5s
-```
-
----
-
-## 16. Environment Setup
+## 13. Environment Setup
 
 ```bash
 # Backend
 cd backend
 python -m venv venv
 venv\Scripts\activate
+pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 pip install -r requirements.txt
 copy .env.example .env   # then fill in real values
+alembic upgrade head     # create database tables
 uvicorn main:app --reload
 
 # Frontend
 cd talksense-ui
-npm install
+npm ci
 npm run dev
 ```
 
 Key `.env` variables:
 - `DATABASE_URL` — PostgreSQL connection string
-- `HF_TOKEN` — Hugging Face token for Pyannote
+- `GEMINI_API_KEY` — Google AI Studio API key (for post-session AI)
+- `ENABLE_POST_SESSION_AI` — true/false
 - `WHISPER_MODEL` — small (default) or medium
 - `WHISPER_DEVICE` — cuda (default) or cpu
-- `PYANNOTE_ENABLED` — true/false
+- `JWT_SECRET_KEY` — random hex string for WS token signing
+- `HF_TOKEN` — optional; Hugging Face token for experimental Pyannote usage only
 
 ---
 
-## 17. Testing Checkpoints
-
-### Phase 1 (Audio Pipeline) — VERIFY STILL WORKS
-- `uvicorn main:app --reload` starts without errors
-- `/ws/audio/{session_id}` accepts binary data
-- Microphone audio → transcript in terminal within 3s
-- VAD suppresses silence
-
-### Phase 3 (DB) — UPCOMING
-- `POST /sessions` persists to PostgreSQL
-- After session ends, `GET /reports/{session_id}` returns full report
-
-### Phase 4 (Dashboard) — UPCOMING
-- Dashboard opens, mic permission works
-- Left panel: live transcript with speaker labels
-- Center panel: real-time metrics
-- Right panel: alerts as they fire
-- 3-panel layout is responsive and polished
-
----
-
-## 18. Legacy Files (Batch Mode — DO NOT DELETE)
+## 14. Legacy Files (Batch Mode — DO NOT DELETE)
 
 These files power the old `/analyze` endpoint and `UploadPage.jsx`. They stay forever:
-- `backend/services/speech_to_text.py` (old openai-whisper batch transcriber)
+- `backend/services/speech_to_text.py` (old Whisper batch transcriber)
 - `backend/services/context_analyzer.py` (batch analysis functions)
 - `talksense-ui/src/pages/UploadPage.jsx`
 - `talksense-ui/src/pages/ResultsPage.jsx`
-- `talksense-ui/src/components/TranscriptLive.jsx` (prototype live view)

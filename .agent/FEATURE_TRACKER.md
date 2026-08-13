@@ -1,29 +1,29 @@
 # TalkSense AI — Real-Time Feature Tracker
 
-This document tracks implementation progress, feature status, dependencies, and completion percentages across all phases of the TalkSense AI platform.
+This document tracks implementation progress and feature status across all phases of the TalkSense AI platform.
 
 ---
 
 ## 📊 Feature Progress Summary
 
-| Feature Area | Sub-Components | Target Phase | Status | Completion % |
-|---|---|---|---|---|
-| **Real-Time Audio Pipeline** | VAD, Buffer, Whisper, Pyannote, WS Audio Ingest, Broadcaster | Phase 1 | Completed | 100% |
-| **Conversation Analytics Engine** | Metrics tracker, Scoring profiles framework, Alert engine | Phase 2 | Completed | 100% |
-| **Database & Persistence** | PostgreSQL configuration, models ORM, CRUD helpers, 5s flusher | Phase 3 | Planned | 0% |
-| **Live React Dashboard** | PCM capture hook, WS subscriber hook, panels UI, Dashboard page | Phase 4 | Planned | 0% |
-| **Client Memory & Reports** | Briefing engine, report summaries, Report & History pages | Phase 5 | Blocked | 0% |
-| **Interview Mode** | Confidence calculation, filler words, pause duration detectors | Phase 6 | Blocked | 0% |
+| Feature Area | Target Phase | Status | Completion % |
+|---|---|---|---|
+| **Real-Time Audio Pipeline** (VAD, Buffer, Whisper, WS Audio Ingest, Broadcaster) | Phase 1 | ✅ Completed | 100% |
+| **Conversation Analytics Engine** (Metrics tracker, Scoring profiles, Alert engine) | Phase 2 | ✅ Completed | 100% |
+| **Database & Persistence** (PostgreSQL, async ORM, CRUD, Alembic, 5s flusher) | Phase 3 | ✅ Completed | 100% |
+| **Live React Dashboard** (Audio capture, WS hooks, 8 pages, dashboard panels) | Phase 4 | ✅ Completed | 100% |
+| **Client Memory & Reports** (Post-session AI, client snapshots, session comparison) | Phase 5 | ✅ Completed | 100% |
+| **Interview Mode** (Confidence, filler words, pause detection) | Phase 6 | ⚠️ Skeleton | ~20% |
 
 ---
 
-## 🟢 Completed (100%)
+## ✅ Completed (100%)
 
 ### 1. Real-Time Audio Pipeline (Phase 1)
 - **Voice Activity Detection** (Silero VAD): Singleton loader, filters silence chunks.
 - **Audio Accumulation Buffer**: Accumulates 100–250ms chunks, flushes to transcriber at ~1000ms speech.
 - **Faster Whisper Service**: GPU-accelerated Whisper singleton using `int8` quantization.
-- **Pyannote Speaker Diarizer**: Assigns speaker turns, handles sequential CUDA hand-offs.
+- **GPU Manager**: Concurrency management for GPU inference.
 - **WebSocket Ingestion Endpoint**: Accepts binary PCM 16kHz mono 16-bit streams at `/ws/audio/{id}`.
 - **Lifecycle Broadcaster**: Pushes transcript, metrics, alerts, and status changes.
 
@@ -32,32 +32,30 @@ This document tracks implementation progress, feature status, dependencies, and 
 - **Scoring Profiles**: Configuration-driven JSON weights loaded dynamically for scoring modes.
 - **Alert Engine**: Dedupes alerts, enforces 30s cooldowns, and maintains a maximum of 3 active alerts.
 
----
+### 3. Database & Persistence (Phase 3)
+- **SQLAlchemy Models**: 8 tables with indexes.
+- **Async PostgreSQL Driver**: Connection pool via asyncpg.
+- **Alembic Migrations**: Schema managed via `alembic upgrade head` (1 baseline migration).
+- **Session Auto-Flush**: 5-second background loop with deferred watermark pattern.
+- **REST Endpoints**: Client CRUD and session management.
 
-## 🟡 In Progress
-*No features are currently in progress. Development is preparing to transition to Phase 3.*
+### 4. Live React Dashboard (Phase 4)
+- **Audio Capture**: Browser mic → 16kHz PCM → WebSocket.
+- **WS Subscription Hook**: 4-channel listener with exponential backoff reconnection.
+- **Dashboard Panels**: Transcript, metrics, alerts, and status panels.
+- **8 Pages**: Home, Dashboard, Upload, Results, Sessions, Comparison, AudioTester, 404.
 
----
-
-## 🔵 Planned (0% Complete)
-
-### 1. Database & Persistence (Phase 3)
-- **SQLAlchemy Models**: Define `users`, `clients`, `sessions`, `transcript_segments`, `session_metrics`, `analysis_results`, `alerts`, `client_snapshots`.
-- **Async PostgreSQL Driver**: Implement connection pool via `asyncpg`.
-- **Session Auto-Flush**: 5-second background loop to flush active transcripts and metrics to DB.
-- **REST Endpoints**: Enable Client CRUD and Report retrieves.
-
-### 2. Live React Dashboard (Phase 4)
-- **Audio Capture Hook (`useAudioCapture`)**: Capture mic input and convert to 16kHz PCM.
-- **WS Subscription Hook (`useSessionWebSocket`)**: Establish 4-channel listener with auto-reconnection.
-- **Three-Panel UI Components**: Scrollable transcript with sentiment badges, Health Gauge, and Severity Alert Feed.
+### 5. Client Memory & Reports (Phase 5)
+- **Post-Session AI Pipeline**: Gemini 1.5 Flash for speaker attribution + executive summaries.
+- **Client Snapshots**: Aggregation of client interaction history.
+- **Session Comparison**: Side-by-side session analytics.
 
 ---
 
-## 🔴 Blocked
+## ⚠️ Skeleton Only
 
-### 1. Client Memory & Reports (Phase 5) — 0% Complete
-- **Dependency**: **Blocked by Phase 3 (Database & Persistence)**. Relational snapshots and briefings cannot be fetched or saved without database engines.
-
-### 2. Interview Mode (Phase 6) — 0% Complete
-- **Dependency**: **Blocked by Phase 4 (Live React Dashboard)**. Real-time interview metrics require dashboard panel wiring and gauge controls to render.
+### Interview Mode (Phase 6) — ~20% Complete
+- **Scoring profile defined** but `response_quality` is a hardcoded placeholder.
+- `response_quality = 50.0` (hardcoded placeholder)
+- `pause_penalty` is computed from silence duration (functional)
+- No actual response quality analysis implemented.

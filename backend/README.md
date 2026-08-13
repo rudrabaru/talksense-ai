@@ -1,114 +1,101 @@
-# TalkSense AI - Backend
+# TalkSense AI — Backend
 
-**Offline-First Conversation Intelligence Platform**
+**Real-Time Conversation Intelligence API**
 
-This is the backend for **TalkSense AI**, a privacy-focused conversation analysis tool. It processes audio meetings and sales calls entirely offline using local AI models (Whisper & Transformers) to generate structured insights like sentiment trends, action items, and objection detection.
+This is the FastAPI backend for TalkSense AI. It powers real-time audio processing, conversation analytics, and post-session AI analysis.
 
 ---
 
-## 🏗 Architecture & Logic Flow
+## Architecture
 
-The backend follows a **Unidirectional Data Flow** pipeline optimized for responsiveness using FastAPI and Thread Pools.
+The backend operates two distinct intelligence paths:
 
-```mermaid
-graph TD
-    A[Client Upload] -->|POST /analyze| B(FastAPI Endpoint)
-    B -->|Thread Pool| C{Processing Pipeline}
-    
-    subgraph "Core Logic (Non-Blocking)"
-        C -->|1. Transcribe| D[Whisper (STT)]
-        D -->|Raw Segments| E[NLP Engine]
-        E -->|2. Enrich| F[HuggingFace Transformers]
-        F -->|Sentiment + Keywords| G{Analysis Mode}
-        
-        G -->|Meeting Mode| H[Context Analyzer: Meeting]
-        G -->|Sales Mode| I[Context Analyzer: Sales]
-        
-        H -->|Rule Mapping| J[Decisions & Actions]
-        I -->|Rule Mapping| K[Objections & Signals]
-    end
-    
-    J --> L[JSON Response]
-    K --> L
+### 1. Real-Time Pipeline (WebSocket)
+
+```
+Browser Microphone → /ws/audio/{session_id}
+    → Silero VAD (speech detection)
+    → Audio Buffer (~1000ms accumulation)
+    → Faster-Whisper (speech-to-text, small model, int8)
+    → NLP Engine (sentiment analysis)
+    → Conversation Engine (metrics, scoring)
+    → Alert Engine (coaching alerts)
+    → Broadcast → /ws/transcript, /ws/metrics, /ws/alerts, /ws/status
 ```
 
-### 1. Speech-to-Text (STT)
-- **Engine**: OpenAI Whisper (`base` model).
-- **Function**: Converts audio to text segments with timestamps.
-- **Optimization**: Loaded once at startup; runs in a thread pool to avoid blocking the API main loop.
+### 2. Post-Session Pipeline (Gemini LLM)
 
-### 2. NLP Enrichment
-- **Engine**: `tabularisai/multilingual-sentiment-analysis` (DistilBERT).
-- **Function**: Enriches each text segment with:
-  - **Sentiment Score**: (-1.0 to 1.0) and Label (Positive/Negative/Neutral).
-  - **Confidence**: Model certainty score.
-  - **Keywords**: Fast regex-based extraction (decisions, dates, etc.).
+Triggered when a session is completed (if `ENABLE_POST_SESSION_AI=true`):
 
-### 3. Context Analysis (Rule-Based)
-After enrichment, data is passed to specialized analyzers based on the selected `mode`:
+```
+Full transcript → Prompt Bundle → Gemini 1.5 Flash
+    → Response Validation (Pydantic)
+    → Speaker Attribution / Role Classification
+    → Executive Summary + Action Items
+    → PostgreSQL persistence
+```
 
-- **Meeting Mode** (`analyze_meeting`):
-  - **Summary**: Heuristic generation based on sentiment ratio and end-call tone.
-  - **Action Items**: Detects phrases like "I will", "to do".
-  - **Decisions**: Detects consensus phrases like "agreed", "decided".
+### 3. Legacy Batch Analysis (REST)
 
-- **Sales Mode** (`analyze_sales`):
-  - **Overall Sentiment**: Classifies call as Positive, Negative, Neutral, or Mixed.
-  - **Objections**: Classifies concerns into *Pricing, Timeline, Authority, Fit*.
-  - **Recommended Actions**: Generates follow-ups based on detected objections.
+The `POST /analyze` endpoint supports offline audio file uploads for batch analysis.
 
 ---
 
-## ⚙️ Configuration & Concurrency
+## Key Modules
 
-### Configurable Keywords (`config/keywords.json`)
-Detection logic, such as words triggering an "Objection" or "Decision", is **not hardcoded**. 
-You can tune these rules in `backend/config/keywords.json` without restarting the server.
-- **Benefits**: Allows on-the-fly tuning for demos or specific industry jargon.
-
-### Concurrency Strategy
-- **Problem**: Whisper and Transformers are CPU-heavy and blocking.
-- **Solution**: We use `starlette.concurrency.run_in_threadpool`.
-- **Effect**: The API remains responsive (e.g., `/health` checks pass instantly) even while a large file is being transcribed on a background thread.
+| Directory | Purpose |
+|-----------|---------|
+| `audio/` | VAD, audio buffer, Faster-Whisper transcriber, GPU manager |
+| `engine/` | Conversation engine, scoring profiles, alert engine |
+| `ws/` | WebSocket handlers, session manager, broadcast, subscriptions |
+| `services/` | NLP engine, post-session pipeline, LLM engine, context analyzer |
+| `db/` | SQLAlchemy async models, CRUD operations, Alembic migrations |
+| `core/` | Pydantic Settings config, JWT security |
+| `prompts/` | Versioned Gemini prompt bundles |
+| `config/` | Static configuration (keywords, scoring profiles) |
 
 ---
 
-## 🚀 Setup & Usage
+## Quick Start
 
-### 1. Install Dependencies
 ```bash
 cd backend
+python -m venv venv
+.\venv\Scripts\activate          # Windows
+pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu124
 pip install -r requirements.txt
-```
-
-### 2. Run Server
-```bash
+cp .env.example .env             # Edit with your credentials
+alembic upgrade head             # Create database tables
 uvicorn main:app --reload
 ```
-*Server runs on `http://localhost:8000`*
 
-### 3. API Endpoints
+See the root [README.md](../README.md) and [docs/SETUP_GUIDE.md](../docs/SETUP_GUIDE.md) for detailed setup instructions.
 
-#### `POST /analyze`
-Uploads an audio file for processing.
-- **Params**: 
-  - `file`: Audio file (mp3, wav, m4a)
-  - `mode`: `"meeting"` or `"sales"` (default: meeting)
-- **Response**:
-```json
-{
-  "mode": "sales",
-  "transcript": [...],
-  "insights": {
-    "objections": [...],
-    "buying_signals": [...],
-    "recommended_actions": [...]
-  }
-}
-```
+---
 
-#### `GET /health`
-Returns quick status check (useful for load balancers).
-```json
-{ "status": "TalkSense AI backend running" }
-```
+## API Endpoints
+
+| Method | Route | Purpose |
+|--------|-------|---------|
+| `GET` | `/health` | Health check |
+| `POST` | `/sessions` | Create new session |
+| `GET` | `/sessions` | List all sessions |
+| `GET` | `/sessions/{id}` | Get session details |
+| `DELETE` | `/sessions/{id}` | End session |
+| `GET` | `/sessions/compare` | Compare sessions |
+| `GET` | `/sessions/{id}/audio` | Get session audio |
+| `GET` | `/dashboard/{id}` | Dashboard snapshot (reconnect) |
+| `POST` | `/clients` | Create client |
+| `GET` | `/clients` | List clients |
+| `GET` | `/clients/{id}` | Get client details |
+| `POST` | `/analyze` | Legacy batch analysis |
+
+## WebSocket Channels
+
+| Channel | Direction | Auth |
+|---------|-----------|------|
+| `/ws/audio/{id}` | Client → Server | None |
+| `/ws/transcript/{id}` | Server → Client | JWT |
+| `/ws/metrics/{id}` | Server → Client | JWT |
+| `/ws/alerts/{id}` | Server → Client | JWT |
+| `/ws/status/{id}` | Server → Client | JWT |

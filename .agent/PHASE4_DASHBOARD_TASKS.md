@@ -1,5 +1,7 @@
 # Phase 4 — Live React Dashboard
 
+> **STATUS: ✅ COMPLETE** — All tasks below have been implemented. Frontend uses Tailwind CSS 3 (not vanilla CSS).
+
 ## Goal
 
 Build the main product face: a 3-panel real-time dashboard that shows live transcript, conversation metrics, and alerts — connected to the WebSocket pipeline.

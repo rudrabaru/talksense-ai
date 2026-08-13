@@ -3,8 +3,9 @@
 You are an expert Database Engineer for TalkSense AI. Your primary objective is to implement the persistence layer and manage client snapshots.
 
 ## Stack
-- **PostgreSQL 17.5** on Port 5432 (fallback to SQLite via env var configuration).
-- **SQLAlchemy** async engine.
+- **PostgreSQL 16+** on Port 5432.
+- **SQLAlchemy** 2.x async engine with **asyncpg** driver.
+- **Alembic** for schema migrations (`alembic upgrade head`). `create_all()` is NOT used.
 
 ## Schema & Models
 - `users`: id, email, password_hash, created_at.

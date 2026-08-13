@@ -1,81 +1,77 @@
-# TalkSense AI 🎙️
+# TalkSense AI — Frontend
 
-> **Turn your conversations into actionable insights.**
-
-**TalkSense AI** is a cutting-edge web application designed to analyze audio calls—whether they are sales pitches or team meetings—and provide deep, actionable intelligence. By leveraging advanced AI, TalkSense transforms raw audio into structured summaries, sentiment analysis, and key insights, helping you make better decisions faster.
+> **Real-time conversation intelligence dashboard built with React 19 + Vite.**
 
 ---
 
-## 🚀 Features
+## Tech Stack
 
-- **Multi-Mode Analysis**: Specialized analysis for **Sales Calls** and **Meetings**.
-- **Smart Summarization**: Get concise summaries of long conversations instantly.
-- **Sentiment Tracking**: Visualize the emotional tone of the conversation with sentiment scores.
-- **Key Insights**: Automatically extract critical points like "Budget Confirmed", "Action Items", and "Key Decision Makers".
-- **Interactive Transcript**: Navigate through the call with time-stamped, sentiment-tagged transcripts.
-- **Modern UI**: A sleek, responsive interface built for a premium user experience.
-
----
-
-## 🛠️ Tech Stack
-
-This project is built with a modern frontend stack ensuring performance and scalability:
-
-- **Frontend Framework**: [React](https://react.dev/) (v19)
-- **Build Tool**: [Vite](https://vitejs.dev/) - Super fast development server.
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework.
-- **Routing**: [React Router](https://reactrouter.com/) (v7)
+| Layer | Technology |
+|-------|-----------|
+| Framework | React 19 |
+| Build Tool | Vite (Rolldown) |
+| Styling | Tailwind CSS 3 |
+| Routing | React Router DOM 7 |
+| Audio | Web Audio API, @ricky0123/vad-web |
+| Testing | Playwright (E2E) |
+| PDF Export | jsPDF + html2canvas |
 
 ---
 
-## 📦 Getting Started
+## Pages
 
-Follow these steps to set up the project locally on your machine.
+| Page | Route | Purpose |
+|------|-------|---------|
+| `HomePage` | `/` | Landing page with session creation |
+| `DashboardPage` | `/dashboard/:id` | **Main product** — live 3-panel dashboard |
+| `UploadPage` | `/upload` | Audio file upload for batch analysis |
+| `ResultsPage` | `/results` | Batch analysis results display |
+| `SessionsPage` | `/sessions` | Session history and management |
+| `ComparisonPage` | `/compare` | Side-by-side session comparison |
+| `SystemAudioTester` | `/audio-test` | Audio device testing utility |
+| `NotFoundPage` | `*` | 404 handler |
 
-### Prerequisites
+---
 
-Ensure you have the following installed:
-- **Node.js** (v18 or higher recommended)
-- **npm** (comes with Node.js)
+## Quick Start
 
-### Installation
-
-1. **Clone the repository** (if you haven't already):
-   ```bash
-   git clone <repository-url>
-   cd talksense-ui
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-
-### Running the App
-
-Start the development server:
 ```bash
+cd talksense-ui
+npm ci
+cp .env.example .env    # Default: VITE_API_URL=http://localhost:8000
 npm run dev
 ```
 
-Open your browser and navigate to `http://localhost:5173` (or the URL shown in your terminal) to view the application.
+Open http://localhost:5173
+
+See the root [README.md](../README.md) and [docs/SETUP_GUIDE.md](../docs/SETUP_GUIDE.md) for full setup instructions.
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 talksense-ui/
 ├── src/
-│   ├── components/    # Reusable UI components
-│   ├── mock/          # Mock data for analysis (e.g., analysis.json)
-│   ├── pages/         # Application pages (UploadPage, ResultsPage)
-│   ├── App.jsx        # Main application component with routing
-│   └── main.jsx       # Entry point
-├── public/            # Static assets
-├── index.html         # HTML entry point
-├── package.json       # Project dependencies and scripts
-└── tailwind.config.js # Tailwind CSS configuration
+│   ├── pages/            # 8 route-level pages
+│   ├── components/       # Reusable UI components
+│   │   └── dashboard/    # Live dashboard panels
+│   ├── hooks/            # Custom React hooks (WebSocket, audio)
+│   ├── audio/            # Audio source management (Mic, System, PCM)
+│   └── services/         # HTTP API client (api.js)
+├── tests/                # Playwright E2E tests
+├── public/               # Static assets + ONNX WASM files
+├── .env.example          # Environment template
+└── package.json
 ```
 
 ---
+
+## Development
+
+```bash
+npm run dev       # Start dev server
+npm run lint      # ESLint
+npm run build     # Production build
+npm run test:e2e  # Playwright E2E tests
+```

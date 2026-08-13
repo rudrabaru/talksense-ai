@@ -8,8 +8,8 @@ This document outlines directory ownership, developer responsibilities, and merg
 
 | Developer | Primary Focus | Owned Directories | Owned Files | Responsibilities | Forbidden Areas |
 |---|---|---|---|---|---|
-| **Rushabh** | Backend Core & AI Pipeline | `backend/audio/`<br>`backend/engine/`<br>`backend/db/`<br>`backend/ws/` | `backend/main.py`<br>`backend/requirements.txt`<br>`backend/.env.example` | - Implement real-time audio pipeline (VAD, buffer, Whisper, Pyannote).<br>- Build conversation engine, scoring weights, and alert engines.<br>- Setup PostgreSQL connection, async SQLAlchemy, and 5s flusher.<br>- Maintain API contract and endpoint lifecycles. | `talksense-ui/` React codebase (except WS model alignment checks) and CSS styling sheets. |
-| **Parthiv** | Frontend UI & Dashboards | `talksense-ui/src/components/`<br>`talksense-ui/src/pages/`<br>`talksense-ui/src/hooks/`<br>`talksense-ui/src/services/` | `talksense-ui/src/App.jsx`<br>`talksense-ui/src/index.css`<br>`talksense-ui/package.json` | - Build 3-panel live React dashboard and session pages.<br>- Develop custom `useAudioCapture` and `useSessionWebSocket` hooks.<br>- Configure routing and API/WS client service calls.<br>- Style UI layouts using Vanilla CSS. | `backend/` core codebase (audio ingestion, ML model singletons, databases, and scoring profiles). |
+| **Rushabh** | Backend Core & AI Pipeline | `backend/audio/`<br>`backend/engine/`<br>`backend/db/`<br>`backend/ws/` | `backend/main.py`<br>`backend/requirements.txt`<br>`backend/.env.example` | - Implement real-time audio pipeline (VAD, buffer, Whisper).<br>- Build conversation engine, scoring weights, and alert engines.<br>- Maintain PostgreSQL with Alembic migrations and async SQLAlchemy.<br>- Maintain API contract and endpoint lifecycles.<br>- Integrate post-session Gemini AI pipeline. | `talksense-ui/` React codebase (except WS model alignment checks) and CSS styling sheets. |
+| **Parthiv** | Frontend UI & Dashboards | `talksense-ui/src/components/`<br>`talksense-ui/src/pages/`<br>`talksense-ui/src/hooks/`<br>`talksense-ui/src/services/` | `talksense-ui/src/App.jsx`<br>`talksense-ui/src/index.css`<br>`talksense-ui/package.json` | - Build and maintain live React dashboard and session pages.<br>- Develop custom `useAudioCapture` and `useSessionWebSocket` hooks.<br>- Configure routing and API/WS client service calls.<br>- Style UI layouts using Tailwind CSS 3. | `backend/` core codebase (audio ingestion, ML model singletons, databases, and scoring profiles). |
 
 ---
 
@@ -36,7 +36,7 @@ All endpoint additions or payload structural adjustments must be updated in [.ag
 If **Rushabh** modifies `backend/db/models.py`:
 - He must notify **Parthiv** immediately.
 - Frontend developers must verify if metrics/report fetching services require schema alignment.
-- Database schemas must be initialized locally via `Base.metadata.create_all()` to keep local PostgreSQL instances synchronised.
+- Database schemas are managed by Alembic. Run `alembic upgrade head` to apply migrations.
 
 ### 4. Configuration and Environment File Hygiene
 - Never commit active `.env` configuration files.

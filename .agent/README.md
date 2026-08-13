@@ -7,31 +7,43 @@ This directory contains all persistent context files for AI agents working in th
 | File | What it contains | Priority |
 |------|-----------------|----------|
 | [SKILLS.md](./SKILLS.md) | Full project overview, tech stack, directory map, all rules | 🔴 Read first |
-| [PROJECT_STATUS.md](./PROJECT_STATUS.md) | Exact build status per phase, known issues, what to build next | 🔴 Read second |
+| [PROJECT_STATUS.md](./PROJECT_STATUS.md) | Current build status, known issues, what works | 🔴 Read second |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Locked decisions, prohibited patterns, design patterns | 🟡 Read before coding |
-| [QUICK_REFERENCE.md](./QUICK_REFERENCE.md) | Legacy batch mode fix guide (meeting quality v2) | 🟢 Reference only |
+| [API_CONTRACT.md](./API_CONTRACT.md) | REST and WebSocket API specifications | 🟡 Read before API work |
+| [DEVELOPMENT_RULES.md](./DEVELOPMENT_RULES.md) | Git workflow, code review, agent usage rules | 🟡 Read before committing |
+| [QUICK_REFERENCE.md](./QUICK_REFERENCE.md) | Meeting quality logic quick ref (locked functions) | 🟢 Reference only |
 | [CHANGELOG_NEGATIVE_DECISIONS.md](./CHANGELOG_NEGATIVE_DECISIONS.md) | Decision logic refinement history | 🟢 Reference only |
-| [FINAL_FIX_STRATEGY.md](./FINAL_FIX_STRATEGY.md) | Frozen signals fix (legacy) | 🟢 Reference only |
-| [FROZEN_SIGNALS_FIX.md](./FROZEN_SIGNALS_FIX.md) | Frozen signals deep dive (legacy) | 🟢 Reference only |
-| [FROZEN_SIGNALS_QUICK_REF.md](./FROZEN_SIGNALS_QUICK_REF.md) | Frozen signals quick ref (legacy) | 🟢 Reference only |
 
 ## Quick Facts
 
-- **Project:** TalkSense AI v4 — Conversation Intelligence Platform
-- **Current build stage:** Phase 3 (DB) is next
-- **Backend:** FastAPI + Python 3.11 in `backend/`
-- **Frontend:** React + Vite in `talksense-ui/`
+- **Project:** TalkSense AI — Conversation Intelligence Platform
+- **Current state:** All 6 phases complete (Phase 6 Interview is skeleton-only)
+- **Backend:** FastAPI + Python 3.10+ in `backend/`
+- **Frontend:** React 19 + Vite + Tailwind CSS 3 in `talksense-ui/`
+- **Database:** PostgreSQL 16+ with Alembic migrations
+- **AI Pipeline:** Silero VAD → Faster-Whisper → NLP → Conversation Engine → Alerts
+- **Post-Session:** Gemini 1.5 Flash for speaker attribution + executive summaries
 - **Run backend:** `cd backend && venv\Scripts\activate && uvicorn main:app --reload`
 - **Run frontend:** `cd talksense-ui && npm run dev`
 - **Swagger UI:** http://localhost:8000/docs
 
-## What's Built vs What's Not
+## What's Built
 
-✅ Audio pipeline (VAD, buffer, transcriber, diarizer)  
-✅ Conversation engine (health score, scoring profiles, alert engine)  
-✅ WebSocket layer (audio handler, session manager, broadcaster, subscriptions)  
-✅ Legacy batch analysis (POST /analyze, context_analyzer, nlp_engine)  
-❌ Database (backend/db/ is empty — Phase 3)  
-❌ Live dashboard (DashboardPage, hooks, dashboard components — Phase 4)  
-❌ Client memory + reports (memory_service, report_service, new pages — Phase 5)  
-❌ Interview mode (Phase 6)
+✅ Audio pipeline (VAD, buffer, transcriber) — `backend/audio/`
+✅ Conversation engine (health score, scoring profiles, alert engine) — `backend/engine/`
+✅ WebSocket layer (audio handler, session manager, broadcaster, subscriptions) — `backend/ws/`
+✅ Legacy batch analysis (POST /analyze, context_analyzer, nlp_engine) — `backend/services/`
+✅ Database (PostgreSQL, async ORM, CRUD, Alembic migrations) — `backend/db/`
+✅ Live dashboard (DashboardPage, WebSocket hooks, audio capture) — `talksense-ui/src/`
+✅ Client memory + session history + comparison — `backend/services/client_memory.py`
+✅ Post-session AI pipeline (Gemini, prompt bundles, response validation) — `backend/services/post_session_pipeline.py`
+⚠️ Interview mode (scoring profile defined, metrics hardcoded at 50)
+
+## What Does NOT Exist in Production
+
+❌ Pyannote speaker diarization (experimental only — `experimental/diart/`)
+❌ `audio/diarizer.py` (deleted — was never production)
+❌ Real-time speaker diarization
+❌ JWT authentication on REST endpoints
+❌ `/auth/register`, `/auth/login`, `/auth/me` routes
+❌ `/reports/{session_id}` route

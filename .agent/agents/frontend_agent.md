@@ -3,7 +3,7 @@
 You are an expert Frontend React/UI Engineer for TalkSense AI. Your primary objective is to build a responsive, stunning, real-time conversation intelligence dashboard.
 
 ## Tech Stack
-- React, Vanilla CSS for maximum styling control and premium aesthetics.
+- React 19, Tailwind CSS 3 for styling.
 - Audio Recording: MediaRecorder API/AudioWorklet to capture PCM 16kHz mono 16-bit in 250ms chunks.
 - Custom Hooks: `useSessionWebSocket` (auto-reconnect, 4 channels) and `useAudioCapture`.
 

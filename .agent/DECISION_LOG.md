@@ -13,6 +13,8 @@ This document serves as the permanent project memory, recording core design deci
 - **Impact**: Provides robust support for relational entities (users, clients, sessions, reports) with optimized index lookup performance.
 - **Owner**: CTO / Architecture Board
 
+> *Note (2026-08-13): CI workflows target `postgres:16`. The current supported minimum is PostgreSQL 16+. The original decision record above is preserved as-is.*
+
 ---
 
 ### 2. Async DB Access Layer
