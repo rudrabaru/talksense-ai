@@ -192,13 +192,13 @@ export default function DashboardPage() {
         } catch (e) {
           console.warn("[DashboardPage] Failed to send 'end' on unmount", e);
         }
-      } 
-      
+      }
+
       // We explicitly DO NOT call audioWsRef.current.close() here if it's OPEN.
       // The backend breaks its receive loop when it reads "end" and closes the TCP connection cleanly.
       // If the socket was CONNECTING, we must close it to abort the connection attempt.
       if (audioWsRef.current && audioWsRef.current.readyState === WebSocket.CONNECTING) {
-         audioWsRef.current.close(1000, "Component unmounted while connecting");
+        audioWsRef.current.close(1000, "Component unmounted while connecting");
       }
       cleanupCapture();
     };
@@ -442,31 +442,28 @@ export default function DashboardPage() {
                   <div className="grid grid-cols-3 gap-3">
                     <button
                       onClick={() => setLauncherMode("meeting")}
-                      className={`py-3 px-4 rounded-xl border-2 text-center font-semibold transition-smooth ${
-                        launcherMode === "meeting"
+                      className={`py-3 px-4 rounded-xl border-2 text-center font-semibold transition-smooth ${launcherMode === "meeting"
                           ? "border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm"
                           : "border-gray-200 bg-white hover:border-gray-300 text-gray-700"
-                      }`}
+                        }`}
                     >
                       Meeting
                     </button>
                     <button
                       onClick={() => setLauncherMode("sales")}
-                      className={`py-3 px-4 rounded-xl border-2 text-center font-semibold transition-smooth ${
-                        launcherMode === "sales"
+                      className={`py-3 px-4 rounded-xl border-2 text-center font-semibold transition-smooth ${launcherMode === "sales"
                           ? "border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm"
                           : "border-gray-200 bg-white hover:border-gray-300 text-gray-700"
-                      }`}
+                        }`}
                     >
                       Sales Call
                     </button>
                     <button
                       onClick={() => setLauncherMode("interview")}
-                      className={`py-3 px-4 rounded-xl border-2 text-center font-semibold transition-smooth ${
-                        launcherMode === "interview"
+                      className={`py-3 px-4 rounded-xl border-2 text-center font-semibold transition-smooth ${launcherMode === "interview"
                           ? "border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm"
                           : "border-gray-200 bg-white hover:border-gray-300 text-gray-700"
-                      }`}
+                        }`}
                     >
                       Interview
                     </button>
@@ -593,11 +590,10 @@ export default function DashboardPage() {
                 {availableSources?.map((source) => (
                   <label
                     key={source.id}
-                    className={`flex items-center gap-3 p-4 border rounded-xl cursor-pointer transition-all ${
-                      selectedSourceType === source.id
+                    className={`flex items-center gap-3 p-4 border rounded-xl cursor-pointer transition-all ${selectedSourceType === source.id
                         ? "border-indigo-600 bg-indigo-50 ring-1 ring-indigo-600"
                         : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
-                    }`}
+                      }`}
                   >
                     <input
                       type="radio"
@@ -807,7 +803,7 @@ export default function DashboardPage() {
                     : "🎙 Start Microphone"}
             </button>
           )}
-          
+
           {isCapturing && sessionStatus !== "completed" && !isEnding && (
             <button
               id="stop-mic-btn"
@@ -870,7 +866,7 @@ export default function DashboardPage() {
               )}
             </button>
           )}
-          
+
           {sessionStatus === "completed" && !isEnding && (
             <button
               disabled
@@ -991,7 +987,7 @@ export default function DashboardPage() {
             <TranscriptPanel transcript={transcript || []} />
           </div>
           <div className="flex flex-col min-w-0 min-h-0 h-full">
-            <ConversationSidebar 
+            <ConversationSidebar
               tips={metrics?.coachingTips || []}
               alerts={alerts || []}
               metrics={metrics || null}
