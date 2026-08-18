@@ -67,7 +67,7 @@ These files need manual review before any action is taken.
 
 | Path | Reason | Confidence | Risk Level |
 |---|---|---|---|
-| [TranscriptLive.jsx](file:///e:/Work/SCET%20Hackathon/talksense-ai/talksense-ui/src/components/TranscriptLive.jsx) | Legacy prototype live view. Route references exist in `App.jsx`, but it is superseded by the upcoming Phase 4 `DashboardPage.jsx`. Maintain until Phase 4 dashboard is fully operational. | 80% | Medium |
+| ~~TranscriptLive.jsx~~ | File no longer exists (confirmed 2026-08-18). Phase 4 DashboardPage is fully operational. | Resolved | N/A |
 | [export_prediction_dataset.py](file:///e:/Work/SCET%20Hackathon/talksense-ai/scripts/export_prediction_dataset.py) | Unused ML pipeline dataset script. Confirm if any future model training relies on this. | 75% | Medium |
 | [train_outcome_predictor.py](file:///e:/Work/SCET%20Hackathon/talksense-ai/scripts/train_outcome_predictor.py) | Unused ML model training script. Confirm if any future model training relies on this. | 75% | Medium |
 | [run_advanced_analysis.py](file:///e:/Work/SCET%20Hackathon/talksense-ai/scripts/run_advanced_analysis.py) | Obsolete analysis run script. Verify if it has any utility for developers. | 75% | Medium |

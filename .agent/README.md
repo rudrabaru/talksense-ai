@@ -11,8 +11,10 @@ This directory contains all persistent context files for AI agents working in th
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Locked decisions, prohibited patterns, design patterns | 🟡 Read before coding |
 | [API_CONTRACT.md](./API_CONTRACT.md) | REST and WebSocket API specifications | 🟡 Read before API work |
 | [DEVELOPMENT_RULES.md](./DEVELOPMENT_RULES.md) | Git workflow, code review, agent usage rules | 🟡 Read before committing |
-| [QUICK_REFERENCE.md](./QUICK_REFERENCE.md) | Meeting quality logic quick ref (locked functions) | 🟢 Reference only |
+| [QUICK_REFERENCE.md](./archive/QUICK_REFERENCE.md) | Meeting quality logic quick ref (locked functions) | 🟢 Archived — historical |
 | [CHANGELOG_NEGATIVE_DECISIONS.md](./CHANGELOG_NEGATIVE_DECISIONS.md) | Decision logic refinement history | 🟢 Reference only |
+| [TESTING_CHECKLIST.md](./TESTING_CHECKLIST.md) | What is tested and what is NOT VERIFIED | 🟡 Read before testing |
+| [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md) | Production readiness gates | 🟡 Read before deploying |
 
 ## Quick Facts
 
