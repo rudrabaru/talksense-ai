@@ -1,0 +1,13 @@
+{
+  "recording": "SalesMeeting.mp3",
+  "category": "2_speaker",
+  "sample_name": "sales_meeting",
+  "duration_seconds": 53.7,
+  "expected_speakers": 2,
+  "description": "54s sales call. Sales rep presents product to customer. Clear turn-taking.",
+  "annotation_method": "human_reviewed",
+  "whisper_segments": 15,
+  "pyannote_turns": 8,
+  "pyannote_speakers_detected": 2,
+  "review_date": "2026-06-24"
+}
