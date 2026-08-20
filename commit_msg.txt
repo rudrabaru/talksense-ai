@@ -1,0 +1,21 @@
+fix: harden transcript, speaker metrics, and session integrity
+
+- fix REST/WebSocket termination race and final-flush sequencing
+- guarantee post-session analysis fallback on empty transcripts and pipeline failures
+- prevent transcript merge data loss with dirty segment tracking
+- fix timestamp pruning across chunk overlap boundaries
+- prevent cross-speaker A-B-A transcript reordering
+- preserve legitimate repeated words during transcript merging
+- fix speaker dominance / speaking-balance metric calculation
+- persist interruption and speaker-switch metrics after speaker attribution
+- fix dirty-segment flush races during asynchronous DB writes
+- detect merged-segment growth across the ConversationEngine window
+- fix one-word Whisper overlap duplication
+- propagate merged-segment sentiment state to persisted transcript data
+- fix transcript ordering and speaker-attribution metric synchronization
+- preserve segment identity across merges and post-session attribution
+- add deterministic regression diagnostics for critical pipeline failures
+- validate post-session lifecycle, persistence, and metric integrity
+
+Validated with deterministic regression tests and the post-session E2E
+test suite.

@@ -50,7 +50,7 @@ from fastapi import (
 from fastapi import Depends as _Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.asyncio import AsyncSession as _AsyncSession
 from starlette.concurrency import run_in_threadpool
@@ -218,6 +218,18 @@ class SessionCreateRequest(BaseModel):
     mode: str = "meeting"
     client_id: str | None = None
 
+    @field_validator("mode", mode="before")
+    @classmethod
+    def normalize_mode(cls, v):
+        if not isinstance(v, str):
+            return v
+        v_norm = v.strip().lower()
+        if v_norm not in ("meeting", "sales", "interview"):
+            raise ValueError(
+                f"Invalid mode: '{v}'. Allowed modes are: meeting, sales, interview"
+            )
+        return v_norm
+
 
 @app.post("/sessions", tags=["Sessions"])
 async def create_session(
@@ -253,6 +265,13 @@ async def create_session(
         # Fallback to query parameters
         req_mode = mode if mode is not None else "meeting"
         req_client_id = client_id
+
+    # Guarantee normalization for inputs coming from query parameters
+    try:
+        validated = SessionCreateRequest(mode=req_mode, client_id=req_client_id)
+        req_mode = validated.mode
+    except ValidationError as exc:
+        raise HTTPException(status_code=422, detail=exc.errors())
 
     manager = get_session_manager()
     session = manager.create(mode=req_mode, client_id=req_client_id)
@@ -619,11 +638,32 @@ async def get_dashboard_snapshot(
             db_segments = await crud.get_all_transcript_segments(db, session_id)
             if db_segments:
                 participation = {}
+                interruptions = 0
+                speaker_switches = 0
+                
+                INTERRUPTION_OVERLAP_THRESHOLD = 1.5
+                INTERRUPTION_WORD_COUNT_THRESHOLD = 3
+                
+                last_speaker = None
+                last_end_time = 0.0
+
                 for seg in db_segments:
                     speaker = seg.speaker_id or "Speaker 1"
                     text = seg.text or ""
                     word_count = len(text.split())
                     participation[speaker] = participation.get(speaker, 0) + word_count
+                    
+                    start_time = float(seg.start_time if seg.start_time is not None else 0.0)
+                    
+                    if last_speaker is not None and speaker != last_speaker:
+                        speaker_switches += 1
+                        overlap = last_end_time - start_time
+                        if overlap > 0:
+                            if overlap > INTERRUPTION_OVERLAP_THRESHOLD or word_count > INTERRUPTION_WORD_COUNT_THRESHOLD:
+                                interruptions += 1
+                                
+                    last_speaker = speaker
+                    last_end_time = float(seg.end_time if seg.end_time is not None else 0.0)
 
                 total_words = sum(participation.values()) or 1
                 speaking_ratio = {
@@ -632,6 +672,8 @@ async def get_dashboard_snapshot(
                 }
                 metrics["participation"] = participation
                 metrics["speaking_ratio"] = speaking_ratio
+                metrics["interruptions"] = interruptions
+                metrics["speaker_switches"] = speaker_switches
 
         # Determine elapsed seconds
         elapsed = 0.0

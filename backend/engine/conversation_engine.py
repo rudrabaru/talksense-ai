@@ -68,6 +68,12 @@ class ConversationEngine:
     def remove_alert_engine(self, session_id: str) -> None:
         self._alert_engines.pop(session_id, None)
 
+    def check_silence_alerts(self, state: ConversationState, session_id: str) -> list[dict]:
+        alert_engine = self.get_alert_engine(session_id)
+        new_alerts = alert_engine.evaluate_silence(state)
+        state.active_alerts = alert_engine.get_active()
+        return new_alerts
+
     def process_segments(
         self,
         state: ConversationState,
@@ -98,16 +104,31 @@ class ConversationEngine:
         # ── Derive the delta: boundary growth + genuinely new segments ────────
         segments_to_process: list[dict] = []
 
-        # 1. Boundary check: did the last-processed segment grow via merge?
-        if new_start > 0 and new_start <= len(all_segments):
-            boundary_seg = all_segments[new_start - 1]
+        # 1. Backwards search check: did ANY recently processed segment grow via merge?
+        # Check the last 5 segments since audio_handler.py backward searches up to 5 segments.
+        search_start = max(0, new_start - 5)
+        for i in range(search_start, new_start):
+            boundary_seg = all_segments[i]
+            seg_id = (
+                boundary_seg.get("segment_id")
+                if isinstance(boundary_seg, dict)
+                else getattr(boundary_seg, "segment_id", None)
+            )
+
             boundary_text = (
                 boundary_seg.get("text", "")
                 if isinstance(boundary_seg, dict)
                 else getattr(boundary_seg, "text", "")
             )
             boundary_words = boundary_text.split()
-            prev_word_count = state._boundary_word_count
+            
+            if not hasattr(state, "_processed_segment_word_counts"):
+                state._processed_segment_word_counts = {}
+            prev_word_count = state._processed_segment_word_counts.get(seg_id, 0) if seg_id else 0
+            
+            # Fallback for active sessions deployed before this field existed
+            if i == new_start - 1 and prev_word_count == 0 and hasattr(state, "_boundary_word_count"):
+                prev_word_count = state._boundary_word_count
 
             if len(boundary_words) > prev_word_count:
                 # The overlap merge extended this segment — extract only new words
@@ -138,26 +159,27 @@ class ConversationEngine:
                         ),
                     }
                 )
+                if seg_id:
+                    state._processed_segment_word_counts[seg_id] = len(boundary_words)
 
         # 2. Add genuinely new segments (everything after the watermark)
         for seg in all_segments[new_start:]:
-            segments_to_process.append(seg if isinstance(seg, dict) else seg.__dict__)
+            seg_dict = seg if isinstance(seg, dict) else seg.__dict__
+            segments_to_process.append(seg_dict)
+            
+            if not hasattr(state, "_processed_segment_word_counts"):
+                state._processed_segment_word_counts = {}
+            seg_id = seg_dict.get("segment_id")
+            if seg_id:
+                state._processed_segment_word_counts[seg_id] = len(seg_dict.get("text", "").split())
 
         # 3. Advance watermarks BEFORE processing (safe: we hold the session lock)
         state._engine_processed_index = len(all_segments)
-        if all_segments:
-            last_seg = all_segments[-1]
-            last_text = (
-                last_seg.get("text", "")
-                if isinstance(last_seg, dict)
-                else getattr(last_seg, "text", "")
-            )
-            state._boundary_word_count = len(last_text.split())
-        else:
-            state._boundary_word_count = 0
 
         if not segments_to_process:
             return state, []
+        # We don't return early here anymore; wait, yes we do!
+
 
         prev_health = state.health_score
 
@@ -349,8 +371,9 @@ class ConversationEngine:
 
         last_speaker = None
         last_end_time = 0.0
-        if state.transcript_segments:
-            last_seg = state.transcript_segments[-1]
+        previous_index = getattr(state, "_engine_processed_index", len(state.transcript_segments)) - len(segments) - 1
+        if previous_index >= 0 and previous_index < len(state.transcript_segments):
+            last_seg = state.transcript_segments[previous_index]
             last_speaker = getattr(
                 last_seg,
                 "speaker",
@@ -395,11 +418,12 @@ class ConversationEngine:
             if last_speaker is not None and speaker != last_speaker:
                 state.speaker_switches += 1
                 overlap = last_end_time - start_time
-                if (
-                    overlap > INTERRUPTION_OVERLAP_THRESHOLD
-                    or word_count > INTERRUPTION_WORD_COUNT_THRESHOLD
-                ):
-                    state.interruptions += 1
+                if overlap > 0:
+                    if (
+                        overlap > INTERRUPTION_OVERLAP_THRESHOLD
+                        or word_count > INTERRUPTION_WORD_COUNT_THRESHOLD
+                    ):
+                        state.interruptions += 1
 
             last_speaker = speaker
             # Try to get end_time/end, defaulting to 0.0 if not found or None

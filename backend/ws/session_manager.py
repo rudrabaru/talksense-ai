@@ -179,6 +179,7 @@ class ConversationState:
     participation: dict = field(default_factory=dict)
     duration_seconds: float = 0.0
     last_silence_seconds: float = 0.0
+    last_speech_time_seconds: float | None = None
     roles: dict = field(default_factory=dict)
     speaking_ratio: dict = field(default_factory=dict)
     speaker_switches: int = 0
@@ -200,8 +201,9 @@ class ConversationState:
 
     # Engine-level processing watermark (segment index into transcript_segments)
     _engine_processed_index: int = 0
-    # Word count of the segment at (_engine_processed_index - 1) when last processed.
-    # Used to detect text growth from overlap merges on the boundary segment.
+    # Processed word count per segment (used to detect overlap merge growth)
+    _processed_segment_word_counts: dict = field(default_factory=dict)
+    # Kept for backwards compatibility with active sessions during deployment
     _boundary_word_count: int = 0
 
 
@@ -264,6 +266,10 @@ class SessionState:
     # (UUID string) set by the alert engine.
     alert_log: dict = field(default_factory=dict)  # id → alert_dict
     flushed_alert_ids: set = field(default_factory=set)  # persisted IDs
+
+    # Track stable segment_ids of previously persisted transcript segments
+    # that were subsequently mutated by real-time speech overlap merging.
+    dirty_transcript_segment_ids: set = field(default_factory=set)
 
     # MD5 hash of the last successfully flushed metrics snapshot.
     # A new session_metrics row is written only when the current hash differs.
@@ -386,6 +392,7 @@ class SessionManager:
         self,
         session_id: str,
         status: SessionStatus = SessionStatus.COMPLETED,
+        from_audio_handler: bool = False,
     ) -> None:
         """
         Transition session to a terminal state with zero-telemetry-loss guarantee.
@@ -409,6 +416,21 @@ class SessionManager:
         """
         session = self.get(session_id)
         if session is None:
+            return
+
+        # ── Step 0: Graceful delegation ───────────────────────────────────────
+        # If this was called from the REST API but the WebSocket is still active,
+        # closing the WebSocket triggers the client and server to flush final
+        # audio chunks. We delegate the actual end() execution to the WebSocket's
+        # finally block to prevent data loss or premature pipeline execution.
+        if not from_audio_handler and session.ws_audio is not None:
+            async with session.lock:
+                session.status = status
+            try:
+                # 1000 = Normal Closure
+                await session.ws_audio.close(code=1000, reason="Session terminated by API")
+            except Exception:
+                pass
             return
 
         # ── Step 1: wait for any in-progress periodic flush to complete ───────
@@ -585,6 +607,10 @@ class SessionManager:
         """Remove session from memory (call after DB flush)."""
         self._sessions.pop(session_id, None)
 
+        # Fix: Clean up the stranded AlertEngine from the singleton
+        from engine.conversation_engine import get_conversation_engine
+        get_conversation_engine().remove_alert_engine(session_id)
+
     # ── Status transitions ────────────────────────────────────────────────────
 
     async def set_status(self, session_id: str, status: SessionStatus) -> None:
@@ -672,20 +698,29 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
             session._flush_idle.set()  # restore idle signal — flush aborted
             return
 
-        # ── Segments — append-only list; index watermark is valid ────────────
+        # ── Segments — append-only list + dirty historical segments ──────────
         seg_start = session.last_flushed_segment_index
+        snapshot_len = len(session.conversation.transcript_segments)
+        new_segments_count = max(0, snapshot_len - seg_start)
+        dirty_ids_snap = set(session.dirty_transcript_segment_ids)
+        session.dirty_transcript_segment_ids.clear()
         
         # Deep copy and strip 'words' to prevent JSON serialization errors with TranscriptWord 
         # objects during DB commit. Also cast numpy floats to python floats.
         seg_delta = []
-        for s in session.conversation.transcript_segments[seg_start:]:
+        for i in range(snapshot_len):
+            s = session.conversation.transcript_segments[i]
             s_dict = dict(s) if isinstance(s, dict) else s.__dict__.copy()
-            s_dict["words"] = None
-            if "start" in s_dict and s_dict["start"] is not None:
-                s_dict["start"] = float(s_dict["start"])
-            if "end" in s_dict and s_dict["end"] is not None:
-                s_dict["end"] = float(s_dict["end"])
-            seg_delta.append(s_dict)
+            seg_id = s_dict.get("segment_id")
+            
+            # Flush if it's a new segment OR if it was previously flushed but mutated
+            if i >= seg_start or (seg_id and seg_id in dirty_ids_snap):
+                s_dict["words"] = None
+                if "start" in s_dict and s_dict["start"] is not None:
+                    s_dict["start"] = float(s_dict["start"])
+                if "end" in s_dict and s_dict["end"] is not None:
+                    s_dict["end"] = float(s_dict["end"])
+                seg_delta.append(s_dict)
 
         # ── Alerts ── eviction-safe: merge active_alerts into alert_log ──────────
         # active_alerts is a sliding window (max 3); alerts can be evicted
@@ -747,14 +782,23 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
                     "metric_name": "buying_signals",
                     "metric_value": conv.buying_signals,
                 },
+                {
+                    "metric_name": "interruptions",
+                    "metric_value": conv.interruptions,
+                },
+                {
+                    "metric_name": "speaker_switches",
+                    "metric_value": conv.speaker_switches,
+                },
             ]
     # ── Lock released — DB IO begins ──────────────────────────────────────────
 
-    # Nothing to flush — skip DB round-trip entirely
     if not seg_delta and not alert_delta and not metrics_changed:
-        if not is_final:
-            session.is_flushing = False
-            session._flush_idle.set()  # restore idle signal
+        async with session.lock:
+            session.dirty_transcript_segment_ids.update(dirty_ids_snap)
+            if not is_final:
+                session.is_flushing = False
+                session._flush_idle.set()  # restore idle signal
         logger.debug(
             "Flusher — session %s: nothing to flush, skipping.",
             session.session_id[:8],
@@ -776,6 +820,8 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
                         "Flusher — session %s not found in DB. Deferring telemetry flush until route handler commits row.",
                         session.session_id[:8],
                     )
+                    async with session.lock:
+                        session.dirty_transcript_segment_ids.update(dirty_ids_snap)
                     return
 
                 if seg_delta:
@@ -796,12 +842,14 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
 
             except Exception:
                 await db.rollback()
+                async with session.lock:
+                    session.dirty_transcript_segment_ids.update(dirty_ids_snap)
                 raise
 
         # ── 3. Advance watermarks ONLY after successful commit ─────────────────
         # No lock needed here — is_flushing=True guarantees no concurrent
         # flush task is writing these fields for this session.
-        session.last_flushed_segment_index += len(seg_delta)
+        session.last_flushed_segment_index += new_segments_count
         # Union-update the persisted ID set — survives any eviction that
         # occurred while the DB write was in flight.
         session.flushed_alert_ids |= alert_delta_ids

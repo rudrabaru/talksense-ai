@@ -142,7 +142,7 @@ class WhisperTranscriber:
                 no_speech_threshold=0.6,  # relaxed back to 0.6 to capture soft speech
                 compression_ratio_threshold=2.2,  # was 2.4; reject repetitive hallucinations  # noqa: E501
                 condition_on_previous_text=True,  # Use prior context across chunks
-                initial_prompt=initial_prompt,  # Pass context manually
+                initial_prompt=None,  # Disabled to fix hallucination loop macro-gaps
                 vad_filter=True,  # Required for word_timestamps=True on long audio
                 word_timestamps=True,
             )
@@ -168,7 +168,7 @@ class WhisperTranscriber:
                         w_start_abs = round(w.start + time_offset, 3)
                         w_end_abs = round(w.end + time_offset, 3)
 
-                        if is_partial and w_end_abs > tail_start:
+                        if is_partial and w_start_abs >= tail_start:
                             continue  # Drop word in the overlapping tail
 
                         segment_words.append(
@@ -261,7 +261,7 @@ class WhisperTranscriber:
                 no_speech_threshold=0.6,
                 compression_ratio_threshold=2.2,
                 condition_on_previous_text=True,
-                initial_prompt=initial_prompt,
+                initial_prompt=None,
                 vad_filter=True,
                 word_timestamps=True,
             )

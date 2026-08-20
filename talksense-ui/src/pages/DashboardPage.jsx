@@ -831,7 +831,7 @@ export default function DashboardPage() {
           )}
 
           {/* End Session Button */}
-          {(isEnding || sessionStatus !== "completed") && (
+          {sessionStatus !== "completed" && (
             <button
               id="end-session-btn"
               onClick={endSession}
@@ -867,7 +867,7 @@ export default function DashboardPage() {
             </button>
           )}
 
-          {sessionStatus === "completed" && !isEnding && (
+          {sessionStatus === "completed" && (
             <button
               disabled
               style={{

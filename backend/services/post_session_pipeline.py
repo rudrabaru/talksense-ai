@@ -102,8 +102,24 @@ async def run_post_session_pipeline(session_id: str) -> None:
             )
             if not db_segments:
                 logger.info(
-                    f"No transcript segments found for {session_id[:8]}. Skipping post-session AI."
+                    f"No transcript segments found for {session_id[:8]}. Saving empty analysis result."
                 )
+                import uuid
+                from db.models import Session
+                db_session = await db.get(Session, uuid.UUID(session_id))
+                if db_session:
+                    db_session.status = "completed"
+                    db_session.speaker_attribution_status = "skipped"
+                fallback = _generate_fallback()
+                await crud.save_analysis_result(
+                    db,
+                    session_id,
+                    health_score=None,
+                    summary=fallback["executive_summary"],
+                    report_json=fallback,
+                    processed_transcript=[],
+                )
+                await db.commit()
                 return
 
             transcript_string = ""
@@ -117,8 +133,24 @@ async def run_post_session_pipeline(session_id: str) -> None:
 
             if not transcript_string:
                 logger.info(
-                    f"Transcript string built empty for {session_id[:8]}. Skipping."
+                    f"Transcript string built empty for {session_id[:8]}. Saving empty analysis result."
                 )
+                import uuid
+                from db.models import Session
+                db_session = await db.get(Session, uuid.UUID(session_id))
+                if db_session:
+                    db_session.status = "completed"
+                    db_session.speaker_attribution_status = "skipped"
+                fallback = _generate_fallback()
+                await crud.save_analysis_result(
+                    db,
+                    session_id,
+                    health_score=None,
+                    summary=fallback["executive_summary"],
+                    report_json=fallback,
+                    processed_transcript=[],
+                )
+                await db.commit()
                 return
 
             # 4. Load prompts
@@ -263,7 +295,11 @@ async def run_post_session_pipeline(session_id: str) -> None:
         except Exception as e:
             # Global catch to ensure we don't crash any background task runner
             # and to guarantee rollback
-            await db.rollback()
+            try:
+                await db.rollback()
+            except Exception as rollback_e:
+                logger.error(f"Rollback failed during fatal error recovery: {rollback_e}")
+                
             logger.exception(
                 f"Unexpected fatal error in post-session pipeline for {session_id[:8]}: {str(e)}"
             )
@@ -279,6 +315,17 @@ async def run_post_session_pipeline(session_id: str) -> None:
                         # Graceful degradation: session is complete, but AI failed
                         db_session.status = "completed"
                         db_session.speaker_attribution_status = "failed"
-                        await failure_db.commit()
+                        
+                    # Guarantee an analysis_result exists so the UI stops polling
+                    fallback = _generate_fallback()
+                    await crud.save_analysis_result(
+                        failure_db,
+                        session_id,
+                        health_score=None,
+                        summary=fallback["executive_summary"],
+                        report_json=fallback,
+                        processed_transcript=[],
+                    )
+                    await failure_db.commit()
             except Exception as nested_e:
                 logger.error(f"Failed to update session status to failed: {nested_e}")

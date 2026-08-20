@@ -39,7 +39,7 @@ class Alert:
 
 
 # ── Cooldown & display caps ───────────────────────────────────────────────────
-COOLDOWN_SECONDS = 30
+COOLDOWN_SECONDS = 60
 MAX_ACTIVE_ALERTS = 3
 
 
@@ -51,6 +51,8 @@ class AlertEngine:
         self._active_conditions: dict[str, Alert] = {}
         self._last_filler_count: int = 0
         self._last_interruptions: int = 0
+        self._dominance_start_time: float = 0.0
+        self._dominant_speaker: str | None = None
 
     def evaluate(self, state, mode: str, prev_health: int) -> list[dict]:
         now = time.time()
@@ -60,7 +62,8 @@ class AlertEngine:
         current_conditions: dict[str, Alert] = {}
 
         # 1. Speaking Dominance
-        dominance_alert = self._check_speaking_dominance(state)
+        audio_time_seconds = getattr(state, "audio_time_seconds", 0.0)
+        dominance_alert = self._check_speaking_dominance(state, audio_time_seconds)
         if dominance_alert:
             current_conditions["speaking_dominance"] = dominance_alert
 
@@ -109,28 +112,87 @@ class AlertEngine:
 
         return [a.to_dict() for a in new_alerts]
 
+    def evaluate_silence(self, state) -> list[dict]:
+        now = time.time()
+        new_alerts: list[Alert] = []
+        silence_alert = self._check_long_silence(state)
+
+        if silence_alert:
+            if "long_silence" not in self._active_conditions:
+                last = self._last_fired.get("long_silence", 0.0)
+                if (now - last) >= COOLDOWN_SECONDS:
+                    self._active_conditions["long_silence"] = silence_alert
+                    self._last_fired["long_silence"] = now
+                    new_alerts.append(silence_alert)
+        else:
+            if "long_silence" in self._active_conditions:
+                resolved_alert = Alert(
+                    id=str(uuid.uuid4()),
+                    level="resolved",
+                    message="Condition resolved.",
+                    alert_type="long_silence",
+                )
+                new_alerts.append(resolved_alert)
+                del self._active_conditions["long_silence"]
+
+        return [a.to_dict() for a in new_alerts]
+
     def get_active(self) -> list[dict]:
         return [a.to_dict() for a in self._active_conditions.values()]
 
-    def _check_speaking_dominance(self, state) -> Alert | None:
-        durations = {}
-        total = 0.0
-        for seg in state.transcript_segments:
-            dur = max(0.0, float(seg.get("end", 0.0)) - float(seg.get("start", 0.0)))
-            speaker = seg.get("speaker", "System")
-            durations[speaker] = durations.get(speaker, 0.0) + dur
-            total += dur
+    def _check_speaking_dominance(self, state, audio_time_seconds: float) -> Alert | None:
+        if not state.transcript_segments:
+            self._dominance_start_time = 0.0
+            self._dominant_speaker = None
+            return None
 
-        if total > 15.0:
-            for speaker, dur in durations.items():
-                if (dur / total) > 0.65:
-                    speaker_label = "System" if speaker == "Speaker 1" else speaker
-                    return Alert(
-                        id=str(uuid.uuid4()),
-                        level="warning",
-                        message=f"{speaker_label} is dominating the conversation. Pause and ask an open question.",
-                        alert_type="speaking_dominance",
-                    )
+        window_start = max(0.0, audio_time_seconds - 120.0)
+
+        durations = {}
+        for seg in state.transcript_segments:
+            seg_start = float(seg.get("start", 0.0))
+            seg_end = float(seg.get("end", 0.0))
+
+            # Calculate overlap with the 120s window
+            overlap_start = max(seg_start, window_start)
+            overlap_end = min(seg_end, audio_time_seconds)
+            dur = max(0.0, overlap_end - overlap_start)
+
+            if dur > 0:
+                speaker = seg.get("speaker", "System")
+                durations[speaker] = durations.get(speaker, 0.0) + dur
+
+        total_speaker_duration = sum(durations.values())
+        if total_speaker_duration < 60.0:
+            self._dominance_start_time = 0.0
+            self._dominant_speaker = None
+            return None
+
+        current_dominant = None
+        for speaker, dur in durations.items():
+            if (dur / total_speaker_duration) > 0.70:
+                current_dominant = speaker
+                break
+
+        if current_dominant is None:
+            self._dominance_start_time = 0.0
+            self._dominant_speaker = None
+            return None
+
+        if current_dominant != self._dominant_speaker:
+            self._dominant_speaker = current_dominant
+            self._dominance_start_time = audio_time_seconds
+            return None
+
+        if (audio_time_seconds - self._dominance_start_time) >= 15.0:
+            speaker_label = "System" if current_dominant == "Speaker 1" else current_dominant
+            return Alert(
+                id=str(uuid.uuid4()),
+                level="warning",
+                message=f"{speaker_label} is dominating the conversation. Pause and ask an open question.",
+                alert_type="speaking_dominance",
+            )
+
         return None
 
     def _check_long_silence(self, state) -> Alert | None:
