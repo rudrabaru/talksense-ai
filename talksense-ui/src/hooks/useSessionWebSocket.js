@@ -942,7 +942,7 @@ export function useSessionWebSocket(sessionId) {
     // Live Fallback before classification
     if (base === "Speaker 1") return "System";
     return base; // Keep as "Speaker X" to prevent UI chart collisions
-  }, [metrics?.postSessionAi?.roles]);
+  }, [metrics]);
 
   // --- Enhanced Metrics (Computed Locally) ------------------------------------
   const enhancedMetrics = useMemo(() => {

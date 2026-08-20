@@ -1,7 +1,7 @@
 import React, { memo } from "react";
 
 const SessionStatusBar = memo(
-  ({ sessionStatus, connectionState, lastSyncAt, mode }) => {
+  ({ sessionStatus, connectionState, lastSyncAt, mode, onReconnect }) => {
     const getStatusColor = (status) => {
       switch (status) {
         case "active":
