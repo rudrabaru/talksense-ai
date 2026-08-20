@@ -103,6 +103,7 @@ export default function CoachingPanel({ tips = [] }) {
       setIsOpen(true);
       setIsPulsing(true);
       const t = setTimeout(() => setIsPulsing(false), 900);
+      prevCountRef.current = tips.length;
       return () => clearTimeout(t);
     }
     prevCountRef.current = tips.length;
@@ -110,12 +111,12 @@ export default function CoachingPanel({ tips = [] }) {
 
   return (
     <div
+      className={isPulsing ? "animate-panel-pulse" : ""}
       style={{
         width: "100%",
         borderRadius: "8px",
-        outline: isPulsing ? "2px solid rgba(99, 102, 241, 0.45)" : "2px solid transparent",
-        outlineOffset: "2px",
-        transition: "outline-color 0.25s ease, outline-offset 0.25s ease",
+        outline: "2px solid transparent",
+        outlineOffset: "0px",
       }}
     >
       {/* ── Accordion header ── */}
@@ -179,15 +180,16 @@ export default function CoachingPanel({ tips = [] }) {
       </button>
 
       {/* ── Collapsible tip list ── */}
-      {isOpen && (
-        <div
-          style={{
-            maxHeight: "148px",
-            overflowY: "auto",
-            paddingBottom: "10px",
-            paddingRight: "2px",
-          }}
-        >
+      <div
+        style={{
+          maxHeight: isOpen ? "148px" : "0px",
+          opacity: isOpen ? 1 : 0,
+          overflowY: "auto",
+          paddingBottom: isOpen ? "10px" : "0px",
+          paddingRight: "2px",
+          transition: "max-height 0.25s ease, opacity 0.2s ease, padding 0.25s ease",
+        }}
+      >
           {tips.length === 0 ? (
             <p
               style={{
@@ -221,7 +223,7 @@ export default function CoachingPanel({ tips = [] }) {
                     <div style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: 0 }}>
                       <span
                         style={{
-                          fontWeight: 650,
+                          fontWeight: 600,
                           fontSize: "0.77em",
                           lineHeight: 1.35,
                           color: sev.text,
@@ -258,7 +260,6 @@ export default function CoachingPanel({ tips = [] }) {
             </div>
           )}
         </div>
-      )}
     </div>
   );
 }

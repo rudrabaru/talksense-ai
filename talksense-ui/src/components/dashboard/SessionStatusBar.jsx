@@ -107,11 +107,31 @@ const SessionStatusBar = memo(
           <span style={{ textTransform: "capitalize" }}>
             {connectionState === "connected" ? "Connected" : connectionState || "Unknown"}
           </span>
+          {connectionState === "failed" && onReconnect && (
+            <button
+              onClick={onReconnect}
+              style={{
+                background: "#ef4444",
+                color: "white",
+                border: "none",
+                borderRadius: "12px",
+                padding: "2px 8px",
+                fontSize: "0.7rem",
+                marginLeft: "4px",
+                cursor: "pointer",
+                fontWeight: "bold",
+              }}
+              title="Click to reconnect"
+            >
+              Reconnect
+            </button>
+          )}
         </div>
 
         {/* Last Sync */}
-        <div style={{ display: "flex", alignItems: "center", color: "#94a3b8", fontSize: "0.8rem", marginLeft: "4px" }} title={`Last Sync: ${formattedTime}`}>
+        <div style={{ display: "flex", alignItems: "center", gap: "4px", color: "#94a3b8", fontSize: "0.8rem", marginLeft: "4px" }} title={`Last Sync: ${formattedTime}`}>
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span style={{ fontWeight: 500 }}>{formattedTime}</span>
         </div>
       </div>
     );

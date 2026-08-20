@@ -130,16 +130,12 @@ function ToastAlert({ toast, onDismiss, onPin }) {
       aria-live="polite"
       style={{
         position: "relative",
-        borderLeft: `3px solid ${lv.accent}`,
         background: lv.bg,
         borderRadius: "0 8px 8px 0",
         padding: "9px 10px 8px",
         marginBottom: "5px",
-        backdropFilter: "blur(4px)",
-        WebkitBackdropFilter: "blur(4px)",
         border: `1px solid rgba(${lv.accent === "#ef4444" ? "239,68,68" : lv.accent === "#f59e0b" ? "245,158,11" : "59,130,246"},0.18)`,
-        borderLeftWidth: "3px",
-        borderLeftColor: lv.accent,
+        borderLeft: `3px solid ${lv.accent}`,
         boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
         transition: "box-shadow 0.2s ease",
       }}
@@ -282,6 +278,7 @@ function ToastAlert({ toast, onDismiss, onPin }) {
       {/* Auto-dismiss progress bar (only when not pinned) */}
       {!toast._isPinned && (
         <div
+          key={`bar-${toast._toastId}-${toast._isPinned}`}
           style={{
             position: "absolute",
             bottom: 0,
@@ -294,14 +291,12 @@ function ToastAlert({ toast, onDismiss, onPin }) {
           }}
         >
           <div
-            key={`bar-${toast._toastId}`}
             style={{
               height: "100%",
               width: "100%",
               background: lv.accent,
               opacity: 0.45,
               animation: "toastProgress 8s linear forwards",
-              transformOrigin: "left",
             }}
           />
         </div>
@@ -338,23 +333,14 @@ function AlertsDrawer({ alerts, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-label="All session alerts"
+        className="fixed right-0 top-0 bottom-0 bg-white/95 backdrop-blur-md z-[201] p-5 overflow-y-auto flex flex-col shadow-[-6px_0_40px_rgba(0,0,0,0.12)]"
         style={{
-          position: "fixed",
-          right: 0,
-          top: 0,
-          bottom: 0,
           width: "clamp(300px, 28vw, 390px)",
-          background: "rgba(255,255,255,0.96)",
-          backdropFilter: "blur(16px)",
-          WebkitBackdropFilter: "blur(16px)",
-          zIndex: 201,
-          padding: "20px 18px",
-          overflowY: "auto",
-          boxShadow: "-6px 0 40px rgba(0,0,0,0.12)",
           animation: "drawerSlideIn 0.28s cubic-bezier(0.4, 0, 0.2, 1)",
-          display: "flex",
-          flexDirection: "column",
         }}
+        // Basic focus trap workaround: add inert to main content (if we had access to it), but since we don't, we just focus the dialog on mount
+        ref={(el) => { if (el) el.focus(); }}
+        tabIndex={-1}
       >
         {/* Drawer header */}
         <div
@@ -438,14 +424,12 @@ function AlertsDrawer({ alerts, onClose }) {
               <div
                 key={alert._toastId}
                 style={{
-                  borderLeft: `3px solid ${lv.accent}`,
                   background: lv.bg,
                   borderRadius: "0 8px 8px 0",
                   padding: "9px 12px",
                   marginBottom: "7px",
                   border: `1px solid rgba(${lv.accent === "#ef4444" ? "239,68,68" : lv.accent === "#f59e0b" ? "245,158,11" : "59,130,246"},0.15)`,
-                  borderLeftWidth: "3px",
-                  borderLeftColor: lv.accent,
+                  borderLeft: `3px solid ${lv.accent}`,
                 }}
               >
                 <div
@@ -531,8 +515,12 @@ const AlertsPanel = memo(({ alerts }) => {
   const pinnedIdsRef = useRef(new Set());
   const timersRef = useRef({});
 
+  const prevAlertsLengthRef = useRef(0);
+
   useEffect(() => {
     if (!alerts || alerts.length === 0) return;
+    if (alerts.length === prevAlertsLengthRef.current) return;
+    prevAlertsLengthRef.current = alerts.length;
 
     const newItems = [];
     alerts.forEach((alert) => {
@@ -614,7 +602,7 @@ const AlertsPanel = memo(({ alerts }) => {
     );
   }, []);
 
-  const hiddenCount = allAlerts.length - visibleToasts.length;
+  const hiddenCount = Math.max(0, allAlerts.length - visibleToasts.length);
 
   return (
     <div style={{ width: "100%" }}>
@@ -644,13 +632,13 @@ const AlertsPanel = memo(({ alerts }) => {
           {/* Live indicator dot when toasts exist */}
           {visibleToasts.length > 0 && (
             <span
+              className="animate-pulse-subtle"
               style={{
                 width: "6px",
                 height: "6px",
                 borderRadius: "50%",
                 background: "#ef4444",
                 display: "inline-block",
-                animation: "pulseSubtle 1.6s ease-in-out infinite",
                 flexShrink: 0,
               }}
               aria-hidden="true"

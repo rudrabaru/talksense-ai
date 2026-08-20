@@ -357,22 +357,78 @@ export default function DashboardPage() {
   // --- Render: Init error ----------------------------------------------------
   if (initError) {
     return (
-      <main style={{ padding: "16px", fontFamily: "sans-serif" }} role="alert">
-        <div
-          style={{
-            border: "2px solid #ef4444",
-            padding: "16px",
-            background: "#fef2f2",
-            textAlign: "center",
-            borderRadius: "8px",
-          }}
-        >
-          <h3 style={{ margin: "0 0 8px 0", color: "#991b1b" }}>
-            Session Initialization Failed
-          </h3>
-          <p style={{ margin: "0", color: "#7f1d1d" }}>{initError}</p>
-        </div>
-      </main>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
+        <nav className="border-b border-gray-200 bg-white sticky top-0 z-50 shadow-sm">
+          <div className="mx-auto px-6 lg:px-12 xl:px-16 h-16 flex items-center justify-between">
+            <button
+              onClick={() => navigate("/")}
+              className="flex items-center gap-3 hover:opacity-85 transition-all"
+            >
+              <div className="relative w-9 h-9">
+                <img
+                  src={logoImage}
+                  alt="TalkSense AI Logo"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+              <span className="font-bold text-xl tracking-tight">
+                <span style={{ color: "#4F46E5" }}>TalkSense</span>
+                <span style={{ color: "#14B8A6" }}> AI</span>
+              </span>
+            </button>
+            <div className="flex gap-6 items-center text-sm font-medium">
+              <button
+                onClick={() => navigate("/")}
+                className="text-gray-500 hover:text-indigo-600 transition-colors"
+              >
+                Home
+              </button>
+              <button
+                onClick={() => navigate("/dashboard")}
+                className="text-gray-500 hover:text-indigo-600 transition-colors"
+              >
+                Dashboard
+              </button>
+            </div>
+          </div>
+        </nav>
+        <main className="flex-1 p-6" role="alert">
+          <div
+            style={{
+              border: "2px solid #ef4444",
+              padding: "24px",
+              background: "#fef2f2",
+              textAlign: "center",
+              borderRadius: "12px",
+              maxWidth: "500px",
+              margin: "40px auto",
+              boxShadow: "0 4px 6px rgba(0,0,0,0.05)"
+            }}
+          >
+            <h3 style={{ margin: "0 0 12px 0", color: "#991b1b", fontSize: "1.25rem", fontWeight: "bold" }}>
+              Session Initialization Failed
+            </h3>
+            <p style={{ margin: "0 0 20px 0", color: "#7f1d1d" }}>{initError}</p>
+            <button
+              onClick={() => navigate("/dashboard")}
+              style={{
+                background: "#ef4444",
+                color: "white",
+                border: "none",
+                padding: "10px 20px",
+                borderRadius: "6px",
+                fontWeight: "bold",
+                cursor: "pointer",
+                transition: "background 0.2s"
+              }}
+              onMouseEnter={(e) => e.target.style.background = "#dc2626"}
+              onMouseLeave={(e) => e.target.style.background = "#ef4444"}
+            >
+              Return to Dashboard
+            </button>
+          </div>
+        </main>
+      </div>
     );
   }
 
@@ -748,12 +804,13 @@ export default function DashboardPage() {
         </div>
 
         {/* SessionStatusBar (Left aligned next to nav) */}
-        <div className="shrink-0">
+        <div className="flex-1 flex justify-center min-w-0">
           <SessionStatusBar
             sessionStatus={sessionStatus || "unknown"}
             connectionState={connectionState || "disconnected"}
             lastSyncAt={lastSyncAt}
             mode={activeSessionMode}
+            onReconnect={handleReconnect}
           />
         </div>
 

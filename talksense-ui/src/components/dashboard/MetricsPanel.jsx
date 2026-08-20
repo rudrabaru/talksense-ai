@@ -237,9 +237,7 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt, mode }) => {
           zIndex: 10,
           paddingBottom: "10px",
           paddingTop: "10px",
-          background: "rgba(255, 255, 255, 0.82)",
-          backdropFilter: "blur(10px)",
-          WebkitBackdropFilter: "blur(10px)",
+          background: "rgba(255, 255, 255, 0.95)",
           borderBottom: "1px solid rgba(226, 232, 240, 0.8)",
           marginBottom: "8px",
           letterSpacing: "-0.01em",
@@ -428,7 +426,8 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt, mode }) => {
           </div>
 
           {/* Objection Handling */}
-          <div>
+          {mode === "sales" && (
+            <div>
             <strong style={{ display: "block", marginBottom: "8px", color: "#1e293b", fontSize: "0.95em" }}>Objection Handling Analysis</strong>
             <div style={{ fontSize: "0.85em", color: "#475569" }}>
               {metrics.postSessionAi?.objection_handling && metrics.postSessionAi.objection_handling.length > 0 ? (
@@ -466,6 +465,7 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt, mode }) => {
               )}
             </div>
           </div>
+          )}
 
           {/* Sales specific metrics */}
           {mode === "sales" && (
@@ -590,7 +590,7 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt, mode }) => {
           )}
 
           {/* Speaker Attribution Quality Card */}
-          <div style={{ transform: "scale(0.95)", transformOrigin: "left top", width: "105%" }}>
+          <div style={{ marginTop: "12px", marginBottom: "12px" }}>
             <SpeakerAttributionCard attribution={metrics.speakerAttribution} attributionStatus={metrics.speakerAttributionStatus} sessionStatus={sessionStatus} secondsAgo={secondsAgo} />
           </div>
 
