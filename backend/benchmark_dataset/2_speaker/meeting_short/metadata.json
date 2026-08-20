@@ -1,0 +1,12 @@
+{
+  "recording": "meeting_short.mp3",
+  "category": "2_speaker",
+  "sample_name": "meeting_short",
+  "duration_seconds": 32.1,
+  "expected_speakers": 2,
+  "description": "Short 32s business meeting. Chair (A) leads API discussion. Developer (B) provides status. Known ground truth from existing GT.",
+  "annotation_method": "pyannote_assisted_whisper_transcript",
+  "whisper_segments": 8,
+  "pyannote_turns": 15,
+  "pyannote_speakers_detected": 3
+}

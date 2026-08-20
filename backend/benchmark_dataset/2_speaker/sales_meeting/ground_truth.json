@@ -1,0 +1,99 @@
+{
+  "recording": "SalesMeeting.mp3",
+  "description": "54s sales call. Sales rep (A) presents product to customer (B). Human-reviewed speaker labels.",
+  "expected_speakers": 2,
+  "annotation_method": "human_reviewed",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 3.2,
+      "speaker": "A",
+      "text": "Okay, let's start the meeting. Good morning everyone."
+    },
+    {
+      "start": 3.52,
+      "end": 9.44,
+      "speaker": "A",
+      "text": "So the purpose of today's call is to quickly discuss the product and see if it makes sense for your team."
+    },
+    {
+      "start": 9.44,
+      "end": 11.88,
+      "speaker": "B",
+      "text": "Can you explain what exactly this product does?"
+    },
+    {
+      "start": 11.88,
+      "end": 16.04,
+      "speaker": "A",
+      "text": "Yeah, so it's basically a platform that helps manage workflows and reduce manual work."
+    },
+    {
+      "start": 16.04,
+      "end": 19.08,
+      "speaker": "B",
+      "text": "Is this something that can integrate with our existing systems?"
+    },
+    {
+      "start": 19.08,
+      "end": 23.92,
+      "speaker": "A",
+      "text": "It should integrate with most systems. Yes, although some setup might be required."
+    },
+    {
+      "start": 23.92,
+      "end": 28.2,
+      "speaker": "B",
+      "text": "I want to understand the pricing. It feels a bit expensive compared to alternatives."
+    },
+    {
+      "start": 28.28,
+      "end": 32.52,
+      "speaker": "A",
+      "text": "Pricing is fixed, but many customers find value in the long run."
+    },
+    {
+      "start": 32.52,
+      "end": 35.24,
+      "speaker": "B",
+      "text": "What kind of support do you provide once we buy it?"
+    },
+    {
+      "start": 35.24,
+      "end": 39.72,
+      "speaker": "A",
+      "text": "SupoV is mainly through tickets, and onboarding is provided initially."
+    },
+    {
+      "start": 39.72,
+      "end": 42.04,
+      "speaker": "B",
+      "text": "How long does implementation usually take?"
+    },
+    {
+      "start": 42.04,
+      "end": 44.44,
+      "speaker": "A",
+      "text": "Usually a few days, depending on complexity."
+    },
+    {
+      "start": 44.44,
+      "end": 47.16,
+      "speaker": "B",
+      "text": "Alright, what would be the next steps from here?"
+    },
+    {
+      "start": 47.16,
+      "end": 51.56,
+      "speaker": "A",
+      "text": "I'll share the proposal and pricing details, and then you can review and get back to us."
+    },
+    {
+      "start": 52.2,
+      "end": 53.56,
+      "speaker": "A",
+      "text": "Thanks everyone for joining."
+    }
+  ],
+  "review_date": "2026-06-24"
+}

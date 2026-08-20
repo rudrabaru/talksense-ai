@@ -1,0 +1,35 @@
+{
+  "session_id": "mock-session-123",
+  "ground_truth": {
+    "speaker_attribution": {
+      "segments": [
+        {
+          "start": 0.0,
+          "end": 2.0,
+          "speaker": "Speaker A",
+          "text": "Hello world"
+        }
+      ]
+    },
+    "role_classification": {
+      "speaker_roles": {
+        "Speaker A": "sales_rep"
+      }
+    },
+    "buying_signals": {
+      "signals": [
+        "interested"
+      ]
+    },
+    "objections": {
+      "objections": [
+        "pricing"
+      ]
+    },
+    "objection_handling": {
+      "handling_status": {
+        "pricing": "resolved"
+      }
+    }
+  }
+}

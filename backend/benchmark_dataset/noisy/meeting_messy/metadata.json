@@ -1,0 +1,13 @@
+{
+  "recording": "meeting_messy.mp3",
+  "category": "noisy",
+  "sample_name": "meeting_messy",
+  "duration_seconds": 39.3,
+  "expected_speakers": 3,
+  "description": "39s meeting with overlapping speech and background noise. 3 speakers detected.",
+  "annotation_method": "human_reviewed",
+  "whisper_segments": 16,
+  "pyannote_turns": 10,
+  "pyannote_speakers_detected": 3,
+  "review_date": "2026-06-24"
+}

@@ -1,1 +1,67 @@
-{}
+{
+  "speaker_attribution": {
+    "coverage": 100.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "macro_f1": 1.0,
+    "scdr": 0.0,
+    "segments_matched": 1,
+    "total_predicted": 1,
+    "total_annotated": 1,
+    "per_speaker": {
+      "Speaker A": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "tp": 1,
+        "fp": 0,
+        "fn": 0
+      }
+    },
+    "label_map": {
+      "Speaker A": "Speaker A"
+    }
+  },
+  "role_classification": {
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "macro_f1": 1.0,
+    "confusion_matrix": {
+      "sales_rep": {
+        "sales_rep": 1,
+        "customer": 0,
+        "unknown": 0
+      },
+      "customer": {
+        "sales_rep": 0,
+        "customer": 1,
+        "unknown": 0
+      },
+      "unknown": {
+        "sales_rep": 0,
+        "customer": 0,
+        "unknown": 0
+      }
+    }
+  },
+  "buying_signals": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+  },
+  "objections": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+  },
+  "objection_handling": {
+    "accuracy": 1.0,
+    "confusion_matrix": {
+      "ignored": {},
+      "acknowledged": {},
+      "addressed": {},
+      "resolved": {}
+    }
+  }
+}

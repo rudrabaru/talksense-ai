@@ -1,79 +1,188 @@
-# TalkSense AI — Production Release & Pre-Deployment Checklist
+# TalkSense AI — Production Release Checklist
 
-This checklist defines the operational verification steps required before deploying TalkSense AI v4 to a production-ready staging or live environment.
+**Status as of:** 2026-08-18
+**Architecture reference:** `.agent/ARCHITECTURE.md`
+**Project status reference:** `.agent/PROJECT_STATUS.md`
 
----
-
-## 📋 Pre-Deployment Check
-
-- [ ] **Git Branch Cleanliness**: Confirm all development features are integrated into the `dev` branch. Confirm no direct commits were pushed to the locked `main` branch.
-- [ ] **Version Synchronization**: Update software version tags in both `backend/main.py` (`4.0.0`) and `talksense-ui/package.json`.
-- [ ] **CI Pass Validation**: Ensure all backend unit/integration tests run successfully via `pytest` and the frontend builds without errors via `npm run build`.
-
----
-
-## ⚙️ 1. Backend Release
-
-- [ ] **Python Sandbox Alignment**: Verify the active python environment has all libraries in `backend/requirements.txt` installed.
-- [ ] **Model Cold Warmup**: Test FastAPI service initialization. Verify that the startup lifespan successfully caches the Silero VAD, Faster-Whisper, and Sentiment transformer models without crashing.
-- [ ] **Thread-Pool Offloader**: Confirm long-running model transcription calculations run inside non-blocking `run_in_threadpool` executors.
+> **Critical distinctions used in this document:**
+>
+> **CODE COMPLETE** — the feature is implemented and runs without crashing.
+> **FEATURE VERIFIED** — a functional test confirms the feature executes end-to-end.
+> **ACCURACY VERIFIED** — the AI output has been validated against ground truth.
+> **PRODUCTION READY** — all of the above, plus security, performance, and ops checks passed.
+>
+> These four levels are not equivalent. This checklist records which level each area has reached.
 
 ---
 
-## 💻 2. Frontend Release
+## Pre-Deployment Checks
 
-- [ ] **Production Build Bundler**: Compile assets using `npm run build`. Verify Vite outputs compiled bundles into the `talksense-ui/dist/` directory.
-- [ ] **ONNX Runtime WASM Assets**: Verify that `ort-wasm-simd-threaded.wasm` and associated WASM support files are copied into the `talksense-ui/dist/vad/` (or public) folder to avoid WASM dynamic load 404 errors.
-- [ ] **Production Base URL**: Confirm the frontend API service connector resolves URLs to the production API gateway (or environment-supplied endpoint) rather than `localhost:8000`.
+- [ ] **Git branch cleanliness** — confirm all development work is integrated. Confirm no direct commits to `main` without review.
+- [ ] **CI passing** — `backend-ci.yml`, `frontend-ci.yml`, and `qa_pipeline.yml` all pass on the target branch.
+- [ ] **`google-genai` package installed** — `tests/test_llm_engine.py` and `tests/test_post_session_pipeline.py` fail collection locally if this package is absent. Verify it is available in the deployment environment.
 
 ---
 
-## 🗄️ 3. Database Rollout
+## 1. Backend
 
-- [ ] **Relational PostgreSQL Setup**: Verify the target PostgreSQL database is active and running on Port 5432.
-- [ ] **Schema Initialisation**: Run `alembic upgrade head` to create all database tables. Verify that all 8 relational tables (`users`, `clients`, `sessions`, `transcript_segments`, `session_metrics`, `analysis_results`, `alerts`, `client_snapshots`) are created.
-- [ ] **Performance Indexes**: Confirm the following database indexes are applied:
+### Model Startup
+
+- [ ] **Silero VAD loads without error** — `FEATURE VERIFIED` (startup log)
+  - `get_vad()` is called at startup and cached. Skipped in `ENV=test`.
+
+- [ ] **Faster-Whisper loads without error** — `FEATURE VERIFIED` (startup log)
+  - Model: `whisper_model` setting (default: `small`).
+  - Compute: `whisper_compute_type` (default: `int8`).
+  - Device: `whisper_device` (default: `cuda`; use `cpu` for non-GPU environments).
+
+- [ ] **Sentiment Transformer loads without error** — `FEATURE VERIFIED` (startup log)
+  - `get_nlp_engine()` called at startup and cached.
+
+- [ ] **Pyannote diarizer** — `NOT APPLICABLE (current release)`
+  - Real-time diarizer is explicitly set to `None`. No Pyannote model is loaded at startup.
+  - Post-session speaker attribution is handled by Gemini LLM text inference, not acoustic diarization.
+  - Do not document Pyannote as a loaded model.
+
+- [ ] **Whisper `initial_prompt` behavior** — `CODE COMPLETE` / `ACCURACY NOT VERIFIED`
+  - The last confirmed transcript segment text (up to 200 characters) is passed as `initial_prompt` to Whisper for each chunk.
+  - This is intentional context conditioning. It has NOT been removed.
+  - Accuracy impact (hallucination reduction or introduction) is not yet measured.
+
+### Thread Safety
+
+- [ ] **Whisper runs in thread pool** — `CODE COMPLETE`
+  - `transcriber.transcribe_async()` uses `asyncio.run_in_executor` to avoid blocking the event loop.
+
+- [ ] **GPU concurrency gated** — `CODE COMPLETE`
+  - `gpu_concurrency` setting (default: 3) limits simultaneous GPU inference requests.
+
+### Background Flusher
+
+- [ ] **Session flusher starts** — `FEATURE VERIFIED` (startup log)
+  - `start_flusher()` launches the `_flush_loop` coroutine at app startup.
+  - Flush interval: `FLUSH_INTERVAL_SECONDS = 5.0`.
+
+---
+
+## 2. Frontend
+
+- [ ] **Production build succeeds** — `FEATURE VERIFIED` (CI)
+  - `npm run build` produces bundles in `talksense-ui/dist/`.
+
+- [ ] **ONNX WASM assets present** — verify `ort-wasm-simd-threaded.wasm` is in the dist output.
+  - Required for `@ricky0123/vad-web` (browser-side VAD).
+  - Missing assets cause silent WASM load failures. No automated check exists for this.
+
+- [ ] **API/WS URLs configured for environment** — confirm `VITE_API_URL` and `VITE_WS_URL` point to the correct backend, not `localhost`.
+
+- [ ] **ESLint passes** — `FEATURE VERIFIED` (CI: `npm run lint`).
+
+---
+
+## 3. Database
+
+- [ ] **PostgreSQL reachable on port 5432** — verify target DB is running before deployment.
+
+- [ ] **Schema migration applies** — `FEATURE VERIFIED` (CI)
+  - `alembic upgrade head` runs in CI and locally against test DB.
+  - Verify against production DB before cutover.
+
+- [ ] **All 8 tables present after migration:**
+  - `users`, `clients`, `sessions`, `transcript_segments`, `session_metrics`, `analysis_results`, `alerts`, `client_snapshots`
+
+- [ ] **Performance indexes present:**
   - `sessions(client_id)`
   - `transcript_segments(session_id)`
   - `alerts(session_id)`
   - `client_snapshots(client_id)`
 
----
-
-## 🔑 4. Environment Variables Audit
-
-Verify that the production environment contains the following keys with valid parameters:
-
-- [ ] `DATABASE_URL`: Connection string (`postgresql+asyncpg://<user>:<pw>@<host>:5432/talksense`).
-- [ ] `GEMINI_API_KEY`: Active Google AI Studio API key (required for post-session AI pipeline).
-- [ ] `ENABLE_POST_SESSION_AI`: Set to `true` (enables post-session Gemini analysis).
-- [ ] `WHISPER_MODEL`: Set to `small` (or `medium` depending on server GPU hardware capacity).
-- [ ] `WHISPER_COMPUTE_TYPE`: Set to `int8` (to save VRAM memory).
-- [ ] `WHISPER_DEVICE`: Set to `cuda` (or `cpu` for non-GPU staging).
-- [ ] `JWT_SECRET_KEY`: Set to a secure, randomly generated 32-byte hexadecimal string.
-- [ ] `ENV`: Set to `production` or `staging`.
+- [ ] **Stale session recovery** — `CODE COMPLETE`
+  - `recover_stale_sessions()` runs at startup to mark orphaned active/created sessions as interrupted.
 
 ---
 
-## 🔒 5. Security Protocols
+## 4. Environment Variables
 
-- [ ] **HTTPS Enforcements**: Enforce SSL connections at the gateway/reverse-proxy level. Enable secure WebSocket connections (`wss://`) for PCM audio streaming.
-- [ ] **CORS Restrictions**: Limit origin domains in `CORS_ORIGINS` to the production frontend URL.
-- [ ] **JWT Key Rotation**: Confirm the `JWT_SECRET_KEY` is retrieved from environment storage and is not a hardcoded fallback value.
-- [ ] **Input Sanitization**: Ensure query fields and text segment streams filter SQL Injection strings and malicious payloads.
+Verify all required environment variables are set before deploying:
+
+| Variable | Required | Notes |
+|----------|----------|-------|
+| `DATABASE_URL` | Yes | `postgresql+asyncpg://<user>:<pw>@<host>:5432/talksense` |
+| `GEMINI_API_KEY` | Yes (if post-session AI enabled) | Required for `run_post_session_pipeline` |
+| `ENABLE_POST_SESSION_AI` | Yes | `true` to enable; `false` to skip post-session Gemini analysis |
+| `WHISPER_MODEL` | Recommended | Default: `small`; `medium` for higher accuracy on adequate GPU |
+| `WHISPER_COMPUTE_TYPE` | Recommended | Default: `int8` |
+| `WHISPER_DEVICE` | Recommended | `cuda` for GPU; `cpu` for non-GPU environments |
+| `JWT_SECRET_KEY` | Yes | Must be a securely generated value — not the default |
+| `ENV` | Yes | `production` or `staging` |
+| `CORS_ORIGINS` | Yes | Restrict to the production frontend URL |
+| `HF_TOKEN` | Situational | Required only if loading gated Hugging Face models |
+
+> **Security note:** `jwt_secret_key` defaults to `secrets.token_hex(32)` (auto-generated per process restart). In production, this must be set as a stable environment variable — otherwise all JWT tokens are invalidated on each restart.
 
 ---
 
-## ⚡ 6. Performance Optimization
+## 5. Security
 
-- [ ] **VRAM Allocation Budget**: Verify the GPU maintains at least 500MB headroom to handle audio transcriber calculations.
-- [ ] **WebSocket Backpressure**: Confirm the socket broadcaster drops metrics updates if a client connection buffer is saturated.
-- [ ] **Sequential Model Pipeline**: Ensure Whisper and sentiment models do not run simultaneously on 4GB VRAM cards to prevent CUDA out-of-memory errors.
+- [ ] **HTTPS / WSS enforced** — enforce SSL at the gateway/reverse-proxy. Audio streams use `wss://`.
+- [ ] **CORS restricted** — `cors_origins` in config defaults to `http://localhost:5173`. This must be overridden to the production frontend URL before deployment.
+- [ ] **JWT key is not default** — confirm `JWT_SECRET_KEY` is set in environment and not auto-generated at runtime.
+- [ ] **Auth endpoints exist** — `POST /auth/register`, `POST /auth/login`, `GET /auth/me` are implemented. Auth enforcement on session/transcript routes is **not fully enforced** (verify current route guards before production exposure).
+- [ ] **Input validation** — text fields and query parameters pass through FastAPI/Pydantic schema validation. SQL injection is mitigated via SQLAlchemy parameterized queries.
 
 ---
 
-## 📊 7. Monitoring & Logging
+## 6. Performance
 
-- [ ] **Model Latency Logging**: Track Whisper processing times. Ensure warnings are triggered if speech segments take longer than 700ms to transcribe.
-- [ ] **Error Redirects**: Set up error redirects to route application anomalies to persistent storage.
-- [ ] **Log Retention**: Set up log rotation routines. Retain production logs for a minimum of 30 days.
+- [ ] **GPU VRAM headroom** — verify at least 500MB free VRAM before deploying on 4GB GPU cards. Whisper and sentiment model share the GPU.
+- [ ] **GPU semaphore configured** — `gpu_concurrency` setting (default: 3) prevents concurrent GPU overload. Adjust to hardware capacity.
+- [ ] **WebSocket backpressure** — metrics broadcaster drops intermediate frames when client buffer is saturated (by design). Alert delivery is not dropped.
+
+---
+
+## 7. Known Limitations at Release (Accuracy)
+
+The following items are **CODE COMPLETE** but **NOT ACCURACY VERIFIED**. They should be disclosed before any production deployment for evaluation or customer-facing use:
+
+| Feature | Status | Impact |
+|---------|--------|--------|
+| Live speaker attribution | NOT WORKING (diarizer = None) | All live segments are "Speaker 1". Speaking ratio, roles, interruptions, speaker switches are wrong during live sessions. |
+| Post-session speaker attribution | CODE COMPLETE / ACCURACY NOT VERIFIED | LLM re-attributes speakers from text; no ground-truth benchmark run. |
+| SCDR (Speaker Change Detection Rate) | NOT MEASURED | Live SCDR = 0. Post-session SCDR not benchmarked against real data. |
+| Interruption count | NOT WORKING in live sessions | Always 0 due to single-speaker collapse. |
+| Health score | FUNCTIONAL / ACCURACY NOT VERIFIED | Produces values in [0,100] range; validity of scoring weights not independently validated. |
+| Whisper transcription accuracy | NOT BENCHMARKED | WER not measured against ground-truth audio. |
+| Timestamp alignment | LATENT CONCERN | DB timestamps vs WAV file timeline — coherent but untested under real conditions. |
+| `latest_metrics.json` | SEEDED WITH MOCK DATA | `analytics_health` thresholds computed from a single-sample mock run, not real evaluation. |
+
+---
+
+## 8. Monitoring & Logging
+
+- [ ] **Model latency logged** — Whisper processing time is logged per segment. Warning threshold for slow inference should be configured operationally.
+- [ ] **Error logging** — FastAPI exception handlers log to stderr. Redirect to persistent storage in production.
+- [ ] **Log rotation** — configure log rotation; retain production logs for at least 30 days.
+- [ ] **Profiling** — `profiling_enabled = True` by default. Verify this is acceptable in production or disable it.
+
+---
+
+## 9. Release Gate Summary
+
+| Gate | Current State |
+|------|--------------|
+| Backend unit tests pass (mocked) | PASS (local + CI, excluding `google-genai` tests) |
+| Frontend E2E tests pass (mocked) | PASS (CI) |
+| Schema migration applies | PASS (CI) |
+| WebSocket smoke test | PASS (requires live server — QA pipeline) |
+| Speaker attribution accuracy | **NOT MET** |
+| SCDR benchmark | **NOT MET** |
+| Interruption detection in live sessions | **NOT MET** |
+| Health score accuracy validated | **NOT MET** |
+| CORS locked to production domain | Pending configuration |
+| JWT secret set as stable env var | Pending configuration |
+
+> A "release" that ships before speaker attribution accuracy is validated should be explicitly scoped as an **evaluation / pilot release** with documented limitations, not a general-availability production release.
+
+---
+
+*This checklist reflects the repository state as of 2026-08-18. It must be updated before each deployment.*
