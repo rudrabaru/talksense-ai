@@ -274,6 +274,54 @@
     }
 }
 
+/* ── Dashboard panel animations ─────────────────────────────────────────── */
+
+/* Alert toast: slides down from just above, subtle scale */
+@keyframes toastSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.97);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* CoachingPanel pulse ring when new tip arrives */
+@keyframes panelPulse {
+    0%   { outline-color: rgba(99, 102, 241, 0.0); outline-offset: 0px; }
+    25%  { outline-color: rgba(99, 102, 241, 0.5); outline-offset: 3px; }
+    60%  { outline-color: rgba(99, 102, 241, 0.25); outline-offset: 5px; }
+    100% { outline-color: rgba(99, 102, 241, 0.0); outline-offset: 0px; }
+}
+
+/* View-all drawer slide-in from right */
+@keyframes drawerSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(24px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Toast auto-dismiss countdown bar */
+@keyframes toastProgress {
+    from { width: 100%; }
+    to   { width: 0%; }
+}
+
+.animate-toast-in {
+    animation: toastSlideIn 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.animate-panel-pulse {
+    animation: panelPulse 0.85s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
     width: 8px;

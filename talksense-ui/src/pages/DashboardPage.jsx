@@ -967,7 +967,7 @@ export default function DashboardPage() {
         )}
 
         {/* --- Dashboard panels --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4 flex-1 min-h-0">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4 flex-1 min-h-0 items-stretch">
           <div className="lg:col-span-2 min-w-0 flex flex-col min-h-0 h-full">
             {sessionStatus === "completed" && (
               <div className="mb-4 bg-white border border-gray-200 rounded-xl p-6 shadow-sm shrink-0">
@@ -986,7 +986,7 @@ export default function DashboardPage() {
             )}
             <TranscriptPanel transcript={transcript || []} />
           </div>
-          <div className="flex flex-col min-w-0 min-h-0 h-full">
+          <div className="flex flex-col min-w-0 min-h-0 h-full overflow-hidden">
             <ConversationSidebar
               tips={metrics?.coachingTips || []}
               alerts={alerts || []}
@@ -997,6 +997,7 @@ export default function DashboardPage() {
             />
           </div>
         </div>
+
       </main>
     </div>
   );

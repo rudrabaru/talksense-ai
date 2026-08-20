@@ -146,9 +146,21 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt, mode }) => {
         role="region"
         aria-label="Session metrics"
       >
-        <h3 
+        <h3
           className="font-semibold text-slate-800 text-lg m-0"
-          style={{ position: "sticky", top: 0, background: "white", zIndex: 10, paddingBottom: "8px", paddingTop: "8px" }}
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 10,
+            paddingBottom: "10px",
+            paddingTop: "10px",
+            background: "rgba(255, 255, 255, 0.82)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            borderBottom: "1px solid rgba(226, 232, 240, 0.8)",
+            marginBottom: "6px",
+            letterSpacing: "-0.01em",
+          }}
         >
           Session Metrics
         </h3>
@@ -217,9 +229,21 @@ const MetricsPanel = memo(({ metrics, sessionStatus, lastSyncAt, mode }) => {
       aria-label="Session metrics"
       style={{ wordBreak: "break-word" }}
     >
-      <h3 
+      <h3
         className="font-semibold text-slate-800 text-lg m-0"
-        style={{ position: "sticky", top: 0, background: "white", zIndex: 10, paddingBottom: "12px", paddingTop: "8px" }}
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+          paddingBottom: "10px",
+          paddingTop: "10px",
+          background: "rgba(255, 255, 255, 0.82)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          borderBottom: "1px solid rgba(226, 232, 240, 0.8)",
+          marginBottom: "8px",
+          letterSpacing: "-0.01em",
+        }}
       >
         Session Metrics
       </h3>
