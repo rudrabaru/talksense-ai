@@ -12,6 +12,10 @@ ruff>=0.5.0
 black>=24.0.0
 
 # ── Type Checking ─────────────────────────────────────────
-pyright>=1.1.0
+# Pinned exactly so type-check results are identical locally and in CI.
+# The single authoritative config is pyrightconfig.json at the repository
+# root (pythonVersion 3.12, typeCheckingMode standard). Invoke it as:
+#   pyright --project pyrightconfig.json backend/
+pyright==1.1.411
 psutil>=5.9.0
 

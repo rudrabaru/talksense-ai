@@ -1,0 +1,175 @@
+# ============================================================================
+# TalkSense AI - CANONICAL BACKEND RUNTIME LOCK
+# ============================================================================
+#
+# WHAT THIS FILE IS
+#   A verbatim record of the packages installed in backend/venv at the time of
+#   capture. It is a SNAPSHOT of a known-good environment, NOT the output of a
+#   fresh dependency resolution. backend/requirements.txt remains the abstract
+#   dependency specification; this file is the concrete record of what was
+#   actually installed and validated.
+#
+#   This is the environment the frozen IB 1.5s ASR configuration was validated
+#   against. Treat every pin below as accuracy-critical.
+#
+# CAPTURED
+#   Date        : 2026-09-09
+#   Command     : backend/venv/Scripts/python.exe -m pip freeze --all
+#   Interpreter : CPython 3.12.8 (cp312)
+#   Platform    : win_amd64
+#   Role        : canonical backend runtime, launched by backend/start_backend.ps1
+#
+# INDEX / WHEEL PROVENANCE
+#   Every package below was installed from the default index (PyPI). No
+#   dist-info contains a direct_url.json; there are no editable, VCS, or local
+#   file installs.
+#
+#   torch==2.14.0 and torchaudio==2.11.0 carry no local version tag in their
+#   installed metadata, but the builds report:
+#       torch.__version__      == '2.14.0+cpu'
+#       torchaudio.__version__ == '2.11.0+cpu'
+#   On win_amd64 the default PyPI wheel IS the CPU build, so these lines
+#   reproduce the environment as-is on Windows. On linux_x86_64 the same
+#   version strings resolve to the CUDA-bundled wheels, so THIS FILE DOES NOT
+#   REPRODUCE THE SAME RUNTIME ON LINUX. A Linux rebuild must install torch and
+#   torchaudio from https://download.pytorch.org/whl/cpu to match.
+#
+#   torch.cuda.is_available() is False in this environment. That is expected
+#   and correct: no part of the production pipeline uses torch CUDA. Whisper
+#   reaches the GPU through CTranslate2 (below), Silero VAD is CPU by locked
+#   decision, and the sentiment pipeline is constructed without a device
+#   argument and therefore runs on CPU.
+#
+# CUDA RUNTIME FOR WHISPER (REQUIRED, NOT SUPPLIED BY TORCH)
+#   GPU transcription is provided by ctranslate2==4.8.2 (via
+#   faster-whisper==1.2.1) using the CUDA libraries shipped as these three
+#   win_amd64 PyPI wheels, pinned below:
+#       nvidia-cublas-cu12==12.9.2.10
+#       nvidia-cuda-nvrtc-cu12==12.9.86
+#       nvidia-cudnn-cu12==9.25.1.1
+#   On Windows these DLLs are not on the loader search path by default.
+#   backend/start_backend.ps1 prepends both directories to PATH:
+#       backend/venv/Lib/site-packages/nvidia/cublas/bin
+#       backend/venv/Lib/site-packages/nvidia/cudnn/bin
+#   Starting the backend by any other means will not find them, and CUDA
+#   Whisper will fail to initialise. Always start via start_backend.ps1.
+#
+# NOT CAPTURED BY THIS FILE (remaining reproducibility gaps)
+#   - Whisper model weights: faster-whisper resolves WHISPER_MODEL ('small')
+#     from the HuggingFace cache with no revision pin.
+#   - Silero VAD: loaded via torch.hub.load('snakers4/silero-vad') with no tag
+#     or commit, i.e. the repository default branch.
+#   - Host NVIDIA driver / CUDA driver version.
+#
+# RULES
+#   - Do not hand-edit. Regenerate only by re-running pip freeze against an
+#     environment that has itself been validated.
+#   - Reinstalling from this file, or changing any pin in it, moves the ASR
+#     stack and requires L4 accuracy regression before it is accepted.
+#   - As of this commit, this file is a record only. It is not yet used to
+#     build any environment, and backend/venv has not been modified.
+#
+# ============================================================================
+
+alembic==1.19.2
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.15.1
+asyncpg==0.31.0
+av==18.1.0
+bcrypt==5.0.0
+certifi==2026.7.22
+cffi==2.1.1
+charset-normalizer==3.5.1
+click==8.5.0
+colorama==0.4.6
+cryptography==50.0.1
+ctranslate2==4.8.2
+distro==1.9.0
+ecdsa==0.19.2
+fastapi==0.141.1
+faster-whisper==1.2.1
+filelock==3.32.5
+flatbuffers==25.12.19
+fsspec==2026.7.0
+google-ai-generativelanguage==0.6.15
+google-api-core==2.33.0
+google-api-python-client==2.200.0
+google-auth==2.57.1
+google-auth-httplib2==0.4.2
+google-genai==2.22.0
+google-generativeai==0.8.6
+googleapis-common-protos==1.75.0
+greenlet==3.5.5
+grpcio==1.83.1
+grpcio-status==1.71.2
+h11==0.16.0
+hf-xet==1.6.0
+httpcore==1.0.9
+httplib2==0.32.0
+httptools==0.8.0
+httpx==0.28.1
+huggingface_hub==1.30.0
+idna==3.19
+Jinja2==3.1.6
+llvmlite==0.49.0
+Mako==1.4.1
+markdown-it-py==4.2.0
+MarkupSafe==3.0.3
+mdurl==0.1.2
+more-itertools==11.1.0
+mpmath==1.3.0
+networkx==3.6.1
+numba==0.67.0
+numpy==2.5.3
+nvidia-cublas-cu12==12.9.2.10
+nvidia-cuda-nvrtc-cu12==12.9.86
+nvidia-cudnn-cu12==9.25.1.1
+onnxruntime==1.29.0
+openai-whisper==20250625
+packaging==26.3
+passlib==1.7.4
+pip==24.3.1
+proto-plus==1.28.2
+protobuf==5.29.6
+pyasn1==0.6.4
+pyasn1_modules==0.4.2
+pycparser==3.0
+pydantic==2.13.5
+pydantic-settings==2.15.0
+pydantic_core==2.46.5
+Pygments==2.21.0
+pyparsing==3.3.2
+python-dotenv==1.2.3
+python-jose==3.5.0
+python-multipart==0.0.32
+PyYAML==6.0.3
+regex==2026.9.3
+requests==2.34.2
+rich==15.0.0
+rsa==4.9.1
+safetensors==0.8.0
+scipy==1.18.1
+setuptools==84.0.0
+shellingham==1.5.4
+silero-vad==6.2.1
+six==1.17.0
+sniffio==1.3.1
+SQLAlchemy==2.0.52
+starlette==1.6.0
+sympy==1.14.0
+tenacity==9.1.4
+tiktoken==0.14.0
+tokenizers==0.23.2
+torch==2.14.0
+torchaudio==2.11.0
+tqdm==4.70.0
+transformers==5.16.1
+typer==0.27.2
+typing-inspection==0.4.4
+typing_extensions==4.16.0
+uritemplate==4.2.0
+urllib3==2.7.0
+uvicorn==0.52.4
+watchfiles==1.2.0
+websockets==16.1.1

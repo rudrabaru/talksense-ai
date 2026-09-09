@@ -43,21 +43,3 @@ select = [
     "I",  # isort
 ]
 ignore = ["E501"]
-
-[tool.pyright]
-include = ["."]
-exclude = [
-    ".git",
-    ".venv",
-    "venv",
-    "__pycache__",
-    ".pytest_cache",
-    ".ruff_cache",
-    ".mypy_cache",
-    "node_modules",
-    "dist",
-    "build",
-    "alembic/versions",
-]
-pythonVersion = "3.10"
-typeCheckingMode = "basic"
