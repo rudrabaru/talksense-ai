@@ -1,7 +1,7 @@
 {
   "pythonVersion": "3.12",
   "typeCheckingMode": "standard",
-  "venvPath": "backend",
+  "venvPath": ".",
   "venv": "venv",
   "include": [
     "backend"

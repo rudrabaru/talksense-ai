@@ -73,6 +73,8 @@ def test_normal_successful_session(client: TestClient):
         ]:
             break
         time.sleep(1)
+    else:
+        pytest.fail("post-session pipeline did not settle within 10s")
 
     assert data["status"] == "completed"
     assert data["speaker_attribution_status"] == "completed"
@@ -104,6 +106,8 @@ def test_empty_transcript(client: TestClient):
         if data.get("speaker_attribution_status") in ["completed", "skipped", "failed"]:
             break
         time.sleep(1)
+    else:
+        pytest.fail("post-session pipeline did not settle within 10s")
 
     assert data["status"] == "completed"
     assert data["speaker_attribution_status"] == "skipped"
@@ -141,6 +145,8 @@ def test_rest_delete_race(client: TestClient):
         if data.get("speaker_attribution_status") in ["completed", "skipped", "failed"]:
             break
         time.sleep(1)
+    else:
+        pytest.fail("post-session pipeline did not settle within 10s")
 
     assert data["status"] == "completed"
     assert data["speaker_attribution_status"] == "completed"
