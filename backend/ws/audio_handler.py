@@ -175,7 +175,10 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
             logger.info(f"Session {session_id[:8]}…: audio WebSocket disconnected")
             # Only set INTERRUPTED if we haven't already marked it COMPLETED or FAILED
             async with session.lock:
-                if session.status not in {SessionStatus.COMPLETED, SessionStatus.FAILED}:
+                if session.status not in {
+                    SessionStatus.COMPLETED,
+                    SessionStatus.FAILED,
+                }:
                     session.status = SessionStatus.INTERRUPTED
     except Exception as exc:
         logger.error(
@@ -353,11 +356,14 @@ async def _process_chunk(
             session.conversation.last_speech_time_seconds = audio_time
             session.conversation.last_silence_seconds = 0.0
         elif session.conversation.last_speech_time_seconds is not None:
-            session.conversation.last_silence_seconds = audio_time - session.conversation.last_speech_time_seconds
+            session.conversation.last_silence_seconds = (
+                audio_time - session.conversation.last_speech_time_seconds
+            )
 
     if flushed_data is None:
         async with session.lock:
             from engine.conversation_engine import get_conversation_engine
+
             engine = get_conversation_engine()
             new_alerts = engine.check_silence_alerts(session.conversation, session_id)
             if new_alerts:
@@ -375,6 +381,7 @@ async def _process_chunk(
                     "last_updated": time.time(),
                 }
                 from ws.broadcast import broadcast_all
+
                 await broadcast_all(
                     ws_transcript=None,
                     ws_metrics=session.ws_metrics,
@@ -514,11 +521,15 @@ async def _transcribe_and_enrich(
                             last_seg["text"] = merged_text
                             last_seg["end"] = max(last_seg.get("end", 0), seg.end)
                             last_seg["sentiment"] = getattr(seg, "sentiment", 0.0)
-                            last_seg["sentiment_label"] = getattr(seg, "sentiment_label", "Neutral")
+                            last_seg["sentiment_label"] = getattr(
+                                seg, "sentiment_label", "Neutral"
+                            )
                             if "segment_id" not in last_seg:
                                 last_seg["segment_id"] = str(uuid.uuid4())
-                            
-                            session.dirty_transcript_segment_ids.add(last_seg["segment_id"])
+
+                            session.dirty_transcript_segment_ids.add(
+                                last_seg["segment_id"]
+                            )
 
                         seg.__dict__["segment_id"] = last_seg["segment_id"]
                         seg.__dict__["text"] = merged_text
@@ -531,7 +542,9 @@ async def _transcribe_and_enrich(
                 session.conversation.transcript_segments.append(seg.__dict__)
 
         # Authoritative audio timeline from pure byte accumulation
-        session.conversation.audio_time_seconds = session.audio_buffer._total_bytes_received / 32000.0
+        session.conversation.audio_time_seconds = (
+            session.audio_buffer._total_bytes_received / 32000.0
+        )
 
         updated_metrics, new_alerts = engine.process_segments(
             session.conversation,
@@ -637,7 +650,9 @@ async def _inject_phrase(session_id: str, speaker: str, phrase: str, manager) ->
         session.conversation.transcript_segments.append(seg_dict)
 
         # Authoritative audio timeline from pure byte accumulation
-        session.conversation.audio_time_seconds = session.audio_buffer._total_bytes_received / 32000.0
+        session.conversation.audio_time_seconds = (
+            session.audio_buffer._total_bytes_received / 32000.0
+        )
 
         updated_metrics, new_alerts = engine.process_segments(
             session.conversation,

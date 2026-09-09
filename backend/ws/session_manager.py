@@ -428,7 +428,9 @@ class SessionManager:
                 session.status = status
             try:
                 # 1000 = Normal Closure
-                await session.ws_audio.close(code=1000, reason="Session terminated by API")
+                await session.ws_audio.close(
+                    code=1000, reason="Session terminated by API"
+                )
             except Exception:
                 pass
             return
@@ -609,6 +611,7 @@ class SessionManager:
 
         # Fix: Clean up the stranded AlertEngine from the singleton
         from engine.conversation_engine import get_conversation_engine
+
         get_conversation_engine().remove_alert_engine(session_id)
 
     # ── Status transitions ────────────────────────────────────────────────────
@@ -704,15 +707,15 @@ async def _do_flush(session: SessionState, *, is_final: bool = False) -> None:
         new_segments_count = max(0, snapshot_len - seg_start)
         dirty_ids_snap = set(session.dirty_transcript_segment_ids)
         session.dirty_transcript_segment_ids.clear()
-        
-        # Deep copy and strip 'words' to prevent JSON serialization errors with TranscriptWord 
+
+        # Deep copy and strip 'words' to prevent JSON serialization errors with TranscriptWord
         # objects during DB commit. Also cast numpy floats to python floats.
         seg_delta = []
         for i in range(snapshot_len):
             s = session.conversation.transcript_segments[i]
             s_dict = dict(s) if isinstance(s, dict) else s.__dict__.copy()
             seg_id = s_dict.get("segment_id")
-            
+
             # Flush if it's a new segment OR if it was previously flushed but mutated
             if i >= seg_start or (seg_id and seg_id in dirty_ids_snap):
                 s_dict["words"] = None

@@ -106,6 +106,7 @@ async def run_post_session_pipeline(session_id: str) -> None:
                 )
                 import uuid
                 from db.models import Session
+
                 db_session = await db.get(Session, uuid.UUID(session_id))
                 if db_session:
                     db_session.status = "completed"
@@ -129,7 +130,9 @@ async def run_post_session_pipeline(session_id: str) -> None:
                 end = seg.end_time or 0.0
                 text = seg.text or ""
                 segment_id = str(seg.id)
-                transcript_string += f"[{segment_id}] {speaker} ({start:.1f}-{end:.1f}): {text}\n"
+                transcript_string += (
+                    f"[{segment_id}] {speaker} ({start:.1f}-{end:.1f}): {text}\n"
+                )
 
             if not transcript_string:
                 logger.info(
@@ -137,6 +140,7 @@ async def run_post_session_pipeline(session_id: str) -> None:
                 )
                 import uuid
                 from db.models import Session
+
                 db_session = await db.get(Session, uuid.UUID(session_id))
                 if db_session:
                     db_session.status = "completed"
@@ -298,8 +302,10 @@ async def run_post_session_pipeline(session_id: str) -> None:
             try:
                 await db.rollback()
             except Exception as rollback_e:
-                logger.error(f"Rollback failed during fatal error recovery: {rollback_e}")
-                
+                logger.error(
+                    f"Rollback failed during fatal error recovery: {rollback_e}"
+                )
+
             logger.exception(
                 f"Unexpected fatal error in post-session pipeline for {session_id[:8]}: {str(e)}"
             )
@@ -315,7 +321,7 @@ async def run_post_session_pipeline(session_id: str) -> None:
                         # Graceful degradation: session is complete, but AI failed
                         db_session.status = "completed"
                         db_session.speaker_attribution_status = "failed"
-                        
+
                     # Guarantee an analysis_result exists so the UI stops polling
                     fallback = _generate_fallback()
                     await crud.save_analysis_result(

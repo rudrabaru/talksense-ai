@@ -26,7 +26,7 @@ _CHUNK_SIZES = {16000: 512}
 class VADSessionProcessor:
     """
     Session-isolated Silero VAD wrapper for speech detection.
-    
+
     Contains a deepcopy of the base model to isolate the recurrent LSTM hidden state.
     """
 
@@ -34,8 +34,9 @@ class VADSessionProcessor:
         self.threshold = threshold
         self.sample_rate = sample_rate
         self._chunk_size = _CHUNK_SIZES[sample_rate]
-        
+
         import copy
+
         self._model = copy.deepcopy(base_model) if base_model is not None else None
         if self._model is not None:
             self._loaded = True
@@ -92,6 +93,7 @@ class VADFactory:
     Global factory that loads the PyTorch model once, then spawns isolated
     session processors using deepcopy.
     """
+
     def __init__(self):
         self._base_model = None
 

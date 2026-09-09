@@ -140,7 +140,9 @@ class AlertEngine:
     def get_active(self) -> list[dict]:
         return [a.to_dict() for a in self._active_conditions.values()]
 
-    def _check_speaking_dominance(self, state, audio_time_seconds: float) -> Alert | None:
+    def _check_speaking_dominance(
+        self, state, audio_time_seconds: float
+    ) -> Alert | None:
         if not state.transcript_segments:
             self._dominance_start_time = 0.0
             self._dominant_speaker = None
@@ -185,7 +187,9 @@ class AlertEngine:
             return None
 
         if (audio_time_seconds - self._dominance_start_time) >= 15.0:
-            speaker_label = "System" if current_dominant == "Speaker 1" else current_dominant
+            speaker_label = (
+                "System" if current_dominant == "Speaker 1" else current_dominant
+            )
             return Alert(
                 id=str(uuid.uuid4()),
                 level="warning",

@@ -32,6 +32,7 @@ def mock_crud_get_transcript(monkeypatch):
     class MockSegment:
         def __init__(self):
             import uuid
+
             self.id = uuid.uuid4()
             self.start_time = 0.0
             self.end_time = 1.0

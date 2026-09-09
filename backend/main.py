@@ -640,10 +640,10 @@ async def get_dashboard_snapshot(
                 participation = {}
                 interruptions = 0
                 speaker_switches = 0
-                
+
                 INTERRUPTION_OVERLAP_THRESHOLD = 1.5
                 INTERRUPTION_WORD_COUNT_THRESHOLD = 3
-                
+
                 last_speaker = None
                 last_end_time = 0.0
 
@@ -652,18 +652,25 @@ async def get_dashboard_snapshot(
                     text = seg.text or ""
                     word_count = len(text.split())
                     participation[speaker] = participation.get(speaker, 0) + word_count
-                    
-                    start_time = float(seg.start_time if seg.start_time is not None else 0.0)
-                    
+
+                    start_time = float(
+                        seg.start_time if seg.start_time is not None else 0.0
+                    )
+
                     if last_speaker is not None and speaker != last_speaker:
                         speaker_switches += 1
                         overlap = last_end_time - start_time
                         if overlap > 0:
-                            if overlap > INTERRUPTION_OVERLAP_THRESHOLD or word_count > INTERRUPTION_WORD_COUNT_THRESHOLD:
+                            if (
+                                overlap > INTERRUPTION_OVERLAP_THRESHOLD
+                                or word_count > INTERRUPTION_WORD_COUNT_THRESHOLD
+                            ):
                                 interruptions += 1
-                                
+
                     last_speaker = speaker
-                    last_end_time = float(seg.end_time if seg.end_time is not None else 0.0)
+                    last_end_time = float(
+                        seg.end_time if seg.end_time is not None else 0.0
+                    )
 
                 total_words = sum(participation.values()) or 1
                 speaking_ratio = {
