@@ -105,6 +105,7 @@ async def run_post_session_pipeline(session_id: str) -> None:
                     f"No transcript segments found for {session_id[:8]}. Saving empty analysis result."
                 )
                 import uuid
+
                 from db.models import Session
 
                 db_session = await db.get(Session, uuid.UUID(session_id))
@@ -139,6 +140,7 @@ async def run_post_session_pipeline(session_id: str) -> None:
                     f"Transcript string built empty for {session_id[:8]}. Saving empty analysis result."
                 )
                 import uuid
+
                 from db.models import Session
 
                 db_session = await db.get(Session, uuid.UUID(session_id))

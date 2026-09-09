@@ -2,11 +2,12 @@ from unittest.mock import MagicMock, patch
 
 patch("transformers.pipeline", return_value=MagicMock()).start()
 
-import pytest
-from fastapi.testclient import TestClient
-from main import app
-import json
-import time
+import time  # noqa: E402
+
+import pytest  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+
+from main import app  # noqa: E402
 
 
 @pytest.fixture(autouse=True)

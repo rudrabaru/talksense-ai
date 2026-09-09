@@ -11,7 +11,6 @@ Silero VAD runs on CPU (it's tiny, ~1MB) to keep GPU free for Whisper.
 """
 
 import logging
-import threading
 
 import numpy as np
 import torch
