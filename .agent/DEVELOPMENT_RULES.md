@@ -57,12 +57,12 @@ Reviewers must verify these target areas before clicking merge:
 
 ## 🤖 Agent Usage Rules (For AI Coding Assistants)
 
-AI Agents (including Antigravity) must follow these constraints:
+AI coding agents must follow these constraints:
 
-1. **Plan Before Execution**: For complex tasks, the agent must research the target files, write an implementation plan to `implementation_plan.md`, and wait for developer approval.
+1. **Plan Before Execution**: For complex tasks, the agent must research the target files, present an implementation plan, and wait for developer approval before making changes.
 2. **Directory Hygiene**: The agent must never delete or move files automatically. Cleanups must be logged in `CLEANUP_AUDIT.md` for human execution.
 3. **Directory Constraints**: The agent must NOT create root-level folders unless specified in the active blueprint.
-4. **Task Tracking**: The agent must maintain `task.md` during execution to mark progress.
+4. **Task Tracking**: The agent must track progress against the plan during execution (e.g. a task checklist).
 5. **No Placeholders**: The agent must write complete, functional code, avoiding `// TODO` or shortened snippets.
 
 ---

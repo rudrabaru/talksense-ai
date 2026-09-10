@@ -237,13 +237,9 @@ Reject anything else immediately at the WebSocket handler.
 
 ## 12. What To Preserve — DO NOT REWRITE
 
-| File | What's locked |
-|------|--------------|
-| `backend/services/context_analyzer.py` | `compute_meeting_quality_v2()`, `compose_executive_summary_v2()`, `generate_key_insights_v2()` — all 3 locked |
-| `backend/services/nlp_engine.py` | Sentiment pipeline, keyword extraction |
-| `backend/audio/vad.py` | Silero VAD singleton — do not reload |
-| `backend/audio/transcriber.py` | Whisper singleton — do not reload |
-| `backend/engine/scoring_profiles.py` | Profile weights — configurable only via JSON, not hardcoded |
+Canonical list and rationale: `.agent/ARCHITECTURE.md` § "Locked Code (DO NOT MODIFY)" (the three `context_analyzer.py` functions + the VAD / Whisper / sentiment singletons) and § "Prohibited Patterns" (scoring-profile weights stay JSON-driven).
+
+At a glance: `context_analyzer.py` (`compute_meeting_quality_v2()`, `compose_executive_summary_v2()`, `generate_key_insights_v2()`), `nlp_engine.py` (sentiment pipeline + keyword extraction), `audio/vad.py` and `audio/transcriber.py` (load-once singletons, never reload), `engine/scoring_profiles.py` (weights configurable via JSON only).
 
 ---
 
@@ -266,14 +262,9 @@ npm ci
 npm run dev
 ```
 
-Key `.env` variables:
-- `DATABASE_URL` — PostgreSQL connection string
-- `GEMINI_API_KEY` — Google AI Studio API key (for post-session AI)
-- `ENABLE_POST_SESSION_AI` — true/false
-- `WHISPER_MODEL` — small (default) or medium
-- `WHISPER_DEVICE` — cuda (default) or cpu
-- `JWT_SECRET_KEY` — random hex string for WS token signing
-- `HF_TOKEN` — optional; Hugging Face token for experimental Pyannote usage only
+Full environment-variable reference (all keys, defaults, and the `JWT_SECRET_KEY` generation hint): `.agent/ARCHITECTURE.md` § "Environment Variables Reference". Release-time required/optional matrix: `.agent/RELEASE_CHECKLIST.md` § 4.
+
+Essentials to get running: `DATABASE_URL`, `GEMINI_API_KEY` + `ENABLE_POST_SESSION_AI` (post-session AI), `JWT_SECRET_KEY` (WS token signing), `WHISPER_MODEL` / `WHISPER_DEVICE`.
 
 ---
 

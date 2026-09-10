@@ -18,7 +18,7 @@ This index is optimized for AI context loading and rapid codebase onboarding.
 - **Purpose**: Real-time audio ingestion pipeline from WebSocket raw PCM binary chunks to VAD, buffering, and transcription.
 - **Key Files**:
   - `vad.py`: Silero VAD speech detection wrapper (CPU).
-  - `buffer.py`: Audio accumulator buffer (~1000ms speech chunk flush).
+  - `buffer.py`: Audio accumulator buffer (~2000ms speech chunk flush; `TARGET_DURATION_MS`).
   - `transcriber.py`: Faster-Whisper wrapper (singleton, GPU/int8).
   - `gpu_manager.py`: GPU concurrency management.
 - **Dependencies**: Silero VAD, Faster-Whisper.

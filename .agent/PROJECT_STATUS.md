@@ -46,7 +46,7 @@
 
 **Files:**
 - `backend/audio/vad.py` — Silero VAD, singleton, CPU
-- `backend/audio/buffer.py` — audio accumulation buffer, ~1000ms target flush
+- `backend/audio/buffer.py` — audio accumulation buffer, ~2000ms target flush (`TARGET_DURATION_MS`)
 - `backend/audio/transcriber.py` — Faster-Whisper, singleton, GPU/int8
 - `backend/audio/gpu_manager.py` — GPU concurrency management
 - `backend/ws/audio_handler.py` — `/ws/audio/{session_id}` endpoint

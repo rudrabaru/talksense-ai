@@ -12,7 +12,7 @@ This directory contains all persistent context files for AI agents working in th
 | [API_CONTRACT.md](./API_CONTRACT.md) | REST and WebSocket API specifications | 🟡 Read before API work |
 | [DEVELOPMENT_RULES.md](./DEVELOPMENT_RULES.md) | Git workflow, code review, agent usage rules | 🟡 Read before committing |
 | [QUICK_REFERENCE.md](./archive/QUICK_REFERENCE.md) | Meeting quality logic quick ref (locked functions) | 🟢 Archived — historical |
-| [CHANGELOG_NEGATIVE_DECISIONS.md](./CHANGELOG_NEGATIVE_DECISIONS.md) | Decision logic refinement history | 🟢 Reference only |
+| [CHANGELOG_NEGATIVE_DECISIONS.md](./archive/CHANGELOG_NEGATIVE_DECISIONS.md) | Decision logic refinement history (2026-01-04) | 🟢 Archived — historical |
 | [TESTING_CHECKLIST.md](./TESTING_CHECKLIST.md) | What is tested and what is NOT VERIFIED | 🟡 Read before testing |
 | [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md) | Production readiness gates | 🟡 Read before deploying |
 

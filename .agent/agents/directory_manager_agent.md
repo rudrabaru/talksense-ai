@@ -183,9 +183,9 @@ These need human review before any action.
 
 1. **Duplicate detection**: identify exact file duplicates (e.g., audio files in both `uploads/` and `sample_audio/`). Do not delete — log in `CLEANUP_AUDIT.md`.
 
-2. **Duplicate documentation detection**: find overlapping markdown files. Log in `DUPLICATE_DOCS_REPORT.md`. After Batch 5 of the documentation cleanup, verify the list is current.
+2. **Duplicate documentation detection**: find overlapping markdown files. Log in a fresh `.agent/DUPLICATE_DOCS_REPORT.md` (the prior 2026-08-18 report is archived under `.agent/archive/`). After Batch 5 of the documentation cleanup, verify the list is current.
 
-3. **Architecture drift detection**: verify no unapproved frameworks, databases, or ML dependencies have been introduced. Log findings in `ARCHITECTURE_DRIFT_REPORT.md`.
+3. **Architecture drift detection**: verify no unapproved frameworks, databases, or ML dependencies have been introduced. Log findings in a fresh `.agent/ARCHITECTURE_DRIFT_REPORT.md` (the prior report is archived under `.agent/archive/`).
 
 4. **Dead code identification**: find unreferenced services, routes, and components. Log as `REVIEW_REQUIRED` in `CLEANUP_AUDIT.md`. Do not delete without human confirmation.
 

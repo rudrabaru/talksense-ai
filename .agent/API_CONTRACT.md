@@ -18,7 +18,7 @@ Audio sent to the ingestion channel must comply with the following specification
 - **Channels**: 1 (Mono)
 - **Bit Depth**: 16-bit (Signed Integer)
 - **Endianness**: Little-Endian (Browser default)
-- **Chunk Duration**: 100–250ms per binary frame (buffer flushes when ~1000ms speech is accumulated).
+- **Chunk Duration**: 100–250ms per binary frame (buffer flushes at ~2000ms of accumulated speech; `TARGET_DURATION_MS` in `backend/audio/buffer.py`).
 
 ---
 

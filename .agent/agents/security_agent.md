@@ -26,24 +26,24 @@ The security agent owns authentication, authorization, secrets management, input
 
 ### Authentication
 
-**Status: PARTIALLY IMPLEMENTED — NOT ENFORCED**
+**Status: PARTIALLY IMPLEMENTED** — the four WebSocket subscription channels enforce the `ws_token`; REST endpoints and `/ws/audio` are unauthenticated.
 
-What exists:
-- `core/security.py` — contains `create_ws_token(session_id)` and `verify_ws_token(token, session_id)`.
-- `POST /sessions` calls `create_ws_token()` and returns `ws_token` in the response body.
-- JWT library (`python-jose`) is installed.
+What exists (verified in source on branch `dev`):
+- `core/security.py` — `create_ws_token(session_id)` and `verify_ws_token(token, session_id)`.
+- `POST /sessions` calls `create_ws_token()` and returns `ws_token` in the response body (`main.py:290`).
+- `verify_ws_token()` **is called** on all four subscription channels — `/ws/transcript`, `/ws/metrics`, `/ws/alerts`, `/ws/status` — in `ws/subscriptions.py` (checks at lines 67, 118, 168, 218). On a missing or invalid token the socket is closed with code `1008`.
+- JWT library (`python-jose[cryptography]`) is in `backend/requirements.txt`.
 
 What does NOT exist:
-- No user login endpoint (`POST /auth/login`) — listed in `main.py` docstring but NOT implemented as a route handler.
+- No user login endpoint (`POST /auth/login`) — listed in the `main.py` module docstring but NOT implemented as a route handler.
 - No user registration endpoint (`POST /auth/register`) — same situation.
 - No `GET /auth/me` endpoint.
-- No `get_current_user` dependency.
-- No `Depends(get_current_user)` on any REST route.
-- `verify_ws_token()` exists in `core/security.py` but is **never called** in `ws/subscriptions.py` or anywhere else in the live request path.
+- No `get_current_user` dependency and no `Depends(...)` auth guard on any REST route.
+- `/ws/audio/{session_id}` does **not** verify the token — the frontend sends it, but `ws/audio_handler.py` does not call `verify_ws_token()`.
 
-**Practical result:** All REST endpoints and all WebSocket channels are currently **unauthenticated**. The `ws_token` is generated and returned but never verified.
+**Practical result:** All REST endpoints are **unauthenticated** (there is no user-auth system at all). The four WebSocket subscription channels **require** a valid `ws_token` bound to the `session_id`; `/ws/audio` does not. Because there is no user identity, no login, and no session-ownership check (see Authorization), token possession alone gates the subscription channels — anyone holding a session's `ws_token` can subscribe.
 
-This is a known gap. Do NOT implement authentication during a documentation task. Do NOT silently assume it is active.
+This describes current `dev` behavior. Do NOT implement REST authentication during a documentation task. Do NOT assume REST auth is active.
 
 ---
 
@@ -51,7 +51,7 @@ This is a known gap. Do NOT implement authentication during a documentation task
 
 **Status: NOT IMPLEMENTED**
 
-No session ownership checks exist. Any client that knows a `session_id` can connect to its WebSocket channels or query its data.
+No session ownership or user-identity checks exist. Any client that knows a `session_id` can query its REST data or connect to `/ws/audio`; the four subscription channels additionally require the `ws_token` that `POST /sessions` returns, but that token is not bound to a user and is handed to whoever created the session, so it gates nothing beyond token possession.
 
 ---
 
@@ -145,7 +145,7 @@ These must not be weakened:
 
 | Gap | Severity | Status |
 |-----|----------|--------|
-| `verify_ws_token()` not called on WS subscribe | High | NOT IMPLEMENTED |
+| `/ws/audio/{session_id}` does not verify the `ws_token` (the four subscription channels do) | Medium | NOT IMPLEMENTED |
 | No user auth system (login/register) | High | NOT IMPLEMENTED |
 | No session ownership check on REST endpoints | High | NOT IMPLEMENTED |
 | No rate limiting on any endpoint | Medium | NOT IMPLEMENTED |

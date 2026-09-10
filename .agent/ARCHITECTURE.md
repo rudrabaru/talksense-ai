@@ -94,8 +94,8 @@ Browser mic
     ↓ validated chunks
 vad.py                        ← is_speech() → True/False
     ↓ speech chunks only
-buffer.py                     ← accumulate until ~1000ms
-    ↓ 1000ms buffer
+buffer.py                     ← accumulate until ~2000ms (TARGET_DURATION_MS)
+    ↓ ~2000ms buffer
 transcriber.py                ← faster-whisper → list[Segment]
     ↓ {start, end, text}
 conversation_engine.py        ← update session state, compute metrics

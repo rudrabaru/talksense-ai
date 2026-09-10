@@ -127,7 +127,7 @@ Verify all required environment variables are set before deploying:
 - [ ] **HTTPS / WSS enforced** — enforce SSL at the gateway/reverse-proxy. Audio streams use `wss://`.
 - [ ] **CORS restricted** — `cors_origins` in config defaults to `http://localhost:5173`. This must be overridden to the production frontend URL before deployment.
 - [ ] **JWT key is not default** — confirm `JWT_SECRET_KEY` is set in environment and not auto-generated at runtime.
-- [ ] **Auth endpoints exist** — `POST /auth/register`, `POST /auth/login`, `GET /auth/me` are implemented. Auth enforcement on session/transcript routes is **not fully enforced** (verify current route guards before production exposure).
+- [ ] **No user authentication system exists** — there are no `/auth/register`, `/auth/login`, or `/auth/me` route handlers (they appear only in the `backend/main.py` module docstring) and no `get_current_user` dependency on any REST route. All REST endpoints are unauthenticated. The `/ws/transcript|metrics|alerts|status` subscription channels **do** verify the JWT `ws_token` via `verify_ws_token()` and close with code `1008` on failure; `/ws/audio/{session_id}` does **not** verify the token. Before any pilot or production exposure, either add a REST auth layer or explicitly document the REST surface as unauthenticated and rely on network isolation. Canonical detail: `.agent/agents/security_agent.md`; route status: `.agent/SKILLS.md` §6 and `.agent/API_CONTRACT.md` §Authentication.
 - [ ] **Input validation** — text fields and query parameters pass through FastAPI/Pydantic schema validation. SQL injection is mitigated via SQLAlchemy parameterized queries.
 
 ---
