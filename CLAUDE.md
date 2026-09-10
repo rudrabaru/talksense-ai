@@ -38,10 +38,15 @@ Search before reading. For files over ~20 KB, grep for the symbol and read only 
 Ladder: L1 static and lint, L2 focused tests, L3 broader regression, L4 accuracy benchmark, L5 architecture and release review. Verify proportionally to risk: run the cheapest level that could disprove the change. Never skip L4 when a change can move WER, diarization, sentiment, or a metric formula, and never skip accuracy verification to save tokens.
 
 ## Model routing (manual guidance; not automatically enforced)
-- **Haiku** for trivial and mechanical work: formatting, imports, docs, renames, small UI adjustments.
-- **Sonnet** for standard engineering: backend and frontend implementation, tests, CRUD, deterministic bug fixes, straightforward refactors.
-- **Opus, high effort** for accuracy-critical reasoning: ASR architecture, Whisper and VAD changes, streaming and commit strategy, WER regressions, diarization architecture, GPU sequencing, locked functions, ground truth, production architecture decisions.
-- **Opus, high effort, fresh context** for critical review: release architecture review, accuracy sign-off, security-critical architectural decisions, major production changes.
+
+Pick the least expensive model that fits. Escalate on architectural uncertainty, accuracy risk, or demonstrated Sonnet difficulty, not on task size, importance, or duration.
+
+- **Haiku** for trivial mechanical work only: formatting, imports, renames, tiny UI tweaks.
+- **Sonnet + high effort** is the default for everything else: implementation, debugging, testing, refactoring, CI investigation, documentation and harness work, and routine code review.
+- **`/model opusplan`** selectively, when a task needs substantial architectural reasoning before implementation: ASR streaming buffer/overlap/merge design; Whisper model tier, quantization, decoding, `initial_prompt`, or `condition_on_previous_text` decisions; real-time diarization architecture; GPU sequencing / VRAM architecture; the locked scoring functions or scoring weights; production or offline pipeline architecture; or another change explicitly identified as accuracy-critical and architecturally consequential. Under `opusplan`, Opus does the planning and reasoning and Sonnet executes the resulting implementation; it does not run the whole implementation on Opus.
+- **Direct Opus** only when Sonnet is genuinely stuck after reasonable investigation, or for a final high-stakes accuracy or release sign-off that justifies deeper independent reasoning. Not for continuous use.
+
+Model choice does not replace `/accuracy`: accuracy-critical changes still require ground truth and the verification level `/accuracy` sets, regardless of model. Record model-escalation decisions and any unresolved architectural questions in the session handoff (`session-handoff` skill: "Decisions & constraints carried forward" and "Deferred + open questions").
 
 ## Working rules
 Search before reading; read targeted line ranges; do not scan the repository for facts already stated here, and do not re-read `.agent/` documents already summarized above. Do not spawn subagents for small localized tasks; use them only when parallelism or specialized reasoning outweighs their context overhead, and require concise, actionable output. Prefer a short evidence summary over a large generated report. Do not guess APIs, versions, flags, commit SHAs, or package names; verify in code or docs before asserting. Be thorough in reasoning and concise in output: no emojis, no em-dashes, no sycophantic openers, no closing fluff.
