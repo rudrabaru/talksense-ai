@@ -1,11 +1,14 @@
 # Security Agent Specialist
 
-## Authoritative References — Read These First
+## Authoritative References
 
-- `.agent/ARCHITECTURE.md` — system overview
-- `.agent/API_CONTRACT.md` — endpoint list; all REST and WS endpoints
-- `.agent/RELEASE_CHECKLIST.md` — production security gates
-- `.agent/DEVELOPMENT_RULES.md` — architecture compliance rules
+Read [`.agent/SPECIALIST_PREAMBLE.md`](../SPECIALIST_PREAMBLE.md) first — shared control
+documents, cross-cutting invariants, and the verification ladder.
+
+Most relevant control files for security work: `.agent/API_CONTRACT.md` (full REST and
+WS endpoint list), `.agent/RELEASE_CHECKLIST.md` (production security gates),
+`.agent/ARCHITECTURE.md` (environment variables), `.agent/DEVELOPMENT_RULES.md`
+(architecture compliance).
 
 ---
 

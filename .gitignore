@@ -91,3 +91,6 @@ backend/*.coverage
 backend/coverage.xml
 backend/ruff_errors.txt
 backend/output_scdr.txt
+
+# Claude Code — personal settings only; shared config, skills, agents, commands are tracked
+.claude/settings.local.json

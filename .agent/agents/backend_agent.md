@@ -1,15 +1,13 @@
 # Backend Agent Specialist
 
-## Authoritative References — Read These First
+## Authoritative References
 
-Before making any backend change, read:
+Read [`.agent/SPECIALIST_PREAMBLE.md`](../SPECIALIST_PREAMBLE.md) first — shared control
+documents, cross-cutting invariants, and the verification ladder.
 
-- `.agent/ARCHITECTURE.md` — system architecture and pipeline design
-- `.agent/PROJECT_STATUS.md` — what is currently implemented vs planned
-- `.agent/API_CONTRACT.md` — all REST and WebSocket endpoint contracts
-- `.agent/ACTIVE_FILES.md` — currently locked files and active scope
-- `.agent/DEVELOPMENT_RULES.md` — git workflow, code review, and architecture compliance rules
-- `.agent/TESTING_CHECKLIST.md` — what must be tested and how
+Most relevant control files for backend work: `.agent/API_CONTRACT.md` (payload shapes),
+`.agent/ARCHITECTURE.md` (pipeline design, GPU sequencing), `.agent/ACTIVE_FILES.md`
+(current locks), `.agent/TESTING_CHECKLIST.md` (what is and is not verified).
 
 ---
 

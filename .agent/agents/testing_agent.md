@@ -1,15 +1,14 @@
 # Testing Agent Specialist
 
-## Authoritative References — Read These First
+## Authoritative References
 
-**The definitive record of what is and is not tested is in:**
+Read [`.agent/SPECIALIST_PREAMBLE.md`](../SPECIALIST_PREAMBLE.md) first — shared control
+documents, cross-cutting invariants, and the verification ladder (L1–L5).
 
-`.agent/TESTING_CHECKLIST.md` — read this before any testing work.
-
-Also read:
-- `.agent/ARCHITECTURE.md` — to understand what each component does
-- `.agent/PROJECT_STATUS.md` — to understand what is implemented
-- `.agent/DEVELOPMENT_RULES.md` — PR merge requirements
+`.agent/TESTING_CHECKLIST.md` is the definitive record of what is and is not tested —
+read it before any testing work. Also relevant: `.agent/ARCHITECTURE.md` (what each
+component does), `.agent/PROJECT_STATUS.md` (what is implemented),
+`.agent/DEVELOPMENT_RULES.md` (PR merge requirements).
 
 ---
 

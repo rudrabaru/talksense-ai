@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git branch --show-current)",
+      "Bash(./venv/Scripts/ruff.exe check backend/)",
+      "Bash(./venv/Scripts/black.exe --check backend/)",
+      "Bash(./venv/Scripts/pyright.exe backend/)",
+      "Bash(./venv/Scripts/python.exe -m pytest:*)",
+      "Bash(../venv/Scripts/python.exe -m pytest:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run build)"
+    ]
+  }
+}

@@ -1,13 +1,15 @@
 # Database Agent Specialist
 
-## Authoritative References — Read These First
+## Authoritative References
 
-Before making any database change, read:
+Read [`.agent/SPECIALIST_PREAMBLE.md`](../SPECIALIST_PREAMBLE.md) first — shared control
+documents, cross-cutting invariants (including the Alembic-only / `create_all()`
+prohibition), and the verification ladder.
 
-- `.agent/ARCHITECTURE.md` — database design principles
-- `.agent/API_CONTRACT.md` — API response shapes that the DB must support
-- `.agent/ACTIVE_FILES.md` — schema lock status
-- `.agent/DEVELOPMENT_RULES.md` — migration requirements and `create_all()` prohibition
+Most relevant control files for database work: `.agent/ARCHITECTURE.md` (persistence
+design), `.agent/API_CONTRACT.md` (response shapes the schema must support),
+`.agent/ACTIVE_FILES.md` (schema lock status), `.agent/DEVELOPMENT_RULES.md`
+(migration procedure).
 
 ---
 

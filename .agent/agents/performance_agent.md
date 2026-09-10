@@ -1,10 +1,14 @@
 # Performance Agent Specialist
 
-## Authoritative References — Read These First
+## Authoritative References
 
-- `.agent/ARCHITECTURE.md` — pipeline design and GPU sequencing rules
-- `.agent/DEVELOPMENT_RULES.md` — VRAM constraint, sequential model execution rule
-- `.agent/TESTING_CHECKLIST.md` — what is currently measured vs what is NOT VERIFIED
+Read [`.agent/SPECIALIST_PREAMBLE.md`](../SPECIALIST_PREAMBLE.md) first — shared control
+documents, cross-cutting invariants (VRAM target, GPU semaphore, sequential model
+execution), and the verification ladder.
+
+Most relevant control files for performance work: `.agent/ARCHITECTURE.md` (pipeline
+design, GPU sequencing), `.agent/DEVELOPMENT_RULES.md` (VRAM constraint),
+`.agent/TESTING_CHECKLIST.md` (what is measured versus NOT VERIFIED).
 
 ---
 

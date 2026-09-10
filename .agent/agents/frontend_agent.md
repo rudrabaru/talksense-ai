@@ -1,13 +1,14 @@
 # Frontend Agent Specialist
 
-## Authoritative References — Read These First
+## Authoritative References
 
-Before making any frontend change, read:
+Read [`.agent/SPECIALIST_PREAMBLE.md`](../SPECIALIST_PREAMBLE.md) first — shared control
+documents, cross-cutting invariants, and the verification ladder.
 
-- `.agent/API_CONTRACT.md` — all REST and WebSocket endpoint contracts the frontend must consume
-- `.agent/ARCHITECTURE.md` — system design; backend is the source of truth for session state
-- `.agent/DEVELOPMENT_RULES.md` — Tailwind CSS constraint, WS reconnect requirements, git workflow
-- `.agent/TESTING_CHECKLIST.md` — what frontend testing currently exists
+Most relevant control files for frontend work: `.agent/API_CONTRACT.md` (REST and WS
+contracts the frontend consumes), `.agent/ARCHITECTURE.md` (backend is source of truth
+for session state), `.agent/DEVELOPMENT_RULES.md` (Tailwind-only constraint, WS
+reconnect requirements), `.agent/TESTING_CHECKLIST.md` (current frontend test coverage).
 
 ---
 

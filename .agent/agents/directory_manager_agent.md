@@ -1,11 +1,14 @@
 # Directory Manager Agent Specialist
 
-## Authoritative References — Read These First
+## Authoritative References
 
-- `.agent/ARCHITECTURE.md` — approved directory structure and stack
-- `.agent/ACTIVE_FILES.md` — locked files and current development scope
-- `.agent/DEVELOPMENT_RULES.md` — directory constraint rules for agents
-- `.agent/CODEBASE_INDEX.md` — current file-level index
+Read [`.agent/SPECIALIST_PREAMBLE.md`](../SPECIALIST_PREAMBLE.md) first — shared control
+documents, cross-cutting invariants, and the verification ladder.
+
+Most relevant control files for directory work: `.agent/ARCHITECTURE.md` (approved
+directory structure and stack), `.agent/ACTIVE_FILES.md` (locked files, current scope),
+`.agent/DEVELOPMENT_RULES.md` (directory constraint rules), `.agent/CODEBASE_INDEX.md`
+(current file-level index).
 
 ---
 
@@ -123,6 +126,7 @@ README.md
 .agent/CODEBASE_INDEX.md
 .agent/TESTING_CHECKLIST.md
 .agent/RELEASE_CHECKLIST.md
+.agent/SPECIALIST_PREAMBLE.md
 .agent/agents/          (all specialist agents)
 pytest.ini
 pyrightconfig.json

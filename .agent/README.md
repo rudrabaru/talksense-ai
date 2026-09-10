@@ -15,6 +15,14 @@ This directory contains all persistent context files for AI agents working in th
 | [CHANGELOG_NEGATIVE_DECISIONS.md](./archive/CHANGELOG_NEGATIVE_DECISIONS.md) | Decision logic refinement history (2026-01-04) | 🟢 Archived — historical |
 | [TESTING_CHECKLIST.md](./TESTING_CHECKLIST.md) | What is tested and what is NOT VERIFIED | 🟡 Read before testing |
 | [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md) | Production readiness gates | 🟡 Read before deploying |
+| [SPECIALIST_PREAMBLE.md](./SPECIALIST_PREAMBLE.md) | Shared context for every specialist doc: control-doc routing, cross-cutting invariants, verification ladder | 🟡 Read before specialist work |
+
+## Specialist documents
+
+`agents/*.md` hold domain detail for backend, database, frontend, performance,
+security, testing, and directory hygiene. Each assumes `SPECIALIST_PREAMBLE.md`.
+`.claude/skills/talksense-*` are thin Claude Code triggers that load the matching
+`agents/*.md` on demand; the `agents/*.md` files remain the canonical source.
 
 ## Quick Facts
 
