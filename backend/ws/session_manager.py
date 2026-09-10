@@ -57,20 +57,30 @@ Background Flusher:
     - Final path: exception is RE-RAISED so end() propagates it to the
       route handler.  No silent data-loss on session termination.
 
-  Session Termination (end() sequence):
-    1. Await session._flush_idle — an asyncio.Event that is SET whenever
-       no periodic flush is running.  Blocks instantly if idle; otherwise
-       suspends until _do_flush's exit path sets it.  Replaces the
-       previous spin-poll on is_flushing.  Bounded by END_TIMEOUT_SECONDS.
-    2. Set terminal status under session.lock.
-    3. If a final flush for this session is already in-flight (duplicate
-       end() call or retry), reuse the existing task instead of creating
-       a new one — prevents duplicate DB writes.
-    4. Launch _flush_session_final() as a tracked task (registered in
-       _flush_workers so stop_flusher() sees it), then await it.
-       Bounded by END_TIMEOUT_SECONDS.
-    5. Re-raise any timeout or DB failure so the route handler can surface
-       a 5xx response.  No silent data-loss.
+  Session Termination (end() / _finalize() sequence):
+    end() is a thin caller-facing shim.  It creates (or reuses) a DETACHED
+    per-session finalizer task — SessionManager._finalize() — registered in
+    _flush_workers, then awaits it bounded by END_TIMEOUT_SECONDS.  Because
+    the finalizer is its own asyncio task it is not aborted when the caller
+    (the WebSocket ASGI task / Starlette TestClient) is cancelled; end()
+    lets CancelledError propagate while the finalizer runs on to completion.
+    A shield around the await keeps the finalizer alive past a timeout so
+    stop_flusher() can still drain it.
+
+    _finalize() performs:
+      1. Await session._flush_idle — SET whenever no periodic flush is
+         running.  Bounded by END_TIMEOUT_SECONDS.
+      2. Set terminal status under session.lock, guarded by _is_ending so
+         the terminal logic runs exactly once.
+      3. Detach session.ws_audio so a later REST/shutdown end() cannot take
+         the Step 0 delegation path against a dead socket.
+      4. Run _flush_session_final() inline (no nested task) — a DB failure
+         re-raises to end()'s awaiter for a 5xx.  No silent data-loss.
+      5. Persist terminal status, duration and WAV path.
+      6. Schedule post-session AI (unchanged gating).
+      7. remove() the session.
+    If the sequence exits before Step 7, _is_ending is reset so a later
+    end() call can retry; a failed final flush never removes the session.
 
   Shutdown (stop_flusher() sequence):
     1. Cancel the scheduler loop — no new tasks can be spawned after this.
@@ -276,11 +286,13 @@ class SessionState:
     # None means metrics have never been flushed for this session.
     last_flushed_metric_hash: str | None = None
 
-    # Handle to the in-flight final-flush task for this session.
-    # Set by SessionManager.end() when it creates the final-flush task.
+    # Handle to the detached finalization task for this session.
+    # Set by SessionManager.end() when it creates the finalizer task.
     # Checked on re-entry: if not done, end() reuses the existing task
-    # rather than creating a second one (deduplication guard).
-    _final_flush_task: "asyncio.Task | None" = field(default=None, repr=False)
+    # rather than creating a second one (deduplication guard).  The task
+    # runs SessionManager._finalize() and is registered in _flush_workers
+    # so stop_flusher() drains it before the DB pool is disposed.
+    _finalize_task: "asyncio.Task | None" = field(default=None, repr=False)
 
     # Path to the on-disk WAV file written by AudioBuffer during the session.
     # Populated in SessionManager.end() after flush_remaining() finalises the file.
@@ -395,21 +407,36 @@ class SessionManager:
         from_audio_handler: bool = False,
     ) -> None:
         """
-        Transition session to a terminal state with zero-telemetry-loss guarantee.
+        Transition a session to a terminal state with a zero-telemetry-loss
+        guarantee.
 
-        Sequence:
-          1. Drain any in-flight periodic flush — bounded by END_TIMEOUT_SECONDS.
-          2. Set the terminal status under session.lock.
-          3. Launch the final flush as a tracked asyncio task (registered in
-             _flush_workers so stop_flusher() sees it), then await it —
-             also bounded by END_TIMEOUT_SECONDS.
+        This is a thin caller-facing shim.  The mandatory finalization
+        sequence (drain periodic flush → terminal status → final flush →
+        persist status/audio path → schedule post-session AI → remove the
+        session) runs inside SessionManager._finalize(), which is spawned as
+        a DETACHED asyncio task owned by this manager and registered in
+        _flush_workers.
+
+        Why detached: the WebSocket route (and Starlette's TestClient) runs
+        the ASGI handler inside a cancel scope that is cancelled the instant
+        the socket context exits.  If finalization ran inline in that task,
+        caller cancellation would abort the final DB commit, the post-session
+        AI scheduling and the session removal.  Running it in an independent
+        task decouples it from the caller's cancellation.
+
+        Behaviour for callers:
+          - Normal callers await the finalizer to completion, bounded by
+            END_TIMEOUT_SECONDS.
+          - If the caller is cancelled while awaiting, CancelledError is
+            allowed to propagate; the detached finalizer keeps running and
+            stop_flusher() will drain it on shutdown.
 
         Raises:
-            asyncio.TimeoutError: if the in-flight drain or the final flush
-                does not complete within END_TIMEOUT_SECONDS.  The caller
-                (route handler) MUST translate this to a 5xx response.
-            Exception: any DB error raised during the final flush is propagated
-                to the caller so failures are never silently swallowed.
+            asyncio.TimeoutError: if the finalizer does not complete within
+                END_TIMEOUT_SECONDS.  The finalizer is shielded, so it keeps
+                running; the route handler MUST translate this to a 5xx.
+            Exception: any DB error raised during the final flush is
+                propagated so failures are never silently swallowed.
 
         If start_flusher() was never called (_FLUSH_SEMAPHORE is None) the
         final flush step is skipped — intended for unit-test environments.
@@ -435,12 +462,65 @@ class SessionManager:
                 pass
             return
 
+        # ── Create or reuse the detached finalizer ───────────────────────────
+        # There is deliberately NO await between reading session._finalize_task
+        # and assigning the new one, so concurrent end() callers (WS "end",
+        # WS disconnect, REST DELETE, shutdown) cannot each spawn a finalizer:
+        # the event loop runs this block atomically for the first caller and
+        # every later caller observes the task already set.
+        task = session._finalize_task
+        if task is None or task.done():
+            task = asyncio.create_task(
+                self._finalize(session, status),
+                name=f"finalize-{session_id[:8]}",
+            )
+            session._finalize_task = task
+            _register_flush_worker(task)
+
+        # Await the finalizer (new or reused).  asyncio.shield keeps the
+        # finalizer alive in _flush_workers even if this wait_for times out
+        # or the caller is cancelled — stop_flusher() will drain it.  Any DB
+        # exception raised by the finalizer is re-raised here to the caller.
+        try:
+            await asyncio.wait_for(
+                asyncio.shield(task),
+                timeout=END_TIMEOUT_SECONDS,
+            )
+        except asyncio.CancelledError:
+            # The caller's task was cancelled (e.g. the WebSocket cancel scope
+            # closed).  Do NOT swallow — let it propagate so the caller unwinds
+            # cleanly.  The detached finalizer is unaffected and continues.
+            logger.info(
+                "Session %s…: end() caller cancelled; finalization continues "
+                "in detached task.",
+                session_id[:8],
+            )
+            raise
+
+    async def _finalize(self, session: SessionState, status: SessionStatus) -> None:
+        """
+        Mandatory session-finalization sequence.  Runs as a detached task
+        (see SessionManager.end()) so it is not aborted by caller cancellation.
+
+        Sequence:
+          1. Drain any in-flight periodic flush — bounded by END_TIMEOUT_SECONDS.
+          2. Transition to terminal status under session.lock (once-only guard).
+          3. Detach the audio WebSocket reference.
+          4. Final flush — persist remaining telemetry.
+          5. Persist terminal session status, duration and WAV path.
+          6. Schedule post-session AI (gating unchanged).
+          7. Remove the session from memory.
+
+        If the sequence exits before Step 7 (final-flush failure, cancellation,
+        or the unit-test early return) session._is_ending is reset so a later
+        end() call can retry.  A failed final flush never removes the session.
+        """
+        session_id = session.session_id
+
         # ── Step 1: wait for any in-progress periodic flush to complete ───────
         # session._flush_idle is SET when no periodic flush is running.
         # Awaiting it is a no-op if the session is already idle; otherwise it
         # suspends until _do_flush's exit path sets the event.
-        # This replaces the former spin-poll on is_flushing which read the
-        # field without synchronisation and woke every 50 ms.
         await asyncio.wait_for(
             session._flush_idle.wait(),
             timeout=END_TIMEOUT_SECONDS,
@@ -448,10 +528,10 @@ class SessionManager:
 
         # ── Step 2: transition to terminal status ─────────────────────────────
         async with session.lock:
-            # RC-8 Deduplication Guard: Guarantee we only execute end() once
+            # RC-8 Deduplication Guard: guarantee terminal logic runs once.
             if session._is_ending:
                 logger.debug(
-                    "Session %s…: manager.end() already in progress, skipping.",
+                    "Session %s…: finalization already in progress, skipping.",
                     session_id[:8],
                 )
                 return
@@ -465,123 +545,122 @@ class SessionManager:
             session.status = status
         logger.info("Session %s…: ended [%s]", session_id[:8], status)
 
-        # ── Step 3: final flush — persist remaining telemetry ─────────────────
-        # Skip if start_flusher() was never called (unit-test path).
+        # ── Step 3: detach the audio WebSocket ───────────────────────────────
+        # The socket is finished once the terminal status is committed.
+        # Clearing the reference prevents a later REST DELETE or shutdown
+        # end() call from re-entering the Step 0 delegation path against a
+        # dead socket (which would strand the session).
+        session.ws_audio = None
+
+        # ── Step 4: final flush — persist remaining telemetry ─────────────────
+        # Skip if start_flusher() was never called (unit-test path): there is
+        # no flusher and nothing downstream to persist.  Mirror the
+        # pre-refactor early return exactly (session left in place).
         if _FLUSH_SEMAPHORE is None:
             return
 
-        logger.info("Session %s…: final flush started", session_id[:8])
-
-        # Deduplication guard: if a concurrent/previous end() call already
-        # created a final-flush task for this session and it is still running,
-        # reuse it instead of launching a second one.  This prevents duplicate
-        # DB writes when the route handler retries after a TimeoutError.
-        existing = session._final_flush_task
-        if existing is not None and not existing.done():
-            logger.debug(
-                "Session %s…: final-flush task already in-flight, reusing.",
-                session_id[:8],
-            )
-            final_task = existing
-        else:
-            # Launch as a tracked task so stop_flusher() can drain it if
-            # shutdown races with this call.  Store on the session so
-            # concurrent end() calls can detect and reuse it.
-            final_task = asyncio.create_task(
-                _flush_session_final(session),
-                name=f"final-flush-{session_id[:8]}",
-            )
-            session._final_flush_task = final_task
-            _register_flush_worker(final_task)
-
-        # Await the task (new or reused).  asyncio.shield keeps it alive in
-        # _flush_workers even if wait_for times out here — stop_flusher()
-        # will drain it.  Any DB exception is re-raised to the route handler.
-        await asyncio.wait_for(
-            asyncio.shield(final_task),
-            timeout=END_TIMEOUT_SECONDS,
-        )
-
-        logger.info("Session %s…: final flush completed", session_id[:8])
-
-        # ── Step 4: persist session status, duration, WAV path, and trigger post-
-        # session diarization ─────
+        removed = False
         try:
-            from db import crud
-            from db.database import AsyncSessionLocal
-            from utils.profiler import profile_stage
+            logger.info("Session %s…: final flush started", session_id[:8])
 
-            with profile_stage(session_id, "Session persistence"):
-                async with AsyncSessionLocal() as db:
-                    await crud.update_session_status(
-                        db,
-                        session_id,
-                        status.value,
-                        duration=session.active_recording_duration,
-                    )
-                    if status == SessionStatus.COMPLETED:
-                        wav_path = session.audio_buffer.get_audio_file_path()
-                        if wav_path:
-                            session.audio_file_path = wav_path
-                            await crud.update_session_audio_path(
-                                db, session_id, wav_path
-                            )
-                    with profile_stage(session_id, "Database writes"):
-                        await db.commit()
+            # The finalizer task itself owns this work — no nested task,
+            # shield or wait_for around the flush.  A DB failure re-raises out
+            # of _do_flush(is_final=True) and propagates to end()'s awaiter.
+            await _flush_session_final(session)
 
-        except Exception:  # noqa: BLE001
-            logger.exception(
-                "Session %s…: failed to persist session terminal status/duration/audio_file_path",  # noqa: E501
-                session_id[:8],
-            )
+            logger.info("Session %s…: final flush completed", session_id[:8])
 
-        from core.config import get_settings
-
-        settings = get_settings()
-
-        if status == SessionStatus.COMPLETED and settings.enable_post_session_ai:
+            # ── Step 5: persist session status, duration, WAV path ───────────
             try:
-                logger.info(
-                    "Post-session AI task scheduled",
-                    extra={
-                        "session_id": session_id,
-                        "provider": settings.post_session_provider,
-                        "enabled": True,
-                    },
-                )
-                from services.post_session_pipeline import run_post_session_pipeline
+                from db import crud
+                from db.database import AsyncSessionLocal
+                from utils.profiler import profile_stage
 
-                pipeline_task = asyncio.create_task(
-                    run_post_session_pipeline(session_id),
-                    name=f"post-pipeline-{session_id[:8]}",
-                )
-                _register_flush_worker(pipeline_task)
-            except Exception as e:
-                logger.error(
-                    f"Failed to schedule Post-Session AI for {session_id[:8]}: {e}"
-                )
+                with profile_stage(session_id, "Session persistence"):
+                    async with AsyncSessionLocal() as db:
+                        await crud.update_session_status(
+                            db,
+                            session_id,
+                            status.value,
+                            duration=session.active_recording_duration,
+                        )
+                        if status == SessionStatus.COMPLETED:
+                            wav_path = session.audio_buffer.get_audio_file_path()
+                            if wav_path:
+                                session.audio_file_path = wav_path
+                                await crud.update_session_audio_path(
+                                    db, session_id, wav_path
+                                )
+                        with profile_stage(session_id, "Database writes"):
+                            await db.commit()
 
-        if status == SessionStatus.COMPLETED:
-            # Legacy diarization has been replaced by the generative post-session AI.
-            # We simply mark attribution as skipped and remove the session from memory.
-            session.speaker_attribution_status = "skipped"
-            logger.info(
-                "Session %s…: post-session diarization skipped (legacy).",
-                session_id[:8],
-            )
-
-            self.remove(session_id)
-        else:
-            # For non-completed sessions (failed/interrupted), finalize WAV if exists
-            try:
-                session.audio_buffer.flush_remaining()
-            except Exception as exc:
-                logger.warning(
-                    "Session %s…: failed to flush remaining audio buffer — %s",
+            except Exception:  # noqa: BLE001
+                logger.exception(
+                    "Session %s…: failed to persist session terminal status/duration/audio_file_path",  # noqa: E501
                     session_id[:8],
-                    exc,
                 )
-            self.remove(session_id)
+
+            # ── Step 6: schedule post-session AI (gating unchanged) ──────────
+            from core.config import get_settings
+
+            settings = get_settings()
+
+            if status == SessionStatus.COMPLETED and settings.enable_post_session_ai:
+                try:
+                    logger.info(
+                        "Post-session AI task scheduled",
+                        extra={
+                            "session_id": session_id,
+                            "provider": settings.post_session_provider,
+                            "enabled": True,
+                        },
+                    )
+                    from services.post_session_pipeline import (
+                        run_post_session_pipeline,
+                    )
+
+                    pipeline_task = asyncio.create_task(
+                        run_post_session_pipeline(session_id),
+                        name=f"post-pipeline-{session_id[:8]}",
+                    )
+                    _register_flush_worker(pipeline_task)
+                except Exception as e:
+                    logger.error(
+                        f"Failed to schedule Post-Session AI for {session_id[:8]}: {e}"
+                    )
+
+            # ── Step 7: remove the session from memory ───────────────────────
+            if status == SessionStatus.COMPLETED:
+                # Legacy diarization has been replaced by the generative
+                # post-session AI.  Mark attribution skipped and drop the
+                # session from memory.
+                session.speaker_attribution_status = "skipped"
+                logger.info(
+                    "Session %s…: post-session diarization skipped (legacy).",
+                    session_id[:8],
+                )
+                self.remove(session_id)
+                removed = True
+            else:
+                # For non-completed sessions (failed/interrupted), finalize
+                # WAV if it exists.
+                try:
+                    session.audio_buffer.flush_remaining()
+                except Exception as exc:
+                    logger.warning(
+                        "Session %s…: failed to flush remaining audio buffer — %s",
+                        session_id[:8],
+                        exc,
+                    )
+                self.remove(session_id)
+                removed = True
+        finally:
+            if not removed:
+                # Finalization did not reach successful removal — a final-flush
+                # failure, a cancellation, or an unexpected error.  Reset the
+                # once-only latch so a subsequent end() call can retry instead
+                # of the session being stranded in memory forever.
+                session._is_ending = False
 
     async def end_all_active_sessions(self) -> None:
         """Gracefully end all active in-memory sessions on shutdown."""

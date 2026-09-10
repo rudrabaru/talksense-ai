@@ -7,7 +7,13 @@ import time  # noqa: E402
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
+from core.config import get_settings  # noqa: E402
 from main import app  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _enable_post_session_ai(monkeypatch):
+    monkeypatch.setattr(get_settings(), "enable_post_session_ai", True)
 
 
 @pytest.fixture(autouse=True)
@@ -95,10 +101,6 @@ def test_empty_transcript(client: TestClient):
     with client.websocket_connect(f"/ws/audio/{session_id}") as websocket:
         # Send nothing, just end
         websocket.send_text("end")
-        try:
-            websocket.receive()
-        except Exception:
-            pass
 
     for _ in range(10):
         r = client.get(f"/dashboard/{session_id}")
@@ -134,10 +136,6 @@ def test_rest_delete_race(client: TestClient):
         assert r.status_code == 200
 
         # Expect the websocket to be closed by server
-        try:
-            websocket.receive()
-        except Exception:
-            pass
 
     for _ in range(10):
         r = client.get(f"/dashboard/{session_id}")
