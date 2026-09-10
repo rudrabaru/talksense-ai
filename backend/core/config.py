@@ -73,6 +73,12 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173"
     profiling_enabled: bool = True
 
+    # ── IB 1.5s Shadow Trial (feature-flagged; OFF unless explicitly enabled) ──
+    # Inert scaffolding only. No ASR/VAD/Whisper behaviour is attached to these.
+    enable_ib_shadow: bool = False
+    ib_shadow_max_sessions: int = 1
+    ib_shadow_dir: str = "ib_shadow_trial"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",")]

@@ -65,6 +65,10 @@ scratch/
 # Runtime audio data
 session_audio/
 
+# IB shadow trial artifacts (feature-flagged; never promoted)
+ib_shadow_trial/
+backend/ib_shadow_trial/
+
 # Generated artifacts
 *.webp
 tree_output.txt

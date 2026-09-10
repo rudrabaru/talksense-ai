@@ -28,6 +28,7 @@ import uuid
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+from audio.ib_shadow import ShadowRunner, shadow_enabled
 from audio.transcriber import get_transcriber
 from audio.vad import get_vad
 from core.config import get_settings
@@ -58,6 +59,7 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
     vad = vad_factory.create_session_vad()
     transcriber = get_transcriber()
     diarizer = None
+    shadow: ShadowRunner | None = None
 
     # ── Validate session ──────────────────────────────────────────────────────
     session = manager.get(session_id)
@@ -93,6 +95,26 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
         session.recording_started_at = time.monotonic()
 
     await broadcast_status(session.ws_status, "active")
+
+    # ── IB 1.5s shadow tap (inert; default OFF) ──────────────────────────────
+    # Constructed only when the feature flag is on and a slot is free. When OFF
+    # this block is skipped and `shadow` stays None — the production path below
+    # is byte-for-byte unchanged. Never fatal to the session.
+    if shadow_enabled(session_id):
+        try:
+            shadow = ShadowRunner(
+                session_id,
+                session.mode,
+                session.audio_buffer.get_audio_file_path,
+            )
+            shadow.start()
+        except Exception:
+            shadow = None
+            logger.warning(
+                "Session %s…: IB shadow init failed; continuing without it",
+                session_id[:8],
+                exc_info=True,
+            )
 
     # ── Main receive loop ─────────────────────────────────────────────────────
     try:
@@ -152,6 +174,12 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
                 )
                 continue
 
+            # IB shadow tap (inert; no-op when shadow is None). Non-blocking:
+            # enqueues the raw PCM ref and returns immediately, dropping on a
+            # full bounded queue. Does not touch the production pipeline.
+            if shadow is not None:
+                shadow.feed(pcm_bytes, time.monotonic())
+
             logger.info(f"Session {session_id[:8]}…: received chunk {len(pcm_bytes)}B")
 
             await _process_chunk(
@@ -192,6 +220,21 @@ async def audio_stream(websocket: WebSocket, session_id: str) -> None:
 
         # Flush any remaining buffered audio
         await _flush_final(session_id, transcriber, diarizer, manager)
+
+        # IB shadow (inert): snapshot the production transcript, then drain the
+        # shadow consumer BEFORE manager.end() removes the session. Never fatal.
+        if shadow is not None:
+            try:
+                async with session.lock:
+                    _prod_segments = list(session.conversation.transcript_segments)
+                shadow.snapshot_prod_transcript(_prod_segments)
+                await shadow.stop()
+            except Exception:
+                logger.warning(
+                    "Session %s…: IB shadow teardown failed",
+                    session_id[:8],
+                    exc_info=True,
+                )
 
         # Broadcast the actual terminal status (completed/interrupted/failed)
         terminal_status = (
